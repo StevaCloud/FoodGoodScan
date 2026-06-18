@@ -1,0 +1,16 @@
+{
+  "name": "foodcheck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scanner de produits alimentaires avec analyse santé et shop épicerie",
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "build:web": "pnpm --filter web build",
+    "build:server": "pnpm --filter server build"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

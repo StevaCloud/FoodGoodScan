@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String?
+  allergies     String         @default("")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscription  Subscription?
+  scanHistory   ScanHistory[]
+  favorites     Favorite[]
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  plan            String   @default("FREE")
+  groceryAddon    Boolean  @default(false)
+  stripeCustomerId String?
+  stripeSubId     String?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ScanHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  barcode     String
+  productName String
+  healthScore Int
+  scannedAt   DateTime @default(now())
+}
+
+model Favorite {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  barcode     String
+  productName String
+  addedAt     DateTime @default(now())
+
+  @@unique([userId, barcode])
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  store       String
+  productName String
+  barcode     String?
+  regularPrice Float
+  salePrice   Float
+  discount    String
+  imageUrl    String?
+  validFrom   DateTime
+  validUntil  DateTime
+  createdAt   DateTime @default(now())
+}
