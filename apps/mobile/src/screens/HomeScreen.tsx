@@ -6,6 +6,8 @@ import axios from 'axios';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { usePostalCode } from '../hooks/usePostalCode';
+import { getCurrentWeather } from '../services/weatherService';
+import { calculateWaterIntake } from '../services/waterIntakeService';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -18,18 +20,70 @@ interface DealSlide {
   imageUrl: string;
 }
 
+function TrialBanner({ trialEndsAt }: { trialEndsAt: string | null }) {
+  if (!trialEndsAt) return null;
+  const end = new Date(trialEndsAt);
+  const now = new Date();
+  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysLeft <= 0) return null;
+
+  const isUrgent = daysLeft <= 3;
+  return (
+    <View style={[trialStyles.banner, isUrgent && trialStyles.bannerUrgent]}>
+      <Text style={trialStyles.icon}>{isUrgent ? '⏰' : '🎁'}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={trialStyles.title}>Essai Premium gratuit</Text>
+        <Text style={trialStyles.sub}>
+          {daysLeft === 1 ? 'Dernier jour!' : `${daysLeft} jours restants`} — Accès complet à toutes les fonctionnalités
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const trialStyles = StyleSheet.create({
+  banner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#14532d', borderRadius: 12, padding: 14, marginBottom: 16, gap: 10, borderWidth: 1, borderColor: '#22c55e' },
+  bannerUrgent: { backgroundColor: '#431407', borderColor: '#f97316' },
+  icon: { fontSize: 24 },
+  title: { color: '#22c55e', fontWeight: 'bold', fontSize: 14 },
+  sub: { color: '#ccc', fontSize: 12, marginTop: 2 },
+});
+
 export function HomeScreen() {
   const navigation = useNavigation<any>();
   const user = useStore((s) => s.user);
   const token = useStore((s) => s.token);
+  const healthProfile = useStore((s) => s.healthProfile);
   const { t } = useTranslation();
   const postalCode = usePostalCode();
   const [deals, setDeals] = useState<DealSlide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [weather, setWeather] = useState<{ temperature: number; icon: string; description: string } | null>(null);
+  const [waterPlan, setWaterPlan] = useState<{ dailyLiters: string; glassesCount: number; reason: string } | null>(null);
 
   useEffect(() => {
     if (token) loadDeals();
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    getCurrentWeather(postalCode || undefined).then((w) => {
+      if (!w) return;
+      setWeather({ temperature: w.temperature, icon: w.icon, description: w.description });
+
+      if (healthProfile?.weight) {
+        const plan = calculateWaterIntake(
+          parseFloat(healthProfile.weight) || 154,
+          parseFloat(healthProfile.height) || 170,
+          healthProfile.activityLevel || 'moderate',
+          healthProfile.diet || 'none',
+          w.temperature,
+          healthProfile.gender || 'male'
+        );
+        setWaterPlan({ dailyLiters: plan.dailyLiters, glassesCount: plan.glassesCount, reason: plan.reason });
+      }
+    });
+  }, [token, postalCode, healthProfile]);
 
   useEffect(() => {
     if (deals.length === 0) return;
@@ -58,6 +112,22 @@ export function HomeScreen() {
         <Text style={styles.logo}>{t('app.name')}</Text>
         <Text style={styles.subtitle}>{t('app.tagline')}</Text>
       </View>
+
+      <TrialBanner trialEndsAt={user?.trialEndsAt ?? null} />
+
+      {/* Objectif hydratation du jour */}
+      {waterPlan && (
+        <View style={styles.waterCard}>
+          <Text style={styles.waterIcon}>💧</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.waterAmount}>{waterPlan.dailyLiters} L à boire aujourd'hui</Text>
+            <Text style={styles.waterGlasses}>{waterPlan.glassesCount} verres · {waterPlan.reason}</Text>
+          </View>
+          {weather && weather.temperature >= 25 && (
+            <Text style={styles.waterHot}>🔥 +eau</Text>
+          )}
+        </View>
+      )}
 
       {deals.length > 0 && (
         <View style={styles.carouselSection}>
@@ -107,11 +177,6 @@ export function HomeScreen() {
       </TouchableOpacity>
 
       <View style={styles.features}>
-        <TouchableOpacity style={styles.featureCard} onPress={() => navigation.navigate('Explorer')}>
-          <Text style={styles.featureTitle}>{t('home.explore')}</Text>
-          <Text style={styles.featureDesc}>{t('home.explore.desc')}</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={[styles.featureCard, { borderLeftColor: '#3b82f6' }]} onPress={() => navigation.navigate('Soldes')}>
           <Text style={styles.featureTitle}>{t('home.deals')}</Text>
           <Text style={styles.featureDesc}>{t('home.deals.desc')}</Text>
@@ -139,6 +204,11 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111' },
+  waterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0c1a2e', borderRadius: 14, padding: 14, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#1e3a5f', gap: 10 },
+  waterIcon: { fontSize: 26 },
+  waterAmount: { color: '#38bdf8', fontSize: 15, fontWeight: 'bold' },
+  waterGlasses: { color: '#64748b', fontSize: 11, marginTop: 2 },
+  waterHot: { color: '#f97316', fontSize: 11, fontWeight: '700' },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 14, zIndex: 100 },
   header: { alignItems: 'center', marginTop: 10, marginBottom: 20, paddingHorizontal: 20 },
   logo: { color: '#22c55e', fontSize: 36, fontWeight: 'bold' },

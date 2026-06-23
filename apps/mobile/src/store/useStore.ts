@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Language } from '../i18n/translations';
 
 interface User {
@@ -7,6 +8,7 @@ interface User {
   name: string | null;
   plan: 'FREE' | 'PREMIUM';
   groceryAddon: boolean;
+  trialEndsAt: string | null;
 }
 
 export interface GroceryItem {
@@ -14,6 +16,7 @@ export interface GroceryItem {
   name: string;
   store: string;
   price: number | null;
+  imageUrl: string;
   checked: boolean;
   addedAt: string;
   calories: number;
@@ -22,6 +25,13 @@ export interface GroceryItem {
   proteins: number;
   salt: number;
   healthScore: number;
+}
+
+interface WeatherData {
+  temperature: number;
+  weatherCode: number;
+  icon: string;
+  description: string;
 }
 
 interface AppState {
@@ -34,12 +44,14 @@ interface AppState {
   onboarded: boolean;
   healthProfile: any | null;
   postalCode: string;
+  weatherData: WeatherData | null;
 
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLastScannedProduct: (product: any) => void;
   logout: () => void;
-  addGroceryItem: (name: string, store: string, price: number | null, nutrition?: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }) => void;
+  setWeatherData: (data: WeatherData | null) => void;
+  addGroceryItem: (name: string, store: string, price: number | null, nutrition?: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }, imageUrl?: string) => void;
   toggleGroceryItem: (id: string) => void;
   removeGroceryItem: (id: string) => void;
   clearGroceryList: () => void;
@@ -47,54 +59,97 @@ interface AppState {
   setOnboarded: (v: boolean) => void;
   setHealthProfile: (profile: any) => void;
   setPostalCode: (code: string) => void;
+
+  quizBestScore: number;
+  quizTotal: number;
+  quizCorrect: number;
+  updateQuizStats: (score: number, correct: number) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
-  user: null,
-  token: null,
-  isLoggedIn: false,
-  lastScannedProduct: null,
-  groceryList: [],
-  language: 'fr' as Language,
-  onboarded: false,
-  healthProfile: null,
-  postalCode: '',
+const webStorage = createJSONStorage(() =>
+  typeof window !== 'undefined' ? window.localStorage : ({} as Storage)
+);
 
-  setUser: (user) => set({ user, isLoggedIn: !!user }),
-  setToken: (token) => set({ token }),
-  setLastScannedProduct: (product) => set({ lastScannedProduct: product }),
-  logout: () => set({ user: null, token: null, isLoggedIn: false }),
+export const useStore = create<AppState>()(
+  persist(
+    (set) => ({
+      user: null,
+      token: null,
+      isLoggedIn: false,
+      lastScannedProduct: null,
+      groceryList: [],
+      language: 'fr' as Language,
+      onboarded: false,
+      healthProfile: null,
+      postalCode: '',
+      weatherData: null,
+      quizBestScore: 0,
+      quizTotal: 0,
+      quizCorrect: 0,
 
-  addGroceryItem: (name, store, price, nutrition) => set((state) => ({
-    groceryList: [...state.groceryList, {
-      id: Date.now().toString(),
-      name,
-      store,
-      price,
-      checked: false,
-      addedAt: new Date().toISOString(),
-      calories: nutrition?.calories || 0,
-      fat: nutrition?.fat || 0,
-      sugars: nutrition?.sugars || 0,
-      proteins: nutrition?.proteins || 0,
-      salt: nutrition?.salt || 0,
-      healthScore: nutrition?.healthScore || 0,
-    }],
-  })),
+      setUser: (user) => set({ user, isLoggedIn: !!user }),
+      setToken: (token) => set({ token }),
+      setLastScannedProduct: (product) => set({ lastScannedProduct: product }),
+      logout: () => set({ user: null, token: null, isLoggedIn: false }),
+      setWeatherData: (weatherData) => set({ weatherData }),
 
-  toggleGroceryItem: (id) => set((state) => ({
-    groceryList: state.groceryList.map((item) =>
-      item.id === id ? { ...item, checked: !item.checked } : item
-    ),
-  })),
+      addGroceryItem: (name, store, price, nutrition, imageUrl) => set((state) => ({
+        groceryList: [...state.groceryList, {
+          id: Date.now().toString(),
+          name,
+          store,
+          price,
+          imageUrl: imageUrl || '',
+          checked: false,
+          addedAt: new Date().toISOString(),
+          calories: nutrition?.calories || 0,
+          fat: nutrition?.fat || 0,
+          sugars: nutrition?.sugars || 0,
+          proteins: nutrition?.proteins || 0,
+          salt: nutrition?.salt || 0,
+          healthScore: nutrition?.healthScore || 0,
+        }],
+      })),
 
-  removeGroceryItem: (id) => set((state) => ({
-    groceryList: state.groceryList.filter((item) => item.id !== id),
-  })),
+      toggleGroceryItem: (id) => set((state) => ({
+        groceryList: state.groceryList.map((item) =>
+          item.id === id ? { ...item, checked: !item.checked } : item
+        ),
+      })),
 
-  clearGroceryList: () => set({ groceryList: [] }),
-  setLanguage: (lang) => set({ language: lang }),
-  setOnboarded: (v) => set({ onboarded: v }),
-  setHealthProfile: (profile) => set({ healthProfile: profile }),
-  setPostalCode: (code) => set({ postalCode: code }),
-}));
+      removeGroceryItem: (id) => set((state) => ({
+        groceryList: state.groceryList.filter((item) => item.id !== id),
+      })),
+
+      clearGroceryList: () => set({ groceryList: [] }),
+      setLanguage: (lang) => set({ language: lang }),
+      setOnboarded: (v) => set({ onboarded: v }),
+      setHealthProfile: (profile) => set({ healthProfile: profile }),
+      setPostalCode: (code) => set({ postalCode: code }),
+
+      updateQuizStats: (score, correct) => set((state) => ({
+        quizBestScore: Math.max(state.quizBestScore, score),
+        quizTotal: state.quizTotal + 1,
+        quizCorrect: state.quizCorrect + correct,
+      })),
+
+    }),
+    {
+      name: 'foodcheck-storage',
+      storage: webStorage,
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isLoggedIn: state.isLoggedIn,
+        language: state.language,
+        onboarded: state.onboarded,
+        healthProfile: state.healthProfile,
+        postalCode: state.postalCode,
+        groceryList: state.groceryList,
+        quizBestScore: state.quizBestScore,
+        quizTotal: state.quizTotal,
+        quizCorrect: state.quizCorrect,
+      }),
+    }
+  )
+);

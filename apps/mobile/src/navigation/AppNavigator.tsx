@@ -2,19 +2,21 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
+import { WeatherBackground } from '../components/WeatherBackground';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
 import { ProductScreen } from '../screens/ProductScreen';
 import { DealsScreen } from '../screens/DealsScreen';
-import { ExploreScreen } from '../screens/ExploreScreen';
+
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { WaterScreen } from '../screens/WaterScreen';
 import { GroceryListScreen } from '../screens/GroceryListScreen';
 import { DietScreen } from '../screens/DietScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { QuizScreen } from '../screens/QuizScreen';
 import { useStore } from '../store/useStore';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -25,7 +27,7 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   const icons: Record<string, string> = {
     Accueil: 'H',
     Scanner: 'S',
-    Explorer: 'E',
+
     Soldes: '$',
     Régime: 'R',
     Liste: 'L',
@@ -41,23 +43,27 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function MainTabs() {
   const { t } = useTranslation();
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: { backgroundColor: '#1a1a1a', borderTopColor: '#333', height: 60, paddingBottom: 8 },
-        tabBarActiveTintColor: '#22c55e',
-        tabBarInactiveTintColor: '#666',
-        tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
-      })}
-    >
-      <Tab.Screen name="Régime" component={DietScreen} options={{ tabBarLabel: 'Régime' }} />
-      <Tab.Screen name="Accueil" component={HomeScreen} options={{ tabBarLabel: t('nav.home') }} />
-      <Tab.Screen name="Scanner" component={ScannerScreen} options={{ tabBarLabel: t('nav.scanner') }} />
-      <Tab.Screen name="Explorer" component={ExploreScreen} options={{ tabBarLabel: t('nav.explore') }} />
-      <Tab.Screen name="Soldes" component={DealsScreen} options={{ tabBarLabel: t('nav.deals') }} />
-      <Tab.Screen name="Liste" component={GroceryListScreen} options={{ tabBarLabel: t('nav.list') }} />
-      <Tab.Screen name="Profil" component={ProfileScreen} options={{ tabBarLabel: t('nav.profile') }} />
-    </Tab.Navigator>
+    <View style={{ flex: 1, backgroundColor: '#111' }}>
+      {/* Bannière météo animée en haut de tous les onglets */}
+      <WeatherBackground />
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
+          tabBarActiveTintColor: '#22c55e',
+          tabBarInactiveTintColor: '#555',
+          tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,
+        })}
+      >
+        <Tab.Screen name="Régime"   component={DietScreen}        options={{ tabBarLabel: 'Régime' }} />
+        <Tab.Screen name="Accueil"  component={HomeScreen}        options={{ tabBarLabel: t('nav.home') }} />
+        <Tab.Screen name="Scanner"  component={ScannerScreen}     options={{ tabBarLabel: t('nav.scanner') }} />
+        <Tab.Screen name="Quiz"     component={QuizScreen}        options={{ tabBarLabel: 'Quiz', tabBarIcon: ({ focused }) => <Text style={{ fontSize: 20 }}>{focused ? '🧠' : '🧠'}</Text> }} />
+        <Tab.Screen name="Soldes"   component={DealsScreen}       options={{ tabBarLabel: t('nav.deals') }} />
+        <Tab.Screen name="Liste"    component={GroceryListScreen} options={{ tabBarLabel: t('nav.list') }} />
+        <Tab.Screen name="Profil"   component={ProfileScreen}     options={{ tabBarLabel: t('nav.profile') }} />
+      </Tab.Navigator>
+    </View>
   );
 }
 
@@ -67,7 +73,8 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <View style={{ flex: 1, backgroundColor: '#111' }}>
+        <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#111' } }}>
         {!isLoggedIn ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : !onboarded ? (
@@ -97,7 +104,8 @@ export function AppNavigator() {
             />
           </>
         )}
-      </Stack.Navigator>
+        </Stack.Navigator>
+      </View>
     </NavigationContainer>
   );
 }

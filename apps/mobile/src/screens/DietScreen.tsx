@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions } from 'react-native';
 import { useStore } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { usePostalCode } from '../hooks/usePostalCode';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
+import { showToast } from '../components/Toast';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -14,60 +15,315 @@ const MEAL_PLANS = {
     title: 'Plan Perte de poids',
     calories: 1500,
     macros: { proteins: 30, carbs: 40, fat: 30 },
-    meals: [
-      { time: '07:00', name: 'Petit-déjeuner', items: ['2 oeufs brouillés', 'Toast blé entier', 'Fruits frais', 'Thé vert'], calories: 350 },
-      { time: '10:00', name: 'Collation', items: ['Yogourt grec nature', 'Amandes (15g)'], calories: 150 },
-      { time: '12:30', name: 'Dîner', items: ['Poitrine de poulet grillée', 'Salade verte', 'Quinoa (100g)', 'Huile d\'olive'], calories: 450 },
-      { time: '15:30', name: 'Collation', items: ['Pomme', 'Beurre d\'amande (1 c.s.)'], calories: 150 },
-      { time: '18:30', name: 'Souper', items: ['Saumon grillé', 'Légumes vapeur', 'Riz brun (80g)'], calories: 400 },
+    weeklyMeals: [
+      // Lundi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['2 oeufs brouillés', 'Toast blé entier', 'Fruits frais', 'Thé vert'], calories: 350 },
+        { time: '10:00', name: 'Collation', items: ['Yogourt grec nature', 'Amandes (15g)'], calories: 150 },
+        { time: '12:30', name: 'Dîner', items: ['Poitrine de poulet grillée', 'Salade verte', 'Quinoa (100g)', "Huile d'olive"], calories: 450 },
+        { time: '15:30', name: 'Collation', items: ['Pomme', "Beurre d'amande (1 c.s.)"], calories: 150 },
+        { time: '18:30', name: 'Souper', items: ['Saumon grillé', 'Légumes vapeur', 'Riz brun (80g)'], calories: 400 },
+      ],
+      // Mardi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine (50g)', 'Bleuets frais', 'Lait écrémé', 'Cannelle'], calories: 320 },
+        { time: '10:00', name: 'Collation', items: ['Fromage cottage (100g)', 'Concombre tranché'], calories: 120 },
+        { time: '12:30', name: 'Dîner', items: ['Dinde grillée (150g)', 'Wrap blé entier', 'Épinards', 'Moutarde'], calories: 450 },
+        { time: '15:30', name: 'Collation', items: ['Orange', 'Noix de cajou (15g)'], calories: 160 },
+        { time: '18:30', name: 'Souper', items: ['Morue au four', 'Brocoli vapeur', 'Patate douce (100g)'], calories: 420 },
+      ],
+      // Mercredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie épinards-banane-protéine', 'Graines de chia (10g)'], calories: 340 },
+        { time: '10:00', name: 'Collation', items: ['Céleri + hummus (2 c.s.)', 'Poivron rouge'], calories: 100 },
+        { time: '12:30', name: 'Dîner', items: ['Thon en conserve (eau)', 'Pain de seigle', 'Salade de légumes', 'Citron'], calories: 380 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt grec (150g)', 'Fraises fraîches'], calories: 130 },
+        { time: '18:30', name: 'Souper', items: ['Filet de porc maigre grillé', 'Courgette sautée', 'Lentilles (80g)'], calories: 420 },
+      ],
+      // Jeudi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette 2 oeufs + épinards', 'Toast de seigle', 'Café noir'], calories: 330 },
+        { time: '10:00', name: 'Collation', items: ['Edamame (100g)', 'Eau citronnée'], calories: 120 },
+        { time: '12:30', name: 'Dîner', items: ['Soupe de lentilles maison', 'Pain blé entier (1 tranche)', 'Salade verte'], calories: 420 },
+        { time: '15:30', name: 'Collation', items: ['Poire', 'Amandes (12g)'], calories: 150 },
+        { time: '18:30', name: 'Souper', items: ['Poulet sauté aux légumes', 'Riz de chou-fleur', 'Sauce soya légère'], calories: 380 },
+      ],
+      // Vendredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Toast avocat + oeuf poché', 'Tomates cerises', 'Thé vert'], calories: 370 },
+        { time: '10:00', name: 'Collation', items: ['Fromage cottage + ananas', 'Graines de lin'], calories: 140 },
+        { time: '12:30', name: 'Dîner', items: ['Crevettes grillées (150g)', 'Quinoa (90g)', 'Salade de concombre'], calories: 440 },
+        { time: '15:30', name: 'Collation', items: ['Framboises (1 tasse)', 'Yogourt nature'], calories: 130 },
+        { time: '18:30', name: 'Souper', items: ['Boulettes de dinde', 'Courgettes spaghetti', 'Sauce tomate maison'], calories: 400 },
+      ],
+      // Samedi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Crêpes protéinées (farine avoine)', "Sirop d'érable (1 c.s.)", 'Bleuets'], calories: 380 },
+        { time: '10:00', name: 'Collation', items: ['Kéfir (200ml)', 'Nectarine'], calories: 130 },
+        { time: '12:30', name: 'Dîner', items: ['Salade de poulet grillé', 'Vinaigrette citron-herbes', 'Croûtons blé entier'], calories: 430 },
+        { time: '15:30', name: 'Collation', items: ['Concombre + tzatziki léger', 'Poivron'], calories: 110 },
+        { time: '18:30', name: 'Souper', items: ['Tilapia au four', 'Asperges grillées', 'Riz brun (80g)'], calories: 400 },
+      ],
+      // Dimanche
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette légumes (poivron, oignon, épinards)', 'Toast blé entier'], calories: 350 },
+        { time: '10:00', name: 'Collation', items: ['Noix mélangées (20g)', 'Raisins frais (100g)'], calories: 160 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl de boeuf maigre', 'Riz brun (80g)', 'Légumes grillés', 'Salsa'], calories: 480 },
+        { time: '15:30', name: 'Collation', items: ['Céleri + beurre arachide naturel (1 c.s.)'], calories: 120 },
+        { time: '18:30', name: 'Souper', items: ['Poulet grillé (150g)', 'Patate douce rôtie (120g)', 'Épinards sautés'], calories: 410 },
+      ],
     ],
   },
   maintain: {
     title: 'Plan Maintien',
     calories: 2000,
     macros: { proteins: 25, carbs: 50, fat: 25 },
-    meals: [
-      { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine', 'Banane', 'Lait', 'Miel'], calories: 450 },
-      { time: '10:00', name: 'Collation', items: ['Barre de granola', 'Jus d\'orange'], calories: 200 },
-      { time: '12:30', name: 'Dîner', items: ['Sandwich poulet', 'Soupe légumes', 'Fruits'], calories: 550 },
-      { time: '15:30', name: 'Collation', items: ['Fromage', 'Craquelins blé entier'], calories: 200 },
-      { time: '18:30', name: 'Souper', items: ['Pâtes sauce tomate', 'Salade César', 'Pain ail'], calories: 600 },
+    weeklyMeals: [
+      // Lundi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine', 'Banane', 'Lait', 'Miel'], calories: 450 },
+        { time: '10:00', name: 'Collation', items: ["Barre de granola", "Jus d'orange"], calories: 200 },
+        { time: '12:30', name: 'Dîner', items: ['Sandwich poulet', 'Soupe légumes', 'Fruits'], calories: 550 },
+        { time: '15:30', name: 'Collation', items: ['Fromage', 'Craquelins blé entier'], calories: 200 },
+        { time: '18:30', name: 'Souper', items: ['Pâtes sauce tomate', 'Salade César', 'Pain ail'], calories: 600 },
+      ],
+      // Mardi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['2 oeufs + 2 tranches bacon dinde', 'Toast blé entier', 'Jus orange'], calories: 480 },
+        { time: '10:00', name: 'Collation', items: ['Banane', "Beurre d'arachide (1 c.s.)"], calories: 200 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl boeuf + riz brun', 'Légumes grillés', 'Guacamole'], calories: 580 },
+        { time: '15:30', name: 'Collation', items: ['Trail mix (noix + fruits secs)'], calories: 220 },
+        { time: '18:30', name: 'Souper', items: ['Saumon grillé (180g)', 'Patates pilées légères', 'Asperges'], calories: 580 },
+      ],
+      // Mercredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Pain doré blé entier', 'Sirop érable', 'Fruits frais', 'Café'], calories: 460 },
+        { time: '10:00', name: 'Collation', items: ['Yogourt grec + granola', 'Pomme'], calories: 220 },
+        { time: '12:30', name: 'Dîner', items: ['Wrap poulet grillé + légumes', 'Salade verte', 'Vinaigrette légère'], calories: 540 },
+        { time: '15:30', name: 'Collation', items: ['Barre protéinée', 'Lait'], calories: 200 },
+        { time: '18:30', name: 'Souper', items: ['Poulet sauté + légumes colorés', 'Riz jasmin (150g)', 'Sauce teriyaki légère'], calories: 560 },
+      ],
+      // Jeudi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie bowl (banane, fruits, granola)', 'Noix de coco râpée'], calories: 470 },
+        { time: '10:00', name: 'Collation', items: ['Edamame (150g)', 'Thé vert'], calories: 170 },
+        { time: '12:30', name: 'Dîner', items: ['Poke bowl (thon, riz, avocat, concombre)', 'Sauce ponzu'], calories: 560 },
+        { time: '15:30', name: 'Collation', items: ['Pomme + fromage cheddar léger'], calories: 200 },
+        { time: '18:30', name: 'Souper', items: ['Tacos boeuf maigre (2)', 'Tortillas blé entier', 'Salsa, guac, laitue'], calories: 580 },
+      ],
+      // Vendredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Pancakes blé entier (3)', 'Fruits frais', 'Sirop érable (1 c.s.)'], calories: 490 },
+        { time: '10:00', name: 'Collation', items: ['Bâton de fromage', 'Raisins (150g)'], calories: 190 },
+        { time: '12:30', name: 'Dîner', items: ['Wrap César au poulet', 'Soupe du jour', 'Jus légumes'], calories: 550 },
+        { time: '15:30', name: 'Collation', items: ['Granola + lait amande'], calories: 210 },
+        { time: '18:30', name: 'Souper', items: ['Crevettes + linguini', 'Sauce ail-beurre légère', 'Parmesan', 'Salade'], calories: 600 },
+      ],
+      // Samedi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Bagel blé entier', 'Fromage à la crème léger', 'Saumon fumé', 'Câpres'], calories: 500 },
+        { time: '10:00', name: 'Collation', items: ['Salade de fruits frais', 'Noix (20g)'], calories: 200 },
+        { time: '12:30', name: 'Dîner', items: ['Burger dinde maison', 'Pain blé entier', 'Salade de chou légère'], calories: 580 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt parfait (yogourt, granola, fruits)'], calories: 220 },
+        { time: '18:30', name: 'Souper', items: ['Steak de flanc grillé (150g)', 'Légumes rôtis', 'Pain baguette (1 tranche)'], calories: 580 },
+      ],
+      // Dimanche
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Déjeuner complet : 2 oeufs, bacon dinde, toast, tomates'], calories: 510 },
+        { time: '10:00', name: 'Collation', items: ["Jus d'orange pressé", 'Muffin son avoine'], calories: 210 },
+        { time: '12:30', name: 'Dîner', items: ['Pâtes macaroni + légumes + fromage léger', 'Salade verte'], calories: 560 },
+        { time: '15:30', name: 'Collation', items: ['Craquelins blé entier + fromage cottage', 'Concombre'], calories: 200 },
+        { time: '18:30', name: 'Souper', items: ['Rôti de poulet aux herbes', 'Pommes de terre rôties', 'Carottes glacées'], calories: 590 },
+      ],
     ],
   },
   gain: {
     title: 'Plan Prise de poids',
     calories: 2800,
     macros: { proteins: 30, carbs: 45, fat: 25 },
-    meals: [
-      { time: '07:00', name: 'Petit-déjeuner', items: ['4 oeufs brouillés', '2 toasts beurre', 'Avocat', 'Jus d\'orange'], calories: 650 },
-      { time: '10:00', name: 'Collation', items: ['Shake protéiné', 'Banane', 'Beurre d\'arachide'], calories: 400 },
-      { time: '12:30', name: 'Dîner', items: ['Poitrine de poulet (200g)', 'Riz (200g)', 'Légumes', 'Huile d\'olive'], calories: 700 },
-      { time: '15:30', name: 'Collation', items: ['Yogourt grec', 'Granola', 'Fruits secs'], calories: 350 },
-      { time: '18:30', name: 'Souper', items: ['Steak (200g)', 'Patates douces', 'Brocoli', 'Beurre'], calories: 700 },
+    weeklyMeals: [
+      // Lundi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ["4 oeufs brouillés", '2 toasts beurre', 'Avocat', "Jus d'orange"], calories: 650 },
+        { time: '10:00', name: 'Collation', items: ['Shake protéiné', 'Banane', "Beurre d'arachide"], calories: 400 },
+        { time: '12:30', name: 'Dîner', items: ['Poitrine de poulet (200g)', 'Riz (200g)', 'Légumes', "Huile d'olive"], calories: 700 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt grec', 'Granola', 'Fruits secs'], calories: 350 },
+        { time: '18:30', name: 'Souper', items: ['Steak (200g)', 'Patates douces', 'Brocoli', 'Beurre'], calories: 700 },
+      ],
+      // Mardi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine (100g)', '4 oeufs', 'Lait entier', 'Banane', 'Miel'], calories: 680 },
+        { time: '10:00', name: 'Collation', items: ['Shake banane-PB-lait entier', 'Noix mélangées (40g)'], calories: 420 },
+        { time: '12:30', name: 'Dîner', items: ['Bol de thon (180g)', 'Riz brun (200g)', 'Avocat', 'Sauce soya'], calories: 720 },
+        { time: '15:30', name: 'Collation', items: ['Granola bar maison', 'Yogourt grec (200g)'], calories: 360 },
+        { time: '18:30', name: 'Souper', items: ['Pâtes (200g)', 'Sauce bolognaise maison', "Pain à l'ail", 'Parmesan'], calories: 750 },
+      ],
+      // Mercredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Toast x3 + avocat + 4 oeufs', 'Jus orange', 'Fromage cheddar'], calories: 700 },
+        { time: '10:00', name: 'Collation', items: ['Smoothie PB-banane-lait-avoine', 'Dattes (5)'], calories: 440 },
+        { time: '12:30', name: 'Dîner', items: ['Burger maison (boeuf 200g)', 'Pain brioche', 'Fromage', 'Frites four'], calories: 750 },
+        { time: '15:30', name: 'Collation', items: ['Shake protéiné', 'Banane', 'Amandes (30g)'], calories: 380 },
+        { time: '18:30', name: 'Souper', items: ['Poulet (200g)', 'Riz blanc (200g)', 'Légumes beurre', 'Huile olive'], calories: 720 },
+      ],
+      // Jeudi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau protéiné + fruits secs + noix', 'Lait entier (300ml)', 'Oeufs (3)'], calories: 660 },
+        { time: '10:00', name: 'Collation', items: ['Kéfir (300ml)', 'Granola (60g)', 'Miel'], calories: 400 },
+        { time: '12:30', name: 'Dîner', items: ['Wrap poulet-fromage-avocat-légumes (2)', 'Soupe poulet maison'], calories: 730 },
+        { time: '15:30', name: 'Collation', items: ['Shake whey', 'Banane', 'Beurre arachide (2 c.s.)'], calories: 420 },
+        { time: '18:30', name: 'Souper', items: ['Steak de surlonge (200g)', 'Patates douces rôties (200g)', 'Brocoli beurre'], calories: 750 },
+      ],
+      // Vendredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Crêpes protéinées (4)', 'Sirop érable', 'Fruits frais', 'Lait'], calories: 680 },
+        { time: '10:00', name: 'Collation', items: ['Amandes + noix de cajou (50g)', 'Fromage (50g)'], calories: 410 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl saumon-quinoa-avocat-légumes', 'Vinaigrette tahini'], calories: 720 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt grec (200g)', 'Granola (50g)', 'Fraises'], calories: 370 },
+        { time: '18:30', name: 'Souper', items: ['Lasagne maison (viande maigre)', 'Salade César', 'Pain grillé'], calories: 760 },
+      ],
+      // Samedi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['4 oeufs + saucisses dinde', '3 toasts beurre', 'Haricots cuits'], calories: 720 },
+        { time: '10:00', name: 'Collation', items: ['Smoothie tropicaux (mangue, ananas, lait coco)', 'Protéine en poudre'], calories: 430 },
+        { time: '12:30', name: 'Dîner', items: ['Sous-marin maison (poulet, fromage, légumes, mayo légère)', 'Chips cuites four'], calories: 740 },
+        { time: '15:30', name: 'Collation', items: ['Beurre PB + crackers blé entier (8)', 'Lait (250ml)'], calories: 400 },
+        { time: '18:30', name: 'Souper', items: ['Côtelettes de porc (200g)', 'Riz (180g)', 'Légumes sautés beurre'], calories: 730 },
+      ],
+      // Dimanche
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Déjeuner complet : 4 oeufs, bacon dinde, 3 rôties, haricots, jus'], calories: 750 },
+        { time: '10:00', name: 'Collation', items: ['Granola bar + lait entier (300ml)', 'Banane'], calories: 420 },
+        { time: '12:30', name: 'Dîner', items: ['Mac + fromage maison + poulet grillé', 'Salade verte'], calories: 730 },
+        { time: '15:30', name: 'Collation', items: ['Granola (60g)', 'Yogourt grec (200g)', 'Noix (20g)'], calories: 410 },
+        { time: '18:30', name: 'Souper', items: ['Spaghetti bolognaise maison (200g pâtes)', 'Parmesan', 'Pain ail'], calories: 760 },
+      ],
     ],
   },
   muscle: {
     title: 'Plan Prise de muscle',
     calories: 2500,
     macros: { proteins: 40, carbs: 35, fat: 25 },
-    meals: [
-      { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette 4 oeufs + épinards', 'Toast blé entier', 'Avocat'], calories: 550 },
-      { time: '10:00', name: 'Post-entraînement', items: ['Shake whey protéine', 'Banane', 'Flocons d\'avoine'], calories: 400 },
-      { time: '12:30', name: 'Dîner', items: ['Poulet grillé (200g)', 'Riz brun (150g)', 'Légumes verts'], calories: 600 },
-      { time: '15:30', name: 'Collation', items: ['Thon en conserve', 'Craquelins', 'Fromage cottage'], calories: 350 },
-      { time: '18:30', name: 'Souper', items: ['Saumon (200g)', 'Patates douces', 'Asperges', 'Huile d\'olive'], calories: 600 },
+    weeklyMeals: [
+      // Lundi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette 4 oeufs + épinards', 'Toast blé entier', 'Avocat'], calories: 550 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Shake whey protéine', 'Banane', "Flocons d'avoine"], calories: 400 },
+        { time: '12:30', name: 'Dîner', items: ['Poulet grillé (200g)', 'Riz brun (150g)', 'Légumes verts'], calories: 600 },
+        { time: '15:30', name: 'Collation', items: ['Thon en conserve', 'Craquelins', 'Fromage cottage'], calories: 350 },
+        { time: '18:30', name: 'Souper', items: ['Saumon (200g)', 'Patates douces', 'Asperges', "Huile d'olive"], calories: 600 },
+      ],
+      // Mardi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine (80g)', '3 blancs oeufs + 1 entier', 'Protéine', 'Bleuets'], calories: 520 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Shake whey + lait écrémé', 'Pomme', 'Amandes (20g)'], calories: 420 },
+        { time: '12:30', name: 'Dîner', items: ['Steak de flanc (180g)', 'Riz brun (150g)', 'Épinards sautés ail'], calories: 620 },
+        { time: '15:30', name: 'Collation', items: ['Fromage cottage (200g)', 'Ananas (100g)', 'Graines de lin'], calories: 340 },
+        { time: '18:30', name: 'Souper', items: ['Tilapia grillé (220g)', 'Quinoa (130g)', 'Brocoli vapeur', 'Citron'], calories: 580 },
+      ],
+      // Mercredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['4 oeufs brouillés', 'Dinde fumée (60g)', '2 toasts blé', 'Avocat (½)'], calories: 580 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Smoothie protéiné (whey, banane, lait, PB)', 'Kiwi'], calories: 450 },
+        { time: '12:30', name: 'Dîner', items: ['Poitrine de poulet (220g)', 'Patate douce (150g)', 'Salade épinards'], calories: 610 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt grec (200g)', 'Granola (30g)', 'Framboises'], calories: 350 },
+        { time: '18:30', name: 'Souper', items: ['Saumon (200g)', 'Riz sauvage (130g)', 'Légumes vapeur', 'Beurre léger'], calories: 590 },
+      ],
+      // Jeudi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Pancakes protéinés (whey, avoine, oeufs)', 'Beurre PB', 'Banane'], calories: 570 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Shake whey + créatine', 'Banane', 'Riz soufflé (30g)'], calories: 410 },
+        { time: '12:30', name: 'Dîner', items: ['Boeuf haché maigre (200g)', 'Riz brun (150g)', 'Légumes sautés'], calories: 630 },
+        { time: '15:30', name: 'Collation', items: ['Edamame (150g)', 'Thon en conserve (1 boîte)', 'Citron'], calories: 330 },
+        { time: '18:30', name: 'Souper', items: ['Poitrine de poulet (220g)', 'Pâtes blé entier (100g sec)', 'Sauce tomate'], calories: 600 },
+      ],
+      // Vendredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette protéinée (4 oeufs, fromage cottage, épinards)', '2 toasts'], calories: 560 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Shake whey', 'Dattes (4)', 'Noix mélangées (25g)'], calories: 430 },
+        { time: '12:30', name: 'Dîner', items: ['Crevettes grillées (200g)', 'Quinoa (150g)', 'Avocat', 'Salade'], calories: 590 },
+        { time: '15:30', name: 'Collation', items: ['Fromage cottage (200g)', 'Pomme', 'Cannelle'], calories: 320 },
+        { time: '18:30', name: 'Souper', items: ['Steak surlonge (200g)', 'Patates douces (150g)', 'Asperges grillées'], calories: 640 },
+      ],
+      // Samedi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie bowl protéiné', 'Granola (40g)', 'Fruits frais', 'Graines chia'], calories: 540 },
+        { time: '10:00', name: 'Post-entraînement', items: ['Shake whey + lait entier', 'Banane', 'Beurre amande (1 c.s.)'], calories: 450 },
+        { time: '12:30', name: 'Dîner', items: ['Poulet rôti (220g)', 'Riz brun (150g)', 'Salade verte', 'Vinaigrette légère'], calories: 620 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt grec (200g)', 'Noix (25g)', 'Miel (1 c.t.)'], calories: 360 },
+        { time: '18:30', name: 'Souper', items: ['Saumon (200g)', 'Lentilles (120g)', 'Brocoli vapeur', 'Citron-ail'], calories: 600 },
+      ],
+      // Dimanche
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['4 oeufs + bacon dinde (4 tranches)', '2 toasts blé', 'Avocat', 'Tomates'], calories: 580 },
+        { time: '10:00', name: 'Collation (repos)', items: ['Fromage cottage (200g)', 'Bleuets (150g)', 'Graines de lin'], calories: 340 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl de thon-avocat-riz brun-légumes', 'Sauce ponzu légère'], calories: 610 },
+        { time: '15:30', name: 'Collation', items: ['Shake protéiné', 'Pomme', 'Amandes (20g)'], calories: 380 },
+        { time: '18:30', name: 'Souper', items: ['Poulet (220g)', 'Patates douces (150g)', 'Légumes rôtis', 'Herbes'], calories: 610 },
+      ],
     ],
   },
   health: {
     title: 'Plan Alimentation saine',
     calories: 1800,
     macros: { proteins: 25, carbs: 45, fat: 30 },
-    meals: [
-      { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie vert (épinards, banane, lait amande)', 'Noix mélangées'], calories: 350 },
-      { time: '10:00', name: 'Collation', items: ['Fruits frais de saison', 'Amandes'], calories: 150 },
-      { time: '12:30', name: 'Dîner', items: ['Bowl de quinoa', 'Légumes grillés', 'Pois chiches', 'Tahini'], calories: 500 },
-      { time: '15:30', name: 'Collation', items: ['Hummus', 'Crudités'], calories: 150 },
-      { time: '18:30', name: 'Souper', items: ['Poisson blanc grillé', 'Légumes rôtis', 'Riz basmati'], calories: 450 },
+    weeklyMeals: [
+      // Lundi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie vert (épinards, banane, lait amande)', 'Noix mélangées'], calories: 350 },
+        { time: '10:00', name: 'Collation', items: ['Fruits frais de saison', 'Amandes'], calories: 150 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl de quinoa', 'Légumes grillés', 'Pois chiches', 'Tahini'], calories: 500 },
+        { time: '15:30', name: 'Collation', items: ['Hummus', 'Crudités'], calories: 150 },
+        { time: '18:30', name: 'Souper', items: ['Poisson blanc grillé', 'Légumes rôtis', 'Riz basmati'], calories: 450 },
+      ],
+      // Mardi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine + graines chia', 'Bleuets', 'Lait amande', 'Cannelle'], calories: 360 },
+        { time: '10:00', name: 'Collation', items: ['Yogourt grec + miel + noix (15g)'], calories: 170 },
+        { time: '12:30', name: 'Dîner', items: ['Salade repas (épinards, poulet, avocat, noix, vinaigrette citron)'], calories: 480 },
+        { time: '15:30', name: 'Collation', items: ['Pomme + beurre amande (1 c.s.)'], calories: 160 },
+        { time: '18:30', name: 'Souper', items: ['Saumon au four (160g)', 'Légumes vapeur', 'Quinoa (100g)'], calories: 480 },
+      ],
+      // Mercredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Toast avocat + oeuf poché', 'Tomates cerises', 'Thé vert'], calories: 370 },
+        { time: '10:00', name: 'Collation', items: ['Orange', 'Poignée de noix mélangées (20g)'], calories: 160 },
+        { time: '12:30', name: 'Dîner', items: ['Soupe de lentilles + pain de seigle', 'Salade de légumes colorés'], calories: 470 },
+        { time: '15:30', name: 'Collation', items: ['Céleri + hummus', 'Poivron tranché'], calories: 130 },
+        { time: '18:30', name: 'Souper', items: ['Poulet grillé aux herbes', 'Légumes rôtis colorés', 'Patate douce'], calories: 470 },
+      ],
+      // Jeudi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Parfait yogourt (yogourt grec, granola maison, fruits rouges)'], calories: 380 },
+        { time: '10:00', name: 'Collation', items: ['Edamame (100g)', 'Concombre + citron'], calories: 140 },
+        { time: '12:30', name: 'Dîner', items: ['Bowl de falafel maison', 'Riz brun', 'Tzatziki', 'Salade'], calories: 510 },
+        { time: '15:30', name: 'Collation', items: ['Kéfir (200ml)', 'Pêche fraîche'], calories: 150 },
+        { time: '18:30', name: 'Souper', items: ['Morue au citron-aneth', 'Asperges grillées', 'Riz sauvage (90g)'], calories: 440 },
+      ],
+      // Vendredi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Crêpes avoine-banane (sans sucre ajouté)', 'Fruits frais', 'Sirop érable (1 c.t.)'], calories: 390 },
+        { time: '10:00', name: 'Collation', items: ['Framboises + fromage cottage (100g)'], calories: 150 },
+        { time: '12:30', name: 'Dîner', items: ['Wrap de dinde + légumes + avocat + moutarde', 'Soupe aux légumes'], calories: 490 },
+        { time: '15:30', name: 'Collation', items: ['Noix du Brésil (4)', 'Raisins (100g)'], calories: 160 },
+        { time: '18:30', name: 'Souper', items: ['Crevettes sautées ail-citron', 'Légumes vapeur', 'Riz basmati (90g)'], calories: 450 },
+      ],
+      // Samedi
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Bol de smoothie (açaï, banane, framboises)', 'Granola', 'Graines de chanvre'], calories: 380 },
+        { time: '10:00', name: 'Collation', items: ['Tranches de pomme + beurre amande', 'Thé vert'], calories: 170 },
+        { time: '12:30', name: 'Dîner', items: ['Salade de quinoa + légumes grillés + feta + olives', 'Vinaigrette méditerranéenne'], calories: 500 },
+        { time: '15:30', name: 'Collation', items: ['Yogourt nature + graines chia + miel'], calories: 160 },
+        { time: '18:30', name: 'Souper', items: ['Poulet rôti aux herbes', 'Légumes printaniers', 'Riz sauvage'], calories: 470 },
+      ],
+      // Dimanche
+      [
+        { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette légumes (courgette, poivron, tomate, basilic)', '1 toast'], calories: 360 },
+        { time: '10:00', name: 'Collation', items: ['Jus vert maison (concombre, pomme, gingembre, citron)'], calories: 120 },
+        { time: '12:30', name: 'Dîner', items: ['Soupe minestrone maison', 'Pain de blé entier grillé', 'Fromage'], calories: 480 },
+        { time: '15:30', name: 'Collation', items: ['Banane + amandes (15g)', 'Eau infusée concombre-menthe'], calories: 160 },
+        { time: '18:30', name: 'Souper', items: ['Tilapia citron-câpres', 'Couscous aux légumes', 'Salade verte'], calories: 460 },
+      ],
     ],
   },
 };
@@ -76,11 +332,56 @@ const KETO_PLAN = {
   title: 'Plan Keto',
   calories: 1800,
   macros: { proteins: 25, carbs: 5, fat: 70 },
-  meals: [
-    { time: '07:00', name: 'Petit-déjeuner', items: ['3 oeufs au beurre', 'Bacon', 'Avocat'], calories: 500 },
-    { time: '12:30', name: 'Dîner', items: ['Salade César sans croûtons', 'Poulet grillé', 'Parmesan'], calories: 450 },
-    { time: '15:30', name: 'Collation', items: ['Fromage', 'Noix de macadamia'], calories: 250 },
-    { time: '18:30', name: 'Souper', items: ['Saumon beurre citron', 'Asperges au beurre', 'Salade verte'], calories: 600 },
+  weeklyMeals: [
+    // Lundi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['3 oeufs au beurre', 'Bacon', 'Avocat'], calories: 500 },
+      { time: '12:30', name: 'Dîner', items: ['Salade César sans croûtons', 'Poulet grillé', 'Parmesan'], calories: 450 },
+      { time: '15:30', name: 'Collation', items: ['Fromage', 'Noix de macadamia'], calories: 250 },
+      { time: '18:30', name: 'Souper', items: ['Saumon beurre citron', 'Asperges au beurre', 'Salade verte'], calories: 600 },
+    ],
+    // Mardi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette 3 oeufs + fromage brie + champignons', 'Bacon (3 tranches)'], calories: 520 },
+      { time: '12:30', name: 'Dîner', items: ['Wrap de laitue + poulet + bacon + fromage + mayo'], calories: 440 },
+      { time: '15:30', name: 'Collation', items: ['Pepperoni (30g)', 'Fromage cheddar (40g)'], calories: 240 },
+      { time: '18:30', name: 'Souper', items: ['Porc au four (200g)', 'Haricots verts au beurre', 'Salade avocat'], calories: 590 },
+    ],
+    // Mercredi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Omelette épinards + fromage + crème sure', 'Bacon', 'Café au beurre'], calories: 530 },
+      { time: '12:30', name: 'Dîner', items: ['Boeuf haché (180g) + fromage fondu', 'Laitue', 'Tomates', 'Mayo'], calories: 460 },
+      { time: '15:30', name: 'Collation', items: ['Oeufs durs (2)', 'Noix de macadamia (20g)'], calories: 230 },
+      { time: '18:30', name: 'Souper', items: ['Poulet rôti (200g)', 'Brocoli beurre-ail', 'Salade verte huile olive'], calories: 580 },
+    ],
+    // Jeudi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Pancakes keto (amandes, oeufs, fromage à la crème)', 'Beurre', 'Peu de fraises'], calories: 510 },
+      { time: '12:30', name: 'Dîner', items: ['Salade de thon + mayo + céleri + avocat', 'Feuilles de laitue'], calories: 440 },
+      { time: '15:30', name: 'Collation', items: ['Beurre arachide naturel (2 c.s.)', 'Céleri'], calories: 220 },
+      { time: '18:30', name: 'Souper', items: ["Saumon + crème à l'aneth", 'Asperges rôties', 'Brocoli vapeur'], calories: 610 },
+    ],
+    // Vendredi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Bacon (4 tranches)', '3 oeufs', 'Avocat', 'Fromage cottage'], calories: 540 },
+      { time: '12:30', name: 'Dîner', items: ['Burger sans pain (boeuf 180g, bacon, fromage, laitue, tomate)'], calories: 450 },
+      { time: '15:30', name: 'Collation', items: ['Pepitas (30g)', 'Fromage gouda (40g)'], calories: 240 },
+      { time: '18:30', name: 'Souper', items: ['Côtes levées (200g)', 'Chou vapeur', 'Salade coleslaw (mayo)'], calories: 570 },
+    ],
+    // Samedi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Gaufres keto (farine amande)', 'Crème fraîche', 'Fraises (50g)'], calories: 500 },
+      { time: '12:30', name: 'Dîner', items: ['Salade de chef (jambon, fromage, oeufs, vinaigrette huile)'], calories: 460 },
+      { time: '15:30', name: 'Collation', items: ['Noix de Grenoble (30g)', 'Fromage brie (40g)'], calories: 260 },
+      { time: '18:30', name: 'Souper', items: ['Poulet rôti (200g)', 'Brocoli beurre', 'Champignons sautés beurre'], calories: 580 },
+    ],
+    // Dimanche
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Oeufs brouillés + saumon fumé (60g)', 'Crème fraîche', 'Câpres'], calories: 510 },
+      { time: '12:30', name: 'Dîner', items: ['Soupe à la crème de champignons maison (crème entière)', 'Pain keto (amandes)'], calories: 440 },
+      { time: '15:30', name: 'Collation', items: ['Olives (60g)', 'Fromage feta (40g)'], calories: 230 },
+      { time: '18:30', name: 'Souper', items: ['Steak (200g)', 'Légumes sautés beurre ail', 'Salade avocat-tomates'], calories: 610 },
+    ],
   ],
 };
 
@@ -88,20 +389,193 @@ const VEGETARIAN_PLAN = {
   title: 'Plan Végétarien',
   calories: 1800,
   macros: { proteins: 20, carbs: 50, fat: 30 },
-  meals: [
-    { time: '07:00', name: 'Petit-déjeuner', items: ['Gruau avoine + fruits', 'Lait d\'amande', 'Graines de chia'], calories: 400 },
-    { time: '10:00', name: 'Collation', items: ['Yogourt grec', 'Granola maison'], calories: 200 },
-    { time: '12:30', name: 'Dîner', items: ['Buddha bowl (tofu, quinoa, légumes)', 'Vinaigrette tahini'], calories: 500 },
-    { time: '15:30', name: 'Collation', items: ['Hummus + crudités'], calories: 150 },
-    { time: '18:30', name: 'Souper', items: ['Curry de lentilles', 'Riz basmati', 'Naan'], calories: 550 },
+  weeklyMeals: [
+    // Lundi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ["Gruau avoine + fruits", "Lait d'amande", 'Graines de chia'], calories: 400 },
+      { time: '10:00', name: 'Collation', items: ['Yogourt grec', 'Granola maison'], calories: 200 },
+      { time: '12:30', name: 'Dîner', items: ['Buddha bowl (tofu, quinoa, légumes)', 'Vinaigrette tahini'], calories: 500 },
+      { time: '15:30', name: 'Collation', items: ['Hummus + crudités'], calories: 150 },
+      { time: '18:30', name: 'Souper', items: ['Curry de lentilles', 'Riz basmati', 'Naan'], calories: 550 },
+    ],
+    // Mardi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Yogourt grec + granola + framboises + miel', 'Thé vert'], calories: 390 },
+      { time: '10:00', name: 'Collation', items: ['Toast avocat + oeuf poché', 'Tomates cerises'], calories: 220 },
+      { time: '12:30', name: 'Dîner', items: ['Dhal de lentilles rouges', 'Riz brun (100g)', 'Naan blé entier'], calories: 510 },
+      { time: '15:30', name: 'Collation', items: ['Fromage + pomme', 'Noix (15g)'], calories: 180 },
+      { time: '18:30', name: 'Souper', items: ['Bowl de tempeh sauté + légumes + riz brun', 'Sauce teriyaki'], calories: 490 },
+    ],
+    // Mercredi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Smoothie vert protéiné (épinards, protéine végé, banane, lait amande)'], calories: 380 },
+      { time: '10:00', name: 'Collation', items: ['Edamame (120g)', 'Citron', 'Fleur de sel'], calories: 160 },
+      { time: '12:30', name: 'Dîner', items: ['Pizza végé (pâte blé entier, légumes grillés, fromage, sauce tomate)'], calories: 520 },
+      { time: '15:30', name: 'Collation', items: ['Noix mélangées (25g)', 'Raisins secs (20g)'], calories: 190 },
+      { time: '18:30', name: 'Souper', items: ['Pâtes + pesto maison + légumes grillés + parmesan'], calories: 520 },
+    ],
+    // Jeudi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Crêpes avoine-banane', 'Fruits frais', 'Sirop érable (1 c.t.)', 'Yogourt'], calories: 410 },
+      { time: '10:00', name: 'Collation', items: ['Hummus (60g)', 'Poivrons colorés', 'Concombre'], calories: 150 },
+      { time: '12:30', name: 'Dîner', items: ['Soupe miso + tofu + champignons', 'Riz blanc (100g)', 'Edamame'], calories: 480 },
+      { time: '15:30', name: 'Collation', items: ['Yogourt nature + graines de chanvre + bleuets'], calories: 170 },
+      { time: '18:30', name: 'Souper', items: ['Sauté tofu + légumes colorés + sauce soya-gingembre', 'Riz brun (100g)'], calories: 510 },
+    ],
+    // Vendredi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Toast blé entier + beurre amande + banane tranchée + graines chia'], calories: 400 },
+      { time: '10:00', name: 'Collation', items: ['Fromage cottage (150g)', 'Bleuets frais', 'Cannelle'], calories: 170 },
+      { time: '12:30', name: 'Dîner', items: ['Tacos végé (haricots noirs, fromage, salsa, guac, laitue)', 'Tortillas maïs (2)'], calories: 500 },
+      { time: '15:30', name: 'Collation', items: ['Noix cajou (25g)', 'Abricots secs (4)'], calories: 190 },
+      { time: '18:30', name: 'Souper', items: ['Chili végétarien (haricots, tomates, maïs)', 'Pain de maïs', 'Crème sure'], calories: 530 },
+    ],
+    // Samedi
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Granola maison + lait amande + mangue + kiwi + graines de lin'], calories: 420 },
+      { time: '10:00', name: 'Collation', items: ['Muffin son avoine maison', 'Kéfir (200ml)'], calories: 200 },
+      { time: '12:30', name: 'Dîner', items: ['Salade quinoa + pois chiches + légumes + feta + tahini'], calories: 510 },
+      { time: '15:30', name: 'Collation', items: ['Edamame (120g)', 'Pomme'], calories: 170 },
+      { time: '18:30', name: 'Souper', items: ['Quiche légumes sans croûte (oeufs, légumes, fromage)', 'Salade verte'], calories: 490 },
+    ],
+    // Dimanche
+    [
+      { time: '07:00', name: 'Petit-déjeuner', items: ['Brunch végé : omelette légumes + toast blé + fromage + jus légumes'], calories: 430 },
+      { time: '10:00', name: 'Collation', items: ['Jus de légumes maison', 'Noix (20g)'], calories: 160 },
+      { time: '12:30', name: 'Dîner', items: ['Soupe tomate-basilic maison', 'Grilled cheese blé entier (fromage végé)'], calories: 490 },
+      { time: '15:30', name: 'Collation', items: ['Pomme + beurre amande (1 c.s.)'], calories: 170 },
+      { time: '18:30', name: 'Souper', items: ['Dal makhani (lentilles, crème, tomates, épices)', 'Naan', 'Riz basmati'], calories: 560 },
+    ],
   ],
 };
+
+// ─── Icônes repas ─────────────────────────────────────────────────────────────
+function getMealTypeIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('petit-déjeuner') || n.includes('déjeuner')) return '🌅';
+  if (n.includes('post-entraînement') || n.includes('post entraînement')) return '💪';
+  if (n.includes('collation')) return '🍏';
+  if (n.includes('dîner')) return '🍽️';
+  if (n.includes('souper')) return '🌙';
+  return '🕐';
+}
+
+const FOOD_ICONS: [RegExp, string][] = [
+  [/oeuf|oeufs|blanc.*oeuf|omelette/i, '🥚'],
+  [/poulet|poitrine.*poulet/i, '🍗'],
+  [/dinde|dindon/i, '🦃'],
+  [/saumon/i, '🐟'],
+  [/thon|morue|tilapia|poisson/i, '🐠'],
+  [/crevette/i, '🦐'],
+  [/boeuf|steak|surlonge|flanc|bolognaise|boulette/i, '🥩'],
+  [/porc|bacon|côtelette|côtes levées|saucisse|pepperoni|jambon/i, '🥓'],
+  [/avocat/i, '🥑'],
+  [/banane/i, '🍌'],
+  [/bleuet|bleuets/i, '🫐'],
+  [/fraise|framboises?/i, '🍓'],
+  [/pomme(?! de terre)/i, '🍎'],
+  [/orange|jus.*orange/i, '🍊'],
+  [/raisin/i, '🍇'],
+  [/mangue|ananas|kiwi|pêche|nectarine|datte|abricot/i, '🍑'],
+  [/citron/i, '🍋'],
+  [/brocoli/i, '🥦'],
+  [/épinard/i, '🥬'],
+  [/carotte/i, '🥕'],
+  [/céleri/i, '🥬'],
+  [/concombre/i, '🥒'],
+  [/poivron/i, '🫑'],
+  [/tomate/i, '🍅'],
+  [/courgette/i, '🥗'],
+  [/asperge/i, '🌿'],
+  [/champignon/i, '🍄'],
+  [/patate douce|patates douces/i, '🍠'],
+  [/pomme de terre|patate[^s]/i, '🥔'],
+  [/riz/i, '🍚'],
+  [/quinoa|lentille|pois chiche|haricot|edamame/i, '🫘'],
+  [/avoine|gruau|granola|céréale/i, '🌾'],
+  [/pâtes|pasta|spaghetti|linguini|macaroni|lasagne|couscous/i, '🍝'],
+  [/pain|toast|bagel|naan|wrap|tortilla|craquelin|croûton|baguette|rôtie/i, '🍞'],
+  [/crêpe|pancake|gaufre|pain doré/i, '🥞'],
+  [/yogourt|fromage|lait|cottage|kéfir|parmesan|cheddar|brie|feta|crème.*sure/i, '🧀'],
+  [/lait(?!.*amande)/i, '🥛'],
+  [/amande|noix|cajou|arachide|beurre.*amande|beurre.*arachide/i, '🥜'],
+  [/graines|chia|lin|chanvre/i, '🌱'],
+  [/smoothie|shake|whey|protéine.*poudre/i, '🥤'],
+  [/thé/i, '🍵'],
+  [/café/i, '☕'],
+  [/eau/i, '💧'],
+  [/jus/i, '🧃'],
+  [/huile|beurre(?!.*arachide|.*amande)/i, '🫒'],
+  [/sauce|vinaigrette|mayo|guacamole|salsa|hummus|tahini|pesto/i, '🫙'],
+  [/miel|sirop/i, '🍯'],
+  [/cannelle|herbes|basilic|aneth|gingembre/i, '🌿'],
+  [/tofu|tempeh/i, '🟫'],
+  [/olive/i, '🫒'],
+  [/salade(?!.*poulet|.*quinoa|.*boeuf)/i, '🥗'],
+  [/soupe/i, '🍲'],
+  [/curry|dhal|dal/i, '🍛'],
+  [/burger|sous-marin/i, '🍔'],
+  [/tacos?|fajita/i, '🌮'],
+  [/pizza/i, '🍕'],
+  [/créatine|vitamine/i, '💊'],
+];
+
+function getMealIcon(item: string): string {
+  for (const [pattern, icon] of FOOD_ICONS) {
+    if (pattern.test(item)) return icon;
+  }
+  return '•';
+}
+
+function extractSearchTerm(item: string): string {
+  let cleaned = item
+    .replace(/\(.*?\)/g, '')
+    .replace(/\d+\s*(g|mg|ml|c\.s\.|c\.t\.|kcal|%|lbs?|kg|cm|tranches?|tasses?|verres?)\b/gi, '')
+    .replace(/\d+/g, '')
+    .trim();
+  const words = cleaned.split(/[\s,+]+/).filter(w => w.length > 2);
+  return words.slice(0, 2).join(' ');
+}
+
+// Associe un article de repas à une catégorie de deals pour trouver son image
+const INGREDIENT_CATEGORY: [RegExp, string][] = [
+  [/poulet|poitrine.*poulet/i,              'Viandes fraîches'],
+  [/dinde|dindon/i,                          'Viandes fraîches'],
+  [/boeuf|steak|surlonge|flanc|boulette/i,  'Viandes fraîches'],
+  [/porc|bacon|côtelette|saucisse/i,         'Viandes fraîches'],
+  [/saumon/i,                                'Poissons frais'],
+  [/thon|morue|tilapia|crevette|poisson/i,   'Poissons frais'],
+  [/oeuf|oeufs|omelette/i,                   'Oeufs'],
+  [/pomme(?! de terre)|raisin|fraise|framboises?|bleuet|kiwi|mangue|orange|ananas|pêche|nectarine/i, 'Fruits frais'],
+  [/banane/i,                                'Fruits frais'],
+  [/brocoli|épinard|concombre|poivron|tomate|carotte|courgette|asperge|laitue|salade verte|avocat/i, 'Légumes frais'],
+  [/céleri|chou|ail|oignon|navet|panais|betterave/i, 'Légumes frais'],
+  [/yogourt|fromage|kéfir|cottage|parmesan|cheddar|brie|feta/i, 'Produits laitiers sains'],
+  [/amande|noix|cajou|arachide|beurre.*amande|beurre.*arachide|graines|pistache/i, 'Noix & Graines'],
+  [/quinoa|riz brun|avoine|gruau/i,          'Grains entiers'],
+  [/huile.*olive|huile d'olive/i,            'Bons gras'],
+];
+
+function getIngredientImage(item: string, deals: Record<string, DealItem[]>): string | null {
+  for (const [pattern, category] of INGREDIENT_CATEGORY) {
+    if (!pattern.test(item)) continue;
+    const catItems = deals[category];
+    if (!catItems?.length) continue;
+    // Cherche d'abord un article dont le nom contient le mot-clé principal
+    const keyword = item.toLowerCase().split(/[\s,(]+/)[0];
+    const exact = catItems.find(d => d.imageUrl && d.name?.toLowerCase().includes(keyword));
+    const fallback = catItems.find(d => d.imageUrl);
+    return (exact ?? fallback)?.imageUrl ?? null;
+  }
+  return null;
+}
 
 interface DealItem {
   name: string;
   merchant: string;
   price: number | null;
   imageUrl: string;
+  merchantLogo?: string;
 }
 
 const HEALTHY_CATEGORIES = [
@@ -137,6 +611,7 @@ export function DietScreen() {
   const [selectedDeal, setSelectedDeal] = useState<DealItem | null>(null);
   const [otherStores, setOtherStores] = useState<DealItem[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const addGroceryItem = useStore((s) => s.addGroceryItem);
 
   const handleDealClick = async (item: DealItem) => {
@@ -198,6 +673,8 @@ export function DietScreen() {
   else if (diet === 'vegetarian' || diet === 'vegan') plan = VEGETARIAN_PLAN;
   else plan = MEAL_PLANS[goal as keyof typeof MEAL_PLANS] || MEAL_PLANS.health;
 
+  const dayMeals = plan.weeklyMeals[activeDay] ?? plan.weeklyMeals[0];
+
   const weightLbs = parseFloat(healthProfile?.weight || '160');
   const heightCm = parseFloat(healthProfile?.height || '170');
   const weightKg = weightLbs * 0.453592;
@@ -207,7 +684,7 @@ export function DietScreen() {
 
   const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-  const totalMealCalories = plan.meals.reduce((sum: number, m: any) => sum + m.calories, 0);
+  const totalMealCalories = dayMeals.reduce((sum: number, m: any) => sum + m.calories, 0);
 
   if (selectedDeal) {
     return (
@@ -259,27 +736,59 @@ export function DietScreen() {
             otherStores
               .sort((a, b) => (a.price || 999) - (b.price || 999))
               .map((store, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[styles.storeRow, i === 0 && styles.storeRowBest]}
-                onPress={() => {
-                  addGroceryItem(store.name, store.merchant, store.price);
-                  const { Alert } = require('react-native');
-                  Alert.alert('Ajouté!', `${store.name} (${store.merchant}) ajouté à ta liste`);
-                }}
-              >
-                <View style={styles.storeInfo}>
-                  <View style={styles.storeNameRow}>
-                    <Text style={styles.storeName}>{store.merchant}</Text>
-                    {i === 0 && <View style={styles.bestPriceBadge}><Text style={styles.bestPriceText}>MEILLEUR PRIX</Text></View>}
+              <View key={i} style={[styles.storeRow, i === 0 && styles.storeRowBest]}>
+                {/* Image + info → ouvre le circulaire du magasin */}
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}
+                  onPress={() => navigation.navigate('Soldes', {
+                    dealItem: {
+                      id: i,
+                      name: store.name,
+                      merchant: store.merchant,
+                      merchantLogo: store.merchantLogo || '',
+                      price: store.price,
+                      priceText: '',
+                      imageUrl: store.imageUrl || '',
+                      validFrom: '',
+                      validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+                      category: '',
+                    }
+                  })}
+                >
+                  {store.imageUrl ? (
+                    <Image source={{ uri: store.imageUrl }} style={styles.storeProductImg} resizeMode="contain" />
+                  ) : (
+                    <View style={[styles.storeProductImg, { backgroundColor: '#2a2a2a', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 20 }}>🛒</Text>
+                    </View>
+                  )}
+                  <View style={styles.storeInfo}>
+                    <View style={styles.storeNameRow}>
+                      {store.merchantLogo ? (
+                        <Image source={{ uri: store.merchantLogo }} style={styles.storeMerchantLogo} resizeMode="contain" />
+                      ) : null}
+                      <Text style={styles.storeName}>{store.merchant}</Text>
+                      {i === 0 && <View style={styles.bestPriceBadge}><Text style={styles.bestPriceText}>MEILLEUR PRIX</Text></View>}
+                    </View>
+                    <Text style={styles.storeProduct} numberOfLines={2}>{store.name}</Text>
+                    <Text style={styles.storeTapHint}>Voir le produit →</Text>
                   </View>
-                  <Text style={styles.storeProduct} numberOfLines={1}>{store.name}</Text>
-                </View>
+                </TouchableOpacity>
+
+                {/* Prix + bouton ajouter */}
                 <View style={styles.storePriceCol}>
                   {store.price && <Text style={[styles.storePrice, i === 0 && { color: '#22c55e' }]}>${store.price.toFixed(2)}</Text>}
-                  <Text style={styles.storeAddHint}>+ Liste</Text>
+                  <TouchableOpacity
+                    style={styles.storeAddBtn}
+                    onPress={() => {
+                      addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
+                      showToast(`${store.name} ajouté à ta liste`);
+                    }}
+                  >
+                    <Text style={styles.storeAddBtnText}>Ajouter</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             ))
           )}
           {!loadingStores && otherStores.length === 0 && (
@@ -290,9 +799,8 @@ export function DietScreen() {
         <TouchableOpacity
           style={styles.addListBtn}
           onPress={() => {
-            addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price);
-            const { Alert } = require('react-native');
-            Alert.alert('Ajouté!', `${selectedDeal.name} ajouté à ta liste d'épicerie`);
+            addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price, undefined, selectedDeal.imageUrl);
+            showToast(`${selectedDeal.name} ajouté à ta liste`);
             setSelectedDeal(null);
           }}
         >
@@ -306,7 +814,21 @@ export function DietScreen() {
     );
   }
 
+  const screenW = Dimensions.get('window').width;
+  const screenH = Dimensions.get('window').height;
+
   return (
+    <>
+    <Modal visible={!!zoomedImage} transparent animationType="fade" onRequestClose={() => setZoomedImage(null)}>
+      <Pressable style={styles.zoomOverlay} onPress={() => setZoomedImage(null)}>
+        <Image
+          source={{ uri: zoomedImage! }}
+          style={{ width: screenW - 32, height: screenH * 0.6, borderRadius: 12 }}
+          resizeMode="contain"
+        />
+        <Text style={styles.zoomClose}>Appuyer pour fermer</Text>
+      </Pressable>
+    </Modal>
     <ScrollView style={styles.container}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
 
@@ -387,21 +909,52 @@ export function DietScreen() {
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Plan de repas suggéré</Text>
+      <Text style={styles.sectionTitle}>Plan de repas — {days[activeDay]}</Text>
       <Text style={styles.totalCal}>{totalMealCalories} calories totales</Text>
 
-      {plan.meals.map((meal: any, i: number) => (
+      {dayMeals.map((meal: any, i: number) => (
         <View key={i} style={styles.mealCard}>
           <View style={styles.mealHeader}>
-            <View>
-              <Text style={styles.mealTime}>{meal.time}</Text>
-              <Text style={styles.mealName}>{meal.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.mealTypeIcon}>{getMealTypeIcon(meal.name)}</Text>
+              <View>
+                <Text style={styles.mealTime}>{meal.time}</Text>
+                <Text style={styles.mealName}>{meal.name}</Text>
+              </View>
             </View>
             <Text style={styles.mealCalories}>{meal.calories} cal</Text>
           </View>
-          {meal.items.map((item: string, j: number) => (
-            <Text key={j} style={styles.mealItem}>• {item}</Text>
-          ))}
+          <View style={styles.mealItemsGrid}>
+            {meal.items.map((item: string, j: number) => {
+              const icon = getMealIcon(item);
+              const imgUrl = getIngredientImage(item, weeklyDeals);
+              return (
+                <TouchableOpacity
+                  key={j}
+                  style={styles.mealItemRow}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    const term = extractSearchTerm(item);
+                    if (term) navigation.navigate('Soldes', { searchQuery: term });
+                  }}
+                >
+                  {imgUrl ? (
+                    <Image
+                      source={{ uri: imgUrl }}
+                      style={styles.mealItemThumb}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.mealItemThumbEmpty}>
+                      <Text style={styles.mealItemIcon}>{icon === '•' ? '🍴' : icon}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.mealItemText}>{item}</Text>
+                  <Text style={styles.mealItemArrow}>{'>'}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       ))}
 
@@ -422,18 +975,42 @@ export function DietScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.dealRow}>
                 {items.slice(0, 6).map((item, i) => (
-                  <TouchableOpacity key={i} style={styles.dealCard} onPress={() => handleDealClick(item)}>
-                    {item.imageUrl ? (
-                      <Image source={{ uri: item.imageUrl }} style={styles.dealImage} />
-                    ) : (
-                      <View style={[styles.dealImage, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
-                        <Text style={{ color: '#bbb' }}>$</Text>
+                  <View key={i} style={styles.dealCard}>
+                    <TouchableOpacity onPress={() => handleDealClick(item)}>
+                      <View style={{ position: 'relative' }}>
+                        {item.imageUrl ? (
+                          <Image
+                            source={{ uri: item.imageUrl }}
+                            style={styles.dealImage}
+                            onError={(e) => { (e.target as any).setNativeProps({ src: [] }); }}
+                          />
+                        ) : (
+                          <View style={[styles.dealImage, { backgroundColor: '#2a2a2a', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ color: '#555', fontSize: 28 }}>🛒</Text>
+                          </View>
+                        )}
+                        {item.merchantLogo ? (
+                          <Image source={{ uri: item.merchantLogo }} style={styles.dealMerchantLogo} />
+                        ) : (
+                          <View style={styles.dealMerchantTag}>
+                            <Text style={styles.dealMerchantTagText} numberOfLines={1}>{item.merchant}</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
-                    <Text style={styles.dealName} numberOfLines={2}>{item.name}</Text>
-                    <Text style={styles.dealStore}>{item.merchant}</Text>
-                    {item.price && <Text style={styles.dealPrice}>${item.price.toFixed(2)}</Text>}
-                  </TouchableOpacity>
+                      <Text style={styles.dealName} numberOfLines={2}>{item.name}</Text>
+                      <Text style={styles.dealStore}>{item.merchant}</Text>
+                      {item.price && <Text style={styles.dealPrice}>${item.price.toFixed(2)}</Text>}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dealAddBtn}
+                      onPress={() => {
+                        addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
+                        showToast(`${item.name} ajouté à ta liste`);
+                      }}
+                    >
+                      <Text style={styles.dealAddBtnText}>+ Liste d'épicerie</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             </ScrollView>
@@ -492,6 +1069,7 @@ export function DietScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </>
   );
 }
 
@@ -534,11 +1112,18 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
   totalCal: { color: '#22c55e', fontSize: 13, marginBottom: 12 },
   mealCard: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, marginBottom: 8 },
-  mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  mealTypeIcon: { fontSize: 28 },
   mealTime: { color: '#22c55e', fontSize: 12, fontWeight: 'bold' },
   mealName: { color: '#fff', fontSize: 16, fontWeight: '600' },
   mealCalories: { color: '#f59e0b', fontSize: 16, fontWeight: 'bold' },
-  mealItem: { color: '#bbb', fontSize: 13, marginVertical: 2, paddingLeft: 4 },
+  mealItemsGrid: { gap: 8 },
+  mealItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealItemThumb: { width: 52, height: 52, borderRadius: 10, backgroundColor: '#222' },
+  mealItemThumbEmpty: { width: 52, height: 52, borderRadius: 10, backgroundColor: '#1f1f1f', justifyContent: 'center', alignItems: 'center' },
+  mealItemIcon: { fontSize: 22 },
+  mealItemText: { color: '#bbb', fontSize: 13, flex: 1, lineHeight: 18 },
+  mealItemArrow: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
   allergyWarning: { backgroundColor: '#7f1d1d', borderRadius: 12, padding: 14, marginTop: 12 },
   allergyWarningTitle: { color: '#fca5a5', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
   allergyWarningText: { color: '#fca5a5', fontSize: 12, lineHeight: 18 },
@@ -550,10 +1135,15 @@ const styles = StyleSheet.create({
   dealCategoryTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold', marginBottom: 8 },
   dealRow: { flexDirection: 'row', gap: 10 },
   dealCard: { backgroundColor: '#1a1a1a', borderRadius: 10, width: 130, overflow: 'hidden' },
-  dealImage: { width: 130, height: 80 },
+  dealImage: { width: 130, height: 90, backgroundColor: '#222' },
+  dealMerchantLogo: { position: 'absolute', bottom: 4, right: 4, width: 32, height: 32, borderRadius: 6, backgroundColor: '#fff' },
+  dealMerchantTag: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.65)', paddingVertical: 3, paddingHorizontal: 5 },
+  dealMerchantTagText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   dealName: { color: '#ddd', fontSize: 11, padding: 6, paddingBottom: 2 },
   dealStore: { color: '#22c55e', fontSize: 10, paddingHorizontal: 6 },
   dealPrice: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', padding: 6, paddingTop: 2 },
+  dealAddBtn: { backgroundColor: '#22c55e', margin: 6, marginTop: 2, borderRadius: 6, paddingVertical: 7, alignItems: 'center' },
+  dealAddBtnText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   backBtn: { paddingVertical: 10, marginTop: 10 },
   backBtnText: { color: '#3b82f6', fontSize: 15 },
   selectedImage: { width: '100%', height: 250, borderRadius: 12, marginTop: 10, backgroundColor: '#222' },
@@ -572,15 +1162,23 @@ const styles = StyleSheet.create({
   scanTip: { color: '#bbb', fontSize: 12, textAlign: 'center', marginTop: 12, fontStyle: 'italic' },
   otherStoresSection: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginTop: 16 },
   otherStoresTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
-  storeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#2a2a2a' },
+  storeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#2a2a2a' },
   storeRowBest: { backgroundColor: '#0f2d1f', marginHorizontal: -16, paddingHorizontal: 16, borderRadius: 8 },
-  storeInfo: { flex: 1, marginRight: 12 },
-  storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  storeName: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  storeRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  storeProductImg: { width: 62, height: 62, borderRadius: 8, backgroundColor: '#222' },
+  storeMerchantLogo: { width: 22, height: 22, borderRadius: 4, backgroundColor: '#fff' },
+  storeInfo: { flex: 1 },
+  storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  storeName: { color: '#fff', fontSize: 14, fontWeight: '600' },
   bestPriceBadge: { backgroundColor: '#22c55e', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   bestPriceText: { color: '#fff', fontSize: 8, fontWeight: 'bold' },
-  storeProduct: { color: '#ccc', fontSize: 12, marginTop: 2 },
-  storePriceCol: { alignItems: 'flex-end' },
-  storePrice: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  storeProduct: { color: '#ccc', fontSize: 11, marginTop: 3, lineHeight: 15 },
+  storeTapHint: { color: '#22c55e', fontSize: 10, marginTop: 4 },
+  storePriceCol: { alignItems: 'flex-end', gap: 6 },
+  storePrice: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   storeAddHint: { color: '#3b82f6', fontSize: 10, marginTop: 2 },
+  storeAddBtn: { backgroundColor: '#22c55e', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center' },
+  storeAddBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  zoomOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  zoomClose: { color: '#888', fontSize: 13, marginTop: 16 },
 });

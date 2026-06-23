@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIn
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { HealthScoreBadge } from '../components/HealthScoreBadge';
+import { showToast } from '../components/Toast';
 import { NutriScoreBar } from '../components/NutriScoreBar';
 import { addFavorite } from '../services/api';
 import axios from 'axios';
@@ -34,7 +35,7 @@ export function ProductScreen() {
       salt: n.salt_100g || 0,
       healthScore: product?.healthScore || 0,
     });
-    Alert.alert('Ajouté!', `${name} ajouté à ta liste d'épicerie`);
+    showToast(`${name} ajouté à ta liste`);
   };
 
   useEffect(() => {

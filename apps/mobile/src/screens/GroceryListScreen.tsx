@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useStore, GroceryItem } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
@@ -9,6 +10,7 @@ export function GroceryListScreen() {
   const toggleGroceryItem = useStore((s) => s.toggleGroceryItem);
   const removeGroceryItem = useStore((s) => s.removeGroceryItem);
   const clearGroceryList = useStore((s) => s.clearGroceryList);
+  const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
   const total = groceryList.reduce((sum, i) => sum + (i.price || 0), 0);
@@ -143,36 +145,71 @@ export function GroceryListScreen() {
               <Text style={styles.storeTotal}>${storeTotal.toFixed(2)}</Text>
             </View>
             {items.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.itemCard, item.checked && styles.itemChecked]}
-                onPress={() => toggleGroceryItem(item.id)}
-                onLongPress={() => handleRemove(item.id, item.name)}
-              >
-                <View style={styles.checkbox}>
-                  {item.checked && <View style={styles.checkboxFill} />}
-                </View>
-                <View style={styles.itemInfo}>
+              <View key={item.id} style={styles.itemCard}>
+                {/* Image produit avec checkbox overlay */}
+                <TouchableOpacity
+                  style={styles.itemImageWrap}
+                  onPress={() => toggleGroceryItem(item.id)}
+                  activeOpacity={0.8}
+                >
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.itemImage} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.itemImageEmpty}>
+                      <Text style={{ fontSize: 22 }}>🛒</Text>
+                    </View>
+                  )}
+                  {item.checked && (
+                    <View style={styles.itemImageCheckedOverlay}>
+                      <Text style={styles.itemImageCheck}>✓</Text>
+                    </View>
+                  )}
+                  <View style={[styles.checkDot, item.checked && styles.checkDotActive]}>
+                    {item.checked && <Text style={styles.checkDotIcon}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.itemInfo, item.checked && { opacity: 0.45 }]}
+                  onPress={() => toggleGroceryItem(item.id)}
+                >
                   <Text style={[styles.itemName, item.checked && styles.itemNameChecked]} numberOfLines={2}>
                     {item.name}
                   </Text>
                   {item.calories > 0 && (
                     <Text style={styles.itemNutri}>{item.calories} kcal | G:{item.fat.toFixed(0)}g S:{item.sugars.toFixed(0)}g P:{item.proteins.toFixed(0)}g</Text>
                   )}
+                </TouchableOpacity>
+                <View style={styles.itemActions}>
+                  {item.price ? (
+                    <Text style={[styles.itemPrice, item.checked && styles.itemPriceChecked]}>
+                      ${item.price.toFixed(2)}
+                    </Text>
+                  ) : null}
+                  <TouchableOpacity
+                    style={styles.proofBtn}
+                    onPress={() => {
+                      const searchTerm = item.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 3).join(' ') || item.name;
+                      navigation.navigate('Soldes', { searchQuery: searchTerm });
+                    }}
+                  >
+                    <Text style={styles.proofBtnText}>Voir circulaire</Text>
+                  </TouchableOpacity>
                 </View>
-                {item.price && (
-                  <Text style={[styles.itemPrice, item.checked && styles.itemPriceChecked]}>
-                    ${item.price.toFixed(2)}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => removeGroceryItem(item.id)}
+                >
+                  <Text style={styles.deleteBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         );
       })}
 
       {groceryList.length > 0 && (
-        <Text style={styles.hint}>Clique pour cocher — Appui long pour supprimer</Text>
+        <Text style={styles.hint}>Clique pour cocher · ✕ pour supprimer</Text>
       )}
 
       <View style={{ height: 40 }} />
@@ -212,15 +249,25 @@ const styles = StyleSheet.create({
   storeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   storeName: { color: '#22c55e', fontSize: 16, fontWeight: 'bold' },
   storeTotal: { color: '#22c55e', fontSize: 14, fontWeight: '600' },
-  itemCard: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 12, marginBottom: 4, flexDirection: 'row', alignItems: 'center' },
-  itemChecked: { opacity: 0.5 },
-  checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#22c55e', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  checkboxFill: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#22c55e' },
+  itemCard: { backgroundColor: '#1a1a1a', borderRadius: 10, padding: 10, marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  itemImageWrap: { position: 'relative' as const },
+  itemImage: { width: 62, height: 62, borderRadius: 10, backgroundColor: '#222' },
+  itemImageEmpty: { width: 62, height: 62, borderRadius: 10, backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },
+  itemImageCheckedOverlay: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, borderRadius: 10, backgroundColor: 'rgba(34,197,94,0.45)', justifyContent: 'center', alignItems: 'center' },
+  itemImageCheck: { color: '#fff', fontSize: 28, fontWeight: '900' },
+  checkDot: { position: 'absolute' as const, top: -4, right: -4, width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#22c55e', backgroundColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center' },
+  checkDotActive: { backgroundColor: '#22c55e' },
+  checkDotIcon: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  deleteBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#3a1010', justifyContent: 'center', alignItems: 'center', marginLeft: 4 },
+  deleteBtnText: { color: '#ef4444', fontSize: 14, fontWeight: 'bold' },
   itemInfo: { flex: 1 },
   itemName: { color: '#fff', fontSize: 14 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#bbb' },
   itemNutri: { color: '#ccc', fontSize: 10, marginTop: 2 },
-  itemPrice: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
+  itemActions: { alignItems: 'flex-end', gap: 4, marginLeft: 8 },
+  itemPrice: { color: '#22c55e', fontSize: 16, fontWeight: 'bold' },
   itemPriceChecked: { color: '#bbb' },
+  proofBtn: { backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  proofBtnText: { color: '#60a5fa', fontSize: 11, fontWeight: '700' },
   hint: { color: '#aaa', fontSize: 11, textAlign: 'center', marginTop: 12 },
 });
