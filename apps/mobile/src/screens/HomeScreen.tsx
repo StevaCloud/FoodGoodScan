@@ -8,6 +8,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { usePostalCode } from '../hooks/usePostalCode';
 import { getCurrentWeather } from '../services/weatherService';
 import { calculateWaterIntake } from '../services/waterIntakeService';
+import { showToast } from '../components/Toast';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -54,16 +55,45 @@ export function HomeScreen() {
   const user = useStore((s) => s.user);
   const token = useStore((s) => s.token);
   const healthProfile = useStore((s) => s.healthProfile);
+  const foodPreferences = useStore((s) => s.foodPreferences);
+  const addGroceryItem = useStore((s) => s.addGroceryItem);
   const { t } = useTranslation();
   const postalCode = usePostalCode();
   const [deals, setDeals] = useState<DealSlide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [weather, setWeather] = useState<{ temperature: number; icon: string; description: string } | null>(null);
   const [waterPlan, setWaterPlan] = useState<{ dailyLiters: string; glassesCount: number; reason: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; merchant: string; price: number | null; imageUrl: string }[]>([]);
 
   useEffect(() => {
     if (token) loadDeals();
   }, [token]);
+
+  useEffect(() => {
+    if (!token || foodPreferences.length === 0) return;
+    loadSuggestions();
+  }, [token, foodPreferences]);
+
+  const loadSuggestions = async () => {
+    try {
+      const prefs = foodPreferences.slice(0, 4);
+      const allItems: { name: string; merchant: string; price: number | null; imageUrl: string }[] = [];
+      for (const pref of prefs) {
+        try {
+          const { data } = await axios.get(`${API_URL}/deals`, {
+            params: { search: pref, postal_code: postalCode },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const items = (Array.isArray(data) ? data : [])
+            .filter((i: any) => i.price && i.imageUrl)
+            .slice(0, 2)
+            .map((i: any) => ({ name: i.name, merchant: i.merchant, price: i.price, imageUrl: i.imageUrl }));
+          allItems.push(...items);
+        } catch {}
+      }
+      setSuggestions(allItems);
+    } catch {}
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -176,6 +206,46 @@ export function HomeScreen() {
         <Text style={styles.scanText}>{t('home.scan')}</Text>
       </TouchableOpacity>
 
+      {suggestions.length > 0 && (
+        <View style={styles.suggestionsSection}>
+          <Text style={styles.suggestionsTitle}>Suggestions pour toi</Text>
+          <Text style={styles.suggestionsSub}>Basé sur tes préférences alimentaires</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20 }}>
+              {suggestions.map((s, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.sugCard}
+                  onPress={() => navigation.navigate('Soldes', { searchQuery: s.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 2).join(' ') || s.name })}
+                  activeOpacity={0.8}
+                >
+                  {s.imageUrl ? (
+                    <Image source={{ uri: s.imageUrl }} style={styles.sugImage} resizeMode="contain" />
+                  ) : (
+                    <View style={[styles.sugImage, { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 20 }}>🛒</Text>
+                    </View>
+                  )}
+                  <Text style={styles.sugName} numberOfLines={2}>{s.name}</Text>
+                  <Text style={styles.sugStore}>{s.merchant}</Text>
+                  {s.price && <Text style={styles.sugPrice}>${s.price.toFixed(2)}</Text>}
+                  <TouchableOpacity
+                    style={styles.sugAddBtn}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      addGroceryItem(s.name, s.merchant, s.price, undefined, s.imageUrl);
+                      showToast(`${s.name} ajouté à ta liste`);
+                    }}
+                  >
+                    <Text style={styles.sugAddText}>+ Liste</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      )}
+
       <View style={styles.features}>
         <TouchableOpacity style={[styles.featureCard, { borderLeftColor: '#3b82f6' }]} onPress={() => navigation.navigate('Soldes')}>
           <Text style={styles.featureTitle}>{t('home.deals')}</Text>
@@ -256,6 +326,16 @@ const styles = StyleSheet.create({
   },
   scanIcon: { color: '#fff', fontSize: 40, marginBottom: 8 },
   scanText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  suggestionsSection: { marginBottom: 20 },
+  suggestionsTitle: { color: '#fff', fontSize: 18, fontWeight: '800', paddingHorizontal: 20 },
+  suggestionsSub: { color: '#22c55e', fontSize: 12, fontWeight: '600', paddingHorizontal: 20, marginTop: 2 },
+  sugCard: { backgroundColor: '#1a1a1a', borderRadius: 12, width: 140, overflow: 'hidden' },
+  sugImage: { width: 140, height: 100, backgroundColor: '#222' },
+  sugName: { color: '#eee', fontSize: 12, fontWeight: '600', padding: 8, paddingBottom: 2, lineHeight: 16 },
+  sugStore: { color: '#22c55e', fontSize: 11, fontWeight: '700', paddingHorizontal: 8 },
+  sugPrice: { color: '#22c55e', fontSize: 18, fontWeight: '800', paddingHorizontal: 8, paddingTop: 2 },
+  sugAddBtn: { backgroundColor: '#22c55e', margin: 8, marginTop: 4, borderRadius: 8, paddingVertical: 6, alignItems: 'center' },
+  sugAddText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   features: { gap: 10, paddingHorizontal: 20 },
   featureCard: {
     backgroundColor: '#1a1a1a',

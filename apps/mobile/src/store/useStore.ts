@@ -59,6 +59,8 @@ interface AppState {
   setOnboarded: (v: boolean) => void;
   setHealthProfile: (profile: any) => void;
   setPostalCode: (code: string) => void;
+  foodPreferences: string[];
+  setFoodPreferences: (prefs: string[]) => void;
 
   quizBestScore: number;
   quizTotal: number;
@@ -82,6 +84,7 @@ export const useStore = create<AppState>()(
       onboarded: false,
       healthProfile: null,
       postalCode: '',
+      foodPreferences: [],
       weatherData: null,
       quizBestScore: 0,
       quizTotal: 0,
@@ -126,6 +129,7 @@ export const useStore = create<AppState>()(
       setOnboarded: (v) => set({ onboarded: v }),
       setHealthProfile: (profile) => set({ healthProfile: profile }),
       setPostalCode: (code) => set({ postalCode: code }),
+      setFoodPreferences: (prefs) => set({ foodPreferences: prefs }),
 
       updateQuizStats: (score, correct) => set((state) => ({
         quizBestScore: Math.max(state.quizBestScore, score),
@@ -145,6 +149,7 @@ export const useStore = create<AppState>()(
         onboarded: state.onboarded,
         healthProfile: state.healthProfile,
         postalCode: state.postalCode,
+        foodPreferences: state.foodPreferences,
         groceryList: state.groceryList,
         quizBestScore: state.quizBestScore,
         quizTotal: state.quizTotal,

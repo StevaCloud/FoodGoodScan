@@ -67,6 +67,33 @@ const ALLERGIES = [
   { id: 'nitrites', label: 'Nitrites', labelEn: 'Nitrites' },
 ];
 
+const FOOD_PREFS = [
+  { id: 'poulet', label: 'Poulet', icon: '🍗' },
+  { id: 'boeuf', label: 'Boeuf', icon: '🥩' },
+  { id: 'poisson', label: 'Poisson', icon: '🐟' },
+  { id: 'porc', label: 'Porc', icon: '🥓' },
+  { id: 'fruits de mer', label: 'Fruits de mer', icon: '🦐' },
+  { id: 'oeufs', label: 'Oeufs', icon: '🥚' },
+  { id: 'fromage', label: 'Fromage', icon: '🧀' },
+  { id: 'yogourt', label: 'Yogourt', icon: '🥛' },
+  { id: 'fruits', label: 'Fruits', icon: '🍎' },
+  { id: 'légumes', label: 'Légumes', icon: '🥦' },
+  { id: 'salade', label: 'Salade', icon: '🥗' },
+  { id: 'pain', label: 'Pain', icon: '🍞' },
+  { id: 'pâtes', label: 'Pâtes', icon: '🍝' },
+  { id: 'riz', label: 'Riz', icon: '🍚' },
+  { id: 'noix', label: 'Noix', icon: '🥜' },
+  { id: 'saumon', label: 'Saumon', icon: '🐟' },
+  { id: 'pizza', label: 'Pizza', icon: '🍕' },
+  { id: 'sushi', label: 'Sushi', icon: '🍣' },
+  { id: 'tofu', label: 'Tofu', icon: '🟫' },
+  { id: 'avocat', label: 'Avocat', icon: '🥑' },
+  { id: 'banane', label: 'Banane', icon: '🍌' },
+  { id: 'chips', label: 'Chips', icon: '🍟' },
+  { id: 'chocolat', label: 'Chocolat', icon: '🍫' },
+  { id: 'céréales', label: 'Céréales', icon: '🌾' },
+];
+
 const ACTIVITY_LEVELS = [
   { id: 'sedentary', label: 'Sédentaire', labelEn: 'Sedentary', desc: 'Bureau, peu d\'activité' },
   { id: 'light', label: 'Légèrement actif', labelEn: 'Lightly active', desc: '1-2x exercice/semaine' },
@@ -78,6 +105,7 @@ interface HealthProfile {
   goal: string;
   diet: string;
   allergies: string[];
+  foodPreferences: string[];
   activityLevel: string;
   age: string;
   weight: string;
@@ -194,6 +222,7 @@ export function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const setOnboarded = useStore((s) => s.setOnboarded);
   const setHealthProfile = useStore((s) => s.setHealthProfile);
+  const setStoreFoodPrefs = useStore((s) => s.setFoodPreferences);
   const language = useStore((s) => s.language);
   const { t } = useTranslation();
 
@@ -201,6 +230,7 @@ export function OnboardingScreen() {
     goal: '',
     diet: 'none',
     allergies: [],
+    foodPreferences: [],
     activityLevel: 'moderate',
     age: '',
     weight: '',
@@ -219,8 +249,18 @@ export function OnboardingScreen() {
 
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const toggleFoodPref = (id: string) => {
+    setProfile((p) => ({
+      ...p,
+      foodPreferences: p.foodPreferences.includes(id)
+        ? p.foodPreferences.filter((f) => f !== id)
+        : [...p.foodPreferences, id],
+    }));
+  };
+
   const finish = () => {
     setHealthProfile(profile);
+    setStoreFoodPrefs(profile.foodPreferences);
     setStep(totalStepsCount);
   };
 
@@ -228,7 +268,7 @@ export function OnboardingScreen() {
     setOnboarded(true);
   };
 
-  const totalStepsCount = 7;
+  const totalStepsCount = 8;
 
   const getLabel = (item: { label: string; labelEn: string }) => {
     return language === 'en' ? item.labelEn : item.label;
@@ -239,7 +279,7 @@ export function OnboardingScreen() {
     () => (
       <View style={styles.stepContainer}>
         <View style={styles.langPos}><LanguageSelector /></View>
-        <Text style={styles.welcomeLogo}>FoodCheck</Text>
+        <Text style={styles.welcomeLogo}>FoodGoodScan</Text>
         <Text style={styles.welcomeTitle}>Bienvenue!</Text>
         <Text style={styles.welcomeSubtitle}>
           Ton assistant santé alimentaire personnel.{'\n\n'}
@@ -338,7 +378,41 @@ export function OnboardingScreen() {
       </View>
     ),
 
-    // Step 6: Plan
+    // Step 6: Food preferences
+    () => (
+      <View style={styles.stepContainer}>
+        <Text style={styles.stepTitle}>Qu'est-ce que t'aimes manger?</Text>
+        <Text style={styles.stepSubtitle}>On va te trouver les meilleurs deals sur tes aliments préférés</Text>
+
+        {profile.foodPreferences.length > 0 && (
+          <Text style={styles.selectedCount}>{profile.foodPreferences.length} sélectionné{profile.foodPreferences.length > 1 ? 's' : ''}</Text>
+        )}
+
+        <View style={styles.foodGrid}>
+          {FOOD_PREFS.map((f) => (
+            <TouchableOpacity
+              key={f.id}
+              style={[styles.foodChip, profile.foodPreferences.includes(f.id) && styles.foodChipActive]}
+              onPress={() => toggleFoodPref(f.id)}
+            >
+              <Text style={styles.foodChipIcon}>{f.icon}</Text>
+              <Text style={[styles.foodChipText, profile.foodPreferences.includes(f.id) && styles.foodChipTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.nextButton} onPress={() => setStep(7)}>
+          <Text style={styles.nextButtonText}>Suivant</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setStep(7)}>
+          <Text style={styles.skipText}>Passer cette étape</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+
+    // Step 7: Plan
     () => (
       <View style={styles.stepContainer}>
         <Text style={styles.stepTitle}>Choisis ton plan</Text>
@@ -391,7 +465,7 @@ export function OnboardingScreen() {
         <Text style={styles.congratsSubtitle}>Tu es sur la bonne voie!</Text>
         <Text style={styles.congratsText}>
           Ton profil santé est configuré.{'\n'}
-          FoodCheck va maintenant t'aider à atteindre tes objectifs avec des recommandations personnalisées.
+          FoodGoodScan va maintenant t'aider à atteindre tes objectifs avec des recommandations personnalisées.
         </Text>
 
         <View style={styles.congratsSummary}>
@@ -482,6 +556,12 @@ const styles = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.4 },
   nextButtonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
   skipText: { color: '#bbb', textAlign: 'center', marginTop: 14, fontSize: 14 },
+  foodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  foodChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 2, borderColor: '#2a2a2a', gap: 6 },
+  foodChipActive: { backgroundColor: '#0f2d1f', borderColor: '#22c55e' },
+  foodChipIcon: { fontSize: 18 },
+  foodChipText: { color: '#ccc', fontSize: 14, fontWeight: '600' },
+  foodChipTextActive: { color: '#22c55e', fontWeight: '700' },
   planCard: { backgroundColor: '#1a1a1a', borderRadius: 14, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: '#333' },
   planCardPopular: { borderColor: '#22c55e', borderWidth: 2 },
   planCardHealth: { borderColor: '#3b82f6', borderWidth: 2 },
