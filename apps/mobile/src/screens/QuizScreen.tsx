@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useStore } from '../store/useStore';
+import { AdBannerSmall } from '../components/AdBanner';
 
 interface Question {
   q: string;
@@ -177,6 +178,8 @@ export function QuizScreen() {
           <Text style={s.rewardLine}>Apprends tout sur la nutrition</Text>
           <Text style={s.rewardLine}>10 questions par quiz</Text>
         </View>
+
+        <AdBannerSmall />
 
         <TouchableOpacity style={s.startBtn} onPress={startQuiz}>
           <Text style={s.startBtnText}>Commencer le Quiz</Text>

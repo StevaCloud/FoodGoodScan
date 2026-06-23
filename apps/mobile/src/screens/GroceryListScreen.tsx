@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useStore, GroceryItem } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
+import { AdBanner } from '../components/AdBanner';
 
 export function GroceryListScreen() {
   const groceryList = useStore((s) => s.groceryList);
@@ -207,6 +208,8 @@ export function GroceryListScreen() {
           </View>
         );
       })}
+
+      <AdBanner />
 
       {groceryList.length > 0 && (
         <Text style={styles.hint}>Clique pour cocher · ✕ pour supprimer</Text>

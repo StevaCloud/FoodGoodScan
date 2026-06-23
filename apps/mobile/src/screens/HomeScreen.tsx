@@ -9,6 +9,7 @@ import { usePostalCode } from '../hooks/usePostalCode';
 import { getCurrentWeather } from '../services/weatherService';
 import { calculateWaterIntake } from '../services/waterIntakeService';
 import { showToast } from '../components/Toast';
+import { AdBanner, AdBannerSmall } from '../components/AdBanner';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -198,6 +199,8 @@ export function HomeScreen() {
         </View>
       )}
 
+      <AdBanner />
+
       <TouchableOpacity
         style={styles.scanButton}
         onPress={() => navigation.navigate('Scanner')}
@@ -257,6 +260,8 @@ export function HomeScreen() {
           <Text style={styles.featureDesc}>{t('home.water.desc')}</Text>
         </TouchableOpacity>
       </View>
+
+      <AdBannerSmall />
 
       {user && (
         <View style={styles.userInfo}>
