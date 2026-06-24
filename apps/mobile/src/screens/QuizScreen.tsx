@@ -7,6 +7,19 @@ import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
 import { openCheckout } from '../services/checkout';
 import { playCorrectSound, playWrongSound } from '../services/sounds';
+import { useNavigation } from '@react-navigation/native';
+import { showToast } from '../components/Toast';
+import axios from 'axios';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+const DEAL_SEARCHES = ['poulet', 'fromage', 'fruits', 'lait', 'yogourt', 'beurre', 'oeufs', 'saumon', 'pain', 'légumes'];
+
+interface DealReward {
+  name: string;
+  merchant: string;
+  price: number | null;
+  imageUrl: string;
+}
 
 
 interface Question {
@@ -171,7 +184,12 @@ export function QuizScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [dealRewards, setDealRewards] = useState<DealReward[]>([]);
+  const [loadingDeals, setLoadingDeals] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const token = useStore(s => s.token);
+  const addGroceryItem = useStore(s => s.addGroceryItem);
+  const navigation = useNavigation<any>();
   const [showExplosion, setShowExplosion] = useState(false);
   const explosionBalloons = useRef(Array.from({ length: 8 }, () => ({ x: new Animated.Value(0), y: new Animated.Value(0), scale: new Animated.Value(1), opacity: new Animated.Value(1) }))).current;
 
@@ -216,6 +234,30 @@ export function QuizScreen() {
     }
   };
 
+  const loadDealRewards = async (finalScore: number) => {
+    if (!token) return;
+    setLoadingDeals(true);
+    try {
+      const count = finalScore >= 8 ? 5 : finalScore >= 5 ? 3 : 1;
+      const picks = [...DEAL_SEARCHES].sort(() => Math.random() - 0.5).slice(0, count);
+      const allDeals: DealReward[] = [];
+      for (const term of picks) {
+        try {
+          const { data } = await axios.get(`${API_URL}/deals`, {
+            params: { search: term, postal_code: 'J1H1A1' },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const best = (Array.isArray(data) ? data : [])
+            .filter((d: any) => d.price && d.imageUrl)
+            .sort((a: any, b: any) => a.price - b.price)[0];
+          if (best) allDeals.push({ name: best.name, merchant: best.merchant, price: best.price, imageUrl: best.imageUrl });
+        } catch {}
+      }
+      setDealRewards(allDeals);
+    } catch {}
+    setLoadingDeals(false);
+  };
+
   const nextQuestion = () => {
     if (index < QUIZ_SIZE - 1) {
       setIndex(i => i + 1);
@@ -223,6 +265,7 @@ export function QuizScreen() {
     } else {
       const finalScore = score;
       updateQuizStats(finalScore, correctCount);
+      loadDealRewards(finalScore);
       setPhase('result');
     }
   };
@@ -251,10 +294,10 @@ export function QuizScreen() {
         </View>
 
         <View style={s.rewardCard}>
-          <Text style={s.rewardTitle}>Objectif</Text>
-          <Text style={s.rewardLine}>🧠 Apprends tout sur la nutrition</Text>
-          <Text style={s.rewardLine}>📊 10 questions par quiz</Text>
-          <Text style={s.rewardLine}>🎉 Confettis et sons a chaque reponse</Text>
+          <Text style={s.rewardTitle}>Recompenses</Text>
+          <Text style={s.rewardLine}>🎁 Debloque les meilleurs rabais de la semaine</Text>
+          <Text style={s.rewardLine}>🏆 Plus ton score est haut, plus tu debloques de deals</Text>
+          <Text style={s.rewardLine}>📊 10 questions, 60+ questions differentes</Text>
         </View>
 
         <AdBannerSmall />
@@ -269,6 +312,7 @@ export function QuizScreen() {
   if (phase === 'result') {
     const emoji = score >= 8 ? '🏆' : score >= 5 ? '👍' : '💪';
     const msg = score >= 8 ? 'Excellent !' : score >= 5 ? 'Pas mal !' : 'Continue à apprendre !';
+    const dealCount = score >= 8 ? 5 : score >= 5 ? 3 : 1;
     return (
       <WeatherScreen><ScrollView style={s.container} contentContainerStyle={s.content}>
         <Text style={s.bigEmoji}>{emoji}</Text>
@@ -278,7 +322,63 @@ export function QuizScreen() {
         <View style={s.rewardCard}>
           <Text style={s.rewardTitle}>Resultat</Text>
           <Text style={s.rewardLine}>{score} bonnes reponses sur {QUIZ_SIZE}</Text>
+          <Text style={s.rewardLine}>🎁 {dealCount} meilleur{dealCount > 1 ? 's' : ''} rabais debloque{dealCount > 1 ? 's' : ''}</Text>
         </View>
+
+        {loadingDeals && (
+          <View style={{ marginVertical: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#22c55e" />
+            <Text style={{ color: '#ccc', marginTop: 8, fontSize: 13 }}>Chargement des meilleurs deals...</Text>
+          </View>
+        )}
+
+        {dealRewards.length > 0 && (
+          <View style={s.dealsSection}>
+            <Text style={s.dealsSectionTitle}>Meilleurs rabais de la semaine</Text>
+            <Text style={s.dealsSectionSub}>Vrais prix en circulaire — en temps reel</Text>
+            {dealRewards.map((deal, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.dealRewardCard}
+                onPress={() => {
+                  if (isPremium) {
+                    navigation.navigate('Soldes', { searchQuery: deal.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 2).join(' ') || deal.name });
+                  } else {
+                    openCheckout();
+                  }
+                }}
+              >
+                {deal.imageUrl ? (
+                  <Image source={{ uri: deal.imageUrl }} style={s.dealRewardImage} resizeMode="contain" />
+                ) : (
+                  <View style={[s.dealRewardImage, { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 20 }}>🛒</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.dealRewardName} numberOfLines={2}>{deal.name}</Text>
+                  <Text style={s.dealRewardStore}>{isPremium ? deal.merchant : 'Magasin — Premium'}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={s.dealRewardPrice}>{isPremium && deal.price ? `$${deal.price.toFixed(2)}` : '$ ?.??'}</Text>
+                  {isPremium ? (
+                    <Text style={s.dealRewardHint}>Voir →</Text>
+                  ) : (
+                    <View style={s.dealRewardLock}>
+                      <Text style={s.dealRewardLockText}>Premium</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+            {!isPremium && (
+              <TouchableOpacity style={s.dealRewardUpgrade} onPress={() => openCheckout()}>
+                <Text style={s.dealRewardUpgradeTitle}>Premium pour voir les magasins et les prix</Text>
+                <Text style={s.dealRewardUpgradeSub}>Circulaires + Comparateur + Liste epicerie — $3.99/mois</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         <TouchableOpacity style={s.startBtn} onPress={startQuiz}>
           <Text style={s.startBtnText}>Rejouer</Text>
@@ -395,36 +495,20 @@ const s = StyleSheet.create({
   explanationText: { color: '#ccc', fontSize: 13, lineHeight: 19 },
   nextBtn: { backgroundColor: '#22c55e', borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginTop: 8 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  couponSection: { width: '100%', marginTop: 16 },
-  couponSectionTitle: { color: '#22c55e', fontSize: 16, fontWeight: '800', marginBottom: 10 },
-  couponCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 12, marginBottom: 8, gap: 10 },
-  couponIcon: { fontSize: 28 },
-  couponBrand: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  couponDeal: { color: '#aaa', fontSize: 12, marginTop: 2, lineHeight: 16 },
-  couponUnlocked: { backgroundColor: '#22c55e', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  couponUnlockedText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  couponLocked: { backgroundColor: '#f59e0b', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  couponLockedText: { color: '#000', fontSize: 12, fontWeight: '800' },
-  couponUpgradeBtn: { backgroundColor: '#f59e0b', borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginTop: 16 },
-  couponUpgradeBtnTitle: { color: '#000', fontSize: 16, fontWeight: '900' },
-  couponUpgradeBtnSub: { color: '#000', fontSize: 11, fontWeight: '700', marginTop: 3 },
   explosionContainer: { position: 'absolute', top: '40%', left: '50%', width: 0, height: 0, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
   explosionBalloon: { position: 'absolute', fontSize: 36 },
-  couponBackBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, alignSelf: 'flex-start', marginBottom: 20 },
-  couponBackBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  couponProof: { width: '100%', borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#e0e0e0' },
-  couponProofHeader: { backgroundColor: '#dc2626', padding: 20, alignItems: 'center', gap: 8 },
-  couponProofIcon: { fontSize: 50 },
-  couponProofBrand: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  couponProofBody: { backgroundColor: '#fff', padding: 20 },
-  couponProofLabel: { color: '#dc2626', fontSize: 12, fontWeight: '800', letterSpacing: 2, textAlign: 'center', marginBottom: 10 },
-  couponProofDeal: { color: '#000', fontSize: 20, fontWeight: '800', textAlign: 'center', lineHeight: 28 },
-  couponProofDivider: { height: 1, backgroundColor: '#e5e5e5', marginVertical: 16 },
-  couponProofDates: { flexDirection: 'row', alignItems: 'center' },
-  couponProofDateLabel: { color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  couponProofDateValue: { color: '#111', fontSize: 15, fontWeight: '800', marginTop: 3 },
-  couponProofDateDivider: { width: 1, height: 30, backgroundColor: '#ddd' },
-  couponProofBadge: { backgroundColor: '#f0fdf4', borderTopWidth: 1, borderTopColor: '#bbf7d0', padding: 12, marginTop: 16, marginHorizontal: -20, marginBottom: -20, alignItems: 'center' },
-  couponProofBadgeText: { color: '#15803d', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  couponProofHint: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 16, opacity: 0.8 },
+  dealsSection: { width: '100%', marginTop: 16, marginBottom: 8 },
+  dealsSectionTitle: { color: '#22c55e', fontSize: 18, fontWeight: '800', marginBottom: 2 },
+  dealsSectionSub: { color: '#aaa', fontSize: 12, marginBottom: 12 },
+  dealRewardCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, marginBottom: 8, gap: 10 },
+  dealRewardImage: { width: 60, height: 60, borderRadius: 10, backgroundColor: '#222' },
+  dealRewardName: { color: '#fff', fontSize: 14, fontWeight: '700', lineHeight: 18 },
+  dealRewardStore: { color: '#22c55e', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  dealRewardPrice: { color: '#22c55e', fontSize: 20, fontWeight: '800' },
+  dealRewardHint: { color: '#60a5fa', fontSize: 11, fontWeight: '600', marginTop: 2 },
+  dealRewardLock: { backgroundColor: '#f59e0b', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4 },
+  dealRewardLockText: { color: '#000', fontSize: 10, fontWeight: '800' },
+  dealRewardUpgrade: { backgroundColor: '#f59e0b', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
+  dealRewardUpgradeTitle: { color: '#000', fontSize: 15, fontWeight: '900' },
+  dealRewardUpgradeSub: { color: '#000', fontSize: 11, fontWeight: '700', marginTop: 2 },
 });
