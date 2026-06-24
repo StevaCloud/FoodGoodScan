@@ -189,8 +189,8 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
 }
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w * 0.5;
-  const cy = h * 0.18;
+  const cx = w * 0.78;
+  const cy = h * 0.35;
   const r  = 42;
 
   // Brillance éblouissante — remplit TOUT l'espace
