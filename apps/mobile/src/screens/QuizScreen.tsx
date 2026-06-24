@@ -8,18 +8,6 @@ import { WeatherScreen } from '../components/WeatherBackground';
 import { openCheckout } from '../services/checkout';
 import { playCorrectSound, playWrongSound } from '../services/sounds';
 
-const COUPONS = [
-  { brand: 'Subway', icon: '🥪', deal: 'Achetez un sous-marin 6 pouces, obtenez le 2e a 50%', minScore: 8 },
-  { brand: 'Tim Hortons', icon: '☕', deal: 'Cafe medium gratuit avec achat d\'un muffin', minScore: 8 },
-  { brand: 'McDonald\'s', icon: '🍔', deal: 'McDouble a $3.49 (valeur de $5.29)', minScore: 7 },
-  { brand: 'Couche-Tard', icon: '🥤', deal: 'Slush ou cafe glacé medium a $1', minScore: 6 },
-  { brand: 'St-Hubert', icon: '🍗', deal: '15% de rabais sur les commandes en ligne', minScore: 7 },
-  { brand: 'A&W', icon: '🍟', deal: 'Combo Teen Burger a $8.99 (valeur $11.49)', minScore: 5 },
-  { brand: 'Pizza Pizza', icon: '🍕', deal: 'Grande pizza 1 topping a $9.99', minScore: 5 },
-  { brand: 'Starbucks', icon: '☕', deal: 'Grande boisson a $4.99 avant 10h', minScore: 6 },
-  { brand: 'Popeyes', icon: '🍗', deal: 'Combo 3 morceaux a $8.99', minScore: 5 },
-  { brand: 'Domino\'s', icon: '🍕', deal: '50% sur les pizzas a prix regulier en ligne', minScore: 7 },
-];
 
 interface Question {
   q: string;
@@ -183,7 +171,6 @@ export function QuizScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [selectedCoupon, setSelectedCoupon] = useState<typeof COUPONS[0] | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showExplosion, setShowExplosion] = useState(false);
   const explosionBalloons = useRef(Array.from({ length: 8 }, () => ({ x: new Animated.Value(0), y: new Animated.Value(0), scale: new Animated.Value(1), opacity: new Animated.Value(1) }))).current;
@@ -264,10 +251,10 @@ export function QuizScreen() {
         </View>
 
         <View style={s.rewardCard}>
-          <Text style={s.rewardTitle}>Recompenses</Text>
-          <Text style={s.rewardLine}>🎫 Debloque des coupons rabais (Subway, McDo, Tim Hortons...)</Text>
+          <Text style={s.rewardTitle}>Objectif</Text>
+          <Text style={s.rewardLine}>🧠 Apprends tout sur la nutrition</Text>
           <Text style={s.rewardLine}>📊 10 questions par quiz</Text>
-          <Text style={s.rewardLine}>🏆 Plus ton score est haut, plus tu debloques de coupons</Text>
+          <Text style={s.rewardLine}>🎉 Confettis et sons a chaque reponse</Text>
         </View>
 
         <AdBannerSmall />
@@ -279,105 +266,19 @@ export function QuizScreen() {
     );
   }
 
-  if (selectedCoupon) {
-    const now = new Date();
-    const expiry = new Date();
-    expiry.setDate(expiry.getDate() + 7);
-    return (
-      <WeatherScreen><ScrollView style={s.container} contentContainerStyle={s.content}>
-        <TouchableOpacity style={s.couponBackBtn} onPress={() => setSelectedCoupon(null)}>
-          <Text style={s.couponBackBtnText}>{'<'} Retour aux resultats</Text>
-        </TouchableOpacity>
-
-        <View style={s.couponProof}>
-          <View style={s.couponProofHeader}>
-            <Text style={s.couponProofIcon}>{selectedCoupon.icon}</Text>
-            <Text style={s.couponProofBrand}>{selectedCoupon.brand}</Text>
-          </View>
-
-          <View style={s.couponProofBody}>
-            <Text style={s.couponProofLabel}>COUPON RABAIS</Text>
-            <Text style={s.couponProofDeal}>{selectedCoupon.deal}</Text>
-            <View style={s.couponProofDivider} />
-            <View style={s.couponProofDates}>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={s.couponProofDateLabel}>Valide du</Text>
-                <Text style={s.couponProofDateValue}>{now.toLocaleDateString('fr-CA')}</Text>
-              </View>
-              <View style={s.couponProofDateDivider} />
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={s.couponProofDateLabel}>Valide jusqu'au</Text>
-                <Text style={s.couponProofDateValue}>{expiry.toLocaleDateString('fr-CA')}</Text>
-              </View>
-            </View>
-            <View style={s.couponProofBadge}>
-              <Text style={s.couponProofBadgeText}>Coupon FoodGoodScan — Montrez cet ecran au marchand</Text>
-            </View>
-          </View>
-        </View>
-
-        <Text style={s.couponProofHint}>Montre cet ecran au caissier pour profiter du rabais</Text>
-      </ScrollView></WeatherScreen>
-    );
-  }
-
   if (phase === 'result') {
     const emoji = score >= 8 ? '🏆' : score >= 5 ? '👍' : '💪';
     const msg = score >= 8 ? 'Excellent !' : score >= 5 ? 'Pas mal !' : 'Continue à apprendre !';
-    const unlockedCoupons = COUPONS.filter(c => score >= c.minScore);
-    const lockedCoupons = COUPONS.filter(c => score < c.minScore);
     return (
       <WeatherScreen><ScrollView style={s.container} contentContainerStyle={s.content}>
         <Text style={s.bigEmoji}>{emoji}</Text>
         <Text style={s.title}>{msg}</Text>
         <Text style={s.resultScore}>{score} / {QUIZ_SIZE}</Text>
 
-        {unlockedCoupons.length > 0 && (
-          <View style={s.couponSection}>
-            <Text style={s.couponSectionTitle}>Coupons debloques!</Text>
-            {unlockedCoupons.map((c, i) => (
-              <View key={i} style={s.couponCard}>
-                <Text style={s.couponIcon}>{c.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.couponBrand}>{c.brand}</Text>
-                  <Text style={s.couponDeal}>{c.deal}</Text>
-                </View>
-                {isPremium ? (
-                  <TouchableOpacity style={s.couponUnlocked} onPress={() => setSelectedCoupon(c)}>
-                    <Text style={s.couponUnlockedText}>Utiliser</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={s.couponLocked} onPress={() => openCheckout()}>
-                    <Text style={s.couponLockedText}>Premium</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {lockedCoupons.length > 0 && (
-          <View style={s.couponSection}>
-            <Text style={[s.couponSectionTitle, { color: '#888' }]}>Ameliore ton score pour debloquer</Text>
-            {lockedCoupons.slice(0, 3).map((c, i) => (
-              <View key={i} style={[s.couponCard, { opacity: 0.4 }]}>
-                <Text style={s.couponIcon}>{c.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.couponBrand}>{c.brand}</Text>
-                  <Text style={s.couponDeal}>Score {c.minScore}+ requis</Text>
-                </View>
-                <Text style={{ color: '#555', fontSize: 20 }}>🔒</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {!isPremium && unlockedCoupons.length > 0 && (
-          <TouchableOpacity style={s.couponUpgradeBtn} onPress={() => openCheckout()}>
-            <Text style={s.couponUpgradeBtnTitle}>Premium pour utiliser tes coupons</Text>
-            <Text style={s.couponUpgradeBtnSub}>Circulaires + Comparateur + Coupons + Sans pub — $3.99/mois</Text>
-          </TouchableOpacity>
-        )}
+        <View style={s.rewardCard}>
+          <Text style={s.rewardTitle}>Resultat</Text>
+          <Text style={s.rewardLine}>{score} bonnes reponses sur {QUIZ_SIZE}</Text>
+        </View>
 
         <TouchableOpacity style={s.startBtn} onPress={startQuiz}>
           <Text style={s.startBtnText}>Rejouer</Text>
