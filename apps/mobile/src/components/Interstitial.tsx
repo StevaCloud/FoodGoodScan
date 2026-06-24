@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
+import { openCheckout } from '../services/checkout';
 import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -107,7 +108,7 @@ export function InterstitialProvider({ children }: { children: React.ReactNode }
                 {ad.price && <Text style={s.adPrice}>${ad.price.toFixed(2)}</Text>}
                 <TouchableOpacity
                   style={s.addBtn}
-                  onPress={() => { setVisible(false); navigation.navigate('Profil'); }}
+                  onPress={() => { setVisible(false); openCheckout(); }}
                 >
                   <Text style={s.addBtnText}>Plan Premium pour ajouter a la liste</Text>
                 </TouchableOpacity>
@@ -116,7 +117,7 @@ export function InterstitialProvider({ children }: { children: React.ReactNode }
 
             <TouchableOpacity
               style={s.upgradeBtn}
-              onPress={() => { setVisible(false); navigation.navigate('Profil'); }}
+              onPress={() => { setVisible(false); openCheckout(); }}
             >
               <Text style={s.upgradeBtnTitle}>Premium — $3.99/mois</Text>
               <Text style={s.upgradeBtnFeatures}>Circulaires + Comparateur de prix + Liste d'epicerie + Sans pub</Text>

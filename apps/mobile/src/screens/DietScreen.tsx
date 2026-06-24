@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
 import { useWeatherBg, useWeatherText } from '../hooks/useWeatherBg';
+import { openCheckout } from '../services/checkout';
 import { WeatherScreen } from '../components/WeatherBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -792,7 +793,7 @@ export function DietScreen() {
                         addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
                         showToast(`${store.name} ajouté à ta liste`);
                       } else {
-                        navigation.navigate('Profil');
+                        openCheckout();
                       }
                     }}
                   >
@@ -817,7 +818,7 @@ export function DietScreen() {
               showToast(`${selectedDeal.name} ajouté à ta liste`);
               setSelectedDeal(null);
             } else {
-              navigation.navigate('Profil');
+              openCheckout();
             }
           }}
         >
@@ -997,7 +998,7 @@ export function DietScreen() {
               <View style={styles.dealRow}>
                 {items.slice(0, 6).map((item, i) => (
                   <View key={i} style={styles.dealCard}>
-                    <TouchableOpacity onPress={() => isPremium ? handleDealClick(item) : navigation.navigate('Profil')}>
+                    <TouchableOpacity onPress={() => isPremium ? handleDealClick(item) : openCheckout()}>
                       <View style={{ position: 'relative' }}>
                         {item.imageUrl ? (
                           <Image
@@ -1035,7 +1036,7 @@ export function DietScreen() {
                           addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
                           showToast(`${item.name} ajouté à ta liste`);
                         } else {
-                          navigation.navigate('Profil');
+                          openCheckout();
                         }
                       }}
                     >

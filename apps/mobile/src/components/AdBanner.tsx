@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
+import { openCheckout } from '../services/checkout';
 import axios from 'axios';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -64,7 +65,7 @@ export function AdBanner() {
           {ad.price && <Text style={s.adPrice}>${ad.price.toFixed(2)}</Text>}
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={s.upgradeBar} onPress={() => navigation.navigate('Profil')}>
+      <TouchableOpacity style={s.upgradeBar} onPress={() => openCheckout()}>
         <Text style={s.upgradeText}>Premium $3.99/mois — Circulaires, comparateur de prix, liste d'epicerie, sans pub</Text>
       </TouchableOpacity>
     </View>
@@ -78,7 +79,7 @@ export function AdBannerSmall() {
   if (user?.plan === 'PREMIUM') return null;
 
   return (
-    <TouchableOpacity style={s.smallBanner} onPress={() => navigation.navigate('Profil')} activeOpacity={0.8}>
+    <TouchableOpacity style={s.smallBanner} onPress={() => openCheckout()} activeOpacity={0.8}>
       <Text style={s.smallText}>Premium $3.99/mois — Economise avec les circulaires et le comparateur de prix</Text>
     </TouchableOpacity>
   );

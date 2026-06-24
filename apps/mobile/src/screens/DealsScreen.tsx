@@ -9,6 +9,7 @@ import { useTranslation } from '../i18n/useTranslation';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
+import { openCheckout } from '../services/checkout';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -192,11 +193,11 @@ export function DealsScreen() {
           Recherchez n'importe quel produit et voyez les meilleurs prix près de chez vous.
         </Text>
         {user?.plan !== 'PREMIUM' ? (
-          <TouchableOpacity style={styles.upgradeButton} onPress={() => navigation.navigate('Profile')}>
+          <TouchableOpacity style={styles.upgradeButton} onPress={() => openCheckout()}>
             <Text style={styles.upgradeButtonText}>Premium requis — $3.99/mois</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={[styles.upgradeButton, { backgroundColor: '#f97316' }]} onPress={() => navigation.navigate('Profile')}>
+          <TouchableOpacity style={[styles.upgradeButton, { backgroundColor: '#f97316' }]} onPress={() => openCheckout()}>
             <Text style={styles.upgradeButtonText}>Add-on Épicerie — $1.99/mois</Text>
           </TouchableOpacity>
         )}
