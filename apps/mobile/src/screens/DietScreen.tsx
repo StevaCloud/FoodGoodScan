@@ -997,7 +997,7 @@ export function DietScreen() {
               <View style={styles.dealRow}>
                 {items.slice(0, 6).map((item, i) => (
                   <View key={i} style={styles.dealCard}>
-                    <TouchableOpacity onPress={() => handleDealClick(item)}>
+                    <TouchableOpacity onPress={() => isPremium ? handleDealClick(item) : navigation.navigate('Profil')}>
                       <View style={{ position: 'relative' }}>
                         {item.imageUrl ? (
                           <Image
