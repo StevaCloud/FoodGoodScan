@@ -190,29 +190,47 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.78;
-  const cy = h * 0.35;
-  const r  = 36;
+  const cy = h * 0.08;
+  const r  = 42;
 
-  // Grand halo extérieur pulsant
+  // Brillance éblouissante — lave tout le haut en blanc/doré
   const pulse = 1 + Math.sin(t * 0.002) * 0.1;
-  const halo2 = ctx.createRadialGradient(cx, cy, r, cx, cy, r * 5 * pulse);
-  halo2.addColorStop(0, 'rgba(251,191,36,0.12)');
-  halo2.addColorStop(0.4, 'rgba(251,191,36,0.05)');
-  halo2.addColorStop(1, 'rgba(251,191,36,0)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 5 * pulse, 0, Math.PI * 2);
-  ctx.fillStyle = halo2;
-  ctx.fill();
+  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, h * 1.2 * pulse);
+  glare.addColorStop(0, 'rgba(255,255,240,0.45)');
+  glare.addColorStop(0.05, 'rgba(255,250,220,0.35)');
+  glare.addColorStop(0.12, 'rgba(251,191,36,0.2)');
+  glare.addColorStop(0.3, 'rgba(251,191,36,0.07)');
+  glare.addColorStop(0.6, 'rgba(251,191,36,0.02)');
+  glare.addColorStop(1, 'rgba(251,191,36,0)');
+  ctx.fillStyle = glare;
+  ctx.fillRect(0, 0, w, h);
 
-  // Halo interne lumineux
-  const halo = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 2.5);
-  halo.addColorStop(0, 'rgba(254,243,199,0.25)');
-  halo.addColorStop(0.5, 'rgba(251,191,36,0.12)');
+  // Halo intense autour du disque
+  const halo = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 4);
+  halo.addColorStop(0, 'rgba(255,255,255,0.35)');
+  halo.addColorStop(0.15, 'rgba(254,243,199,0.25)');
+  halo.addColorStop(0.4, 'rgba(251,191,36,0.1)');
   halo.addColorStop(1, 'rgba(251,191,36,0)');
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 2.5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r * 4, 0, Math.PI * 2);
   ctx.fillStyle = halo;
   ctx.fill();
+
+  // Lens flare horizontal
+  const flareW = w * 0.7;
+  const flareH = 8 + Math.sin(t * 0.003) * 3;
+  const flare = ctx.createRadialGradient(cx, cy, 0, cx, cy, flareW / 2);
+  flare.addColorStop(0, 'rgba(255,255,255,0.2)');
+  flare.addColorStop(0.3, 'rgba(251,191,36,0.06)');
+  flare.addColorStop(1, 'rgba(251,191,36,0)');
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, flareH / (flareW / 2));
+  ctx.beginPath();
+  ctx.arc(0, 0, flareW / 2, 0, Math.PI * 2);
+  ctx.fillStyle = flare;
+  ctx.fill();
+  ctx.restore();
 
   // Grands rayons lumineux (longs faisceaux)
   const bigRayCount = 12;
@@ -260,17 +278,18 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   }
   ctx.restore();
 
-  // Disque solaire
-  const sunGrad = ctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, r);
-  sunGrad.addColorStop(0, '#fefce8');
-  sunGrad.addColorStop(0.3, '#fef3c7');
-  sunGrad.addColorStop(0.6, '#fbbf24');
+  // Disque solaire — surexposé blanc au centre
+  const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  sunGrad.addColorStop(0, '#ffffff');
+  sunGrad.addColorStop(0.2, '#fffef5');
+  sunGrad.addColorStop(0.5, '#fef3c7');
+  sunGrad.addColorStop(0.75, '#fbbf24');
   sunGrad.addColorStop(1, '#f59e0b');
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = sunGrad;
-  ctx.shadowBlur = 40;
-  ctx.shadowColor = 'rgba(251,191,36,0.8)';
+  ctx.shadowBlur = 60;
+  ctx.shadowColor = 'rgba(255,250,220,0.9)';
   ctx.fill();
   ctx.shadowBlur = 0;
 }
