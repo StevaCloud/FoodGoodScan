@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer, useNavigationState } from '@react-navigation/native';
-import { Text, View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { Text, View, Platform } from 'react-native';
 import { WeatherBackground } from '../components/WeatherBackground';
+
+function useHideInactiveTabsWeb() {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const interval = setInterval(() => {
+      const screens = document.querySelectorAll('[style*="position: absolute"][style*="width: 100%"][style*="height: 100%"]');
+      screens.forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        const isVisible = htmlEl.style.visibility !== 'hidden' && htmlEl.style.display !== 'none';
+        const hasPointerEvents = htmlEl.style.pointerEvents !== 'none';
+        if (!isVisible || !hasPointerEvents) {
+          htmlEl.style.display = 'none';
+        } else {
+          htmlEl.style.display = '';
+        }
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+}
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
@@ -42,6 +62,7 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 
 function MainTabs() {
   const { t } = useTranslation();
+  useHideInactiveTabsWeb();
   return (
     <View style={{ flex: 1 }}>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
