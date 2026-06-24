@@ -112,10 +112,11 @@ export function DealsScreen() {
   useEffect(() => {
     const q = route.params?.searchQuery;
     if (!q) return;
+    returnToTab.current = route.params?.returnTo || 'Régime';
     setViewMode('search');
     setSearch(q);
     setSelectedDeal(null);
-    navigation.setParams({ searchQuery: undefined });
+    navigation.setParams({ searchQuery: undefined, returnTo: undefined });
     searchDeals(q);
   }, [route.params?.searchQuery]);
 
@@ -251,7 +252,7 @@ export function DealsScreen() {
           }}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>{'<'} {returnToTab.current === 'Liste' ? 'Retour à la liste' : 'Retour'}</Text>
+          <Text style={styles.backText}>{'<'} {returnToTab.current === 'Liste' ? 'Retour à la liste' : returnToTab.current === 'Régime' ? 'Retour au régime' : returnToTab.current === 'Accueil' ? 'Retour à l\'accueil' : 'Retour'}</Text>
         </TouchableOpacity>
 
         {/* === PREUVE CIRCULAIRE === */}

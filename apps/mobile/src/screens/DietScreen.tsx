@@ -956,7 +956,7 @@ export function DietScreen() {
                   activeOpacity={0.7}
                   onPress={() => {
                     const term = extractSearchTerm(item);
-                    if (term) navigation.navigate('Soldes', { searchQuery: term });
+                    if (term) navigation.navigate('Soldes', { searchQuery: term, returnTo: 'Régime' });
                   }}
                 >
                   {imgUrl ? (

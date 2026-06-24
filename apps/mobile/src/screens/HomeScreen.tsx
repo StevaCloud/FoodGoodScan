@@ -223,7 +223,7 @@ export function HomeScreen() {
                 <TouchableOpacity
                   key={i}
                   style={styles.sugCard}
-                  onPress={() => navigation.navigate('Soldes', { searchQuery: s.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 2).join(' ') || s.name })}
+                  onPress={() => navigation.navigate('Soldes', { searchQuery: s.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 2).join(' ') || s.name, returnTo: 'Accueil' })}
                   activeOpacity={0.8}
                 >
                   {s.imageUrl ? (
