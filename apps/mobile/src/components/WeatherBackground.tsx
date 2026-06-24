@@ -16,8 +16,8 @@ const randInt = (min: number, max: number) => Math.floor(rand(min, max));
 
 // ─── Thème par code météo ─────────────────────────────────────────────────────
 function getTheme(code: number) {
-  if (code === 0)        return { bg: ['#4da6ff', '#3b95ed', '#2d8be0'], accent: '#fbbf24', type: 'sun'     };
-  if (code <= 3)         return { bg: ['#0d1520', '#1a2540', '#0d1520'], accent: '#fbbf24', type: 'partly'  };
+  if (code === 0)        return { bg: ['#3b95ed', '#3b95ed', '#3b95ed'], accent: '#fbbf24', type: 'sun'     };
+  if (code <= 3)         return { bg: ['#3b95ed', '#3b95ed', '#3b95ed'], accent: '#fbbf24', type: 'partly'  };
   if (code <= 49)        return { bg: ['#111520', '#1a1f2e', '#111520'], accent: '#94a3b8', type: 'fog'   };
   if (code <= 69)        return { bg: ['#060d1c', '#0d1a30', '#060d1c'], accent: '#60a5fa', type: 'rain'  };
   if (code <= 79)        return { bg: ['#080f1e', '#101929', '#080f1e'], accent: '#dde6f0', type: 'snow'  };
@@ -413,7 +413,7 @@ function WeatherCanvas({ code }: { code: number }) {
       if (night && isSun) {
         bg.addColorStop(0, '#020818');
         bg.addColorStop(1, '#050d28');
-      } else if (code === 0) {
+      } else if (code <= 3) {
         bg.addColorStop(0, '#3b95ed');
         bg.addColorStop(1, '#3b95ed');
       } else {
