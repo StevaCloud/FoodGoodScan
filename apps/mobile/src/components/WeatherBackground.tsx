@@ -221,7 +221,7 @@ function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: n
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.3;
-  const cy = h * 0.35;
+  const cy = 120;
   const r  = 28;
 
   const pulse = 1 + Math.sin(t * 0.002) * 0.05;
@@ -389,7 +389,7 @@ function WeatherCanvas({ code }: { code: number }) {
     const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
-    const visibleH = Math.min(h, 500);
+    const visibleH = 350;
     const clouds = (code === 0) ? makeClouds(4, w, visibleH)
                  : isPartly  ? makeClouds(3, w, visibleH)
                  : (isCloud || isStorm) ? makeClouds(5, w, visibleH)
