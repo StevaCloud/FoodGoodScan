@@ -183,6 +183,6 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  upgradeBtnTitle: { color: '#000', fontSize: 15, fontWeight: '900' },
-  upgradeBtnFeatures: { color: 'rgba(0,0,0,0.7)', fontSize: 11, fontWeight: '600', marginTop: 2 },
+  upgradeBtnTitle: { color: '#000', fontSize: 16, fontWeight: '900' },
+  upgradeBtnFeatures: { color: '#000', fontSize: 12, fontWeight: '800', marginTop: 2 },
 });
