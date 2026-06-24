@@ -9,3 +9,8 @@ export function useWeatherBg(): string {
   if (code <= 79) return '#101929';
   return '#080d1f';
 }
+
+export function useWeatherBgStyle() {
+  const bg = useWeatherBg();
+  return { flex: 1, backgroundColor: bg, position: 'relative' as const };
+}

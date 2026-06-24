@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
 const { width: W } = Dimensions.get('window');
-export const WEATHER_HEADER_H = 300;
+export const WEATHER_HEADER_H = 2000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Drop  { x: number; y: number; speed: number; length: number; opacity: number; }
@@ -389,7 +389,7 @@ function WeatherCanvas({ code }: { code: number }) {
     const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
-    const visibleH = Math.min(h, 300);
+    const visibleH = Math.min(h, 500);
     const clouds = (code === 0) ? makeClouds(4, w, visibleH)
                  : isPartly  ? makeClouds(3, w, visibleH)
                  : (isCloud || isStorm) ? makeClouds(5, w, visibleH)
@@ -533,14 +533,17 @@ export const WeatherBackground = memo(WeatherBackgroundInner);
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     height: WEATHER_HEADER_H,
     overflow: 'hidden',
-    position: 'relative',
+    zIndex: -1,
   },
   infoOverlay: {
     position: 'absolute',
-    bottom: 24,
+    top: 16,
     left: 18,
     flexDirection: 'row',
     alignItems: 'center',
