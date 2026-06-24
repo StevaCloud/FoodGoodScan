@@ -190,7 +190,7 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.78;
-  const cy = h * 0.08;
+  const cy = h * 0.22;
   const r  = 42;
 
   // Brillance éblouissante — lave tout le haut en blanc/doré
