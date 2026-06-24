@@ -1010,17 +1010,23 @@ export function DietScreen() {
                             <Text style={{ color: '#555', fontSize: 28 }}>🛒</Text>
                           </View>
                         )}
-                        {item.merchantLogo ? (
-                          <Image source={{ uri: item.merchantLogo }} style={styles.dealMerchantLogo} />
+                        {isPremium ? (
+                          item.merchantLogo ? (
+                            <Image source={{ uri: item.merchantLogo }} style={styles.dealMerchantLogo} />
+                          ) : (
+                            <View style={styles.dealMerchantTag}>
+                              <Text style={styles.dealMerchantTagText} numberOfLines={1}>{item.merchant}</Text>
+                            </View>
+                          )
                         ) : (
                           <View style={styles.dealMerchantTag}>
-                            <Text style={styles.dealMerchantTagText} numberOfLines={1}>{item.merchant}</Text>
+                            <Text style={styles.dealMerchantTagText}>Premium</Text>
                           </View>
                         )}
                       </View>
                       <Text style={styles.dealName} numberOfLines={2}>{item.name}</Text>
-                      <Text style={styles.dealStore}>{item.merchant}</Text>
-                      {item.price && <Text style={styles.dealPrice}>${item.price.toFixed(2)}</Text>}
+                      <Text style={styles.dealStore}>{isPremium ? item.merchant : 'Magasin — Premium'}</Text>
+                      {item.price && <Text style={styles.dealPrice}>{isPremium ? `$${item.price.toFixed(2)}` : '$ ?.??'}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dealAddBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
