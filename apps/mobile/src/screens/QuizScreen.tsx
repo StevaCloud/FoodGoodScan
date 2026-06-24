@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useStore } from '../store/useStore';
 import { AdBannerSmall } from '../components/AdBanner';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 
 interface Question {
   q: string;
@@ -108,6 +109,7 @@ const imgStyles = StyleSheet.create({
 });
 
 export function QuizScreen() {
+  const weatherBg = useWeatherBg();
   const updateQuizStats = useStore(s => s.updateQuizStats);
   const bestScore = useStore(s => s.quizBestScore);
   const quizTotal = useStore(s => s.quizTotal);
@@ -153,7 +155,7 @@ export function QuizScreen() {
   if (phase === 'home') {
     const accuracy = quizTotal > 0 ? Math.round((quizCorrect / (quizTotal * QUIZ_SIZE)) * 100) : 0;
     return (
-      <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
         <Text style={s.bigEmoji}>🧠</Text>
         <Text style={s.title}>Quiz Nutrition</Text>
         <Text style={s.subtitle}>Teste tes connaissances en nutrition !</Text>
@@ -192,7 +194,7 @@ export function QuizScreen() {
     const emoji = score >= 8 ? '🏆' : score >= 5 ? '👍' : '💪';
     const msg = score >= 8 ? 'Excellent !' : score >= 5 ? 'Pas mal !' : 'Continue à apprendre !';
     return (
-      <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
         <Text style={s.bigEmoji}>{emoji}</Text>
         <Text style={s.title}>{msg}</Text>
         <Text style={s.resultScore}>{score} / {QUIZ_SIZE}</Text>
@@ -212,7 +214,7 @@ export function QuizScreen() {
   // Playing
   const q = questions[index];
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
+    <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
       <View style={s.progressRow}>
         <Text style={s.progressText}>Question {index + 1}/{QUIZ_SIZE}</Text>
         <Text style={s.scoreText}>Score : {score}</Text>
@@ -264,7 +266,7 @@ export function QuizScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
+  container: { flex: 1 },
   content: { padding: 20, paddingTop: 16, alignItems: 'center' },
   bigEmoji: { fontSize: 64, marginBottom: 12 },
   title: { color: '#fff', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },

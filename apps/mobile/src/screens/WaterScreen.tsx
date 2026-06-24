@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 
 const WATERS = [
   { name: 'Evian', ph: 7.2, rating: 'Excellente', color: '#22c55e', tds: 309, source: 'Alpes françaises, Évian-les-Bains',
@@ -79,6 +80,7 @@ interface WaterData {
 }
 
 export function WaterScreen() {
+  const weatherBg = useWeatherBg();
   const [selected, setSelected] = useState<WaterData | null>(null);
 
   if (selected) {
@@ -86,7 +88,7 @@ export function WaterScreen() {
     const tdsLabel = selected.tds < 300 ? 'Eau légère' : selected.tds < 600 ? 'Eau moyenne' : 'Eau très minéralisée';
 
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
         <TouchableOpacity onPress={() => setSelected(null)} style={styles.backButton}>
           <Text style={styles.backText}>{'<'} Retour aux marques</Text>
         </TouchableOpacity>
@@ -155,7 +157,7 @@ export function WaterScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
       <Text style={styles.title}>Analyse pH de l'eau</Text>
       <Text style={styles.subtitle}>21 marques — Clique pour voir les détails</Text>
       <View style={styles.certBanner}>
@@ -193,7 +195,7 @@ export function WaterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  container: { flex: 1, padding: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20 },
   subtitle: { color: '#ccc', fontSize: 13, marginTop: 4, marginBottom: 16 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1a1a1a', borderRadius: 10 },

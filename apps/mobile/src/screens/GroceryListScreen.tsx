@@ -5,6 +5,7 @@ import { useStore, GroceryItem } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { AdBanner } from '../components/AdBanner';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 
 export function GroceryListScreen() {
   const groceryList = useStore((s) => s.groceryList);
@@ -12,6 +13,7 @@ export function GroceryListScreen() {
   const removeGroceryItem = useStore((s) => s.removeGroceryItem);
   const clearGroceryList = useStore((s) => s.clearGroceryList);
   const navigation = useNavigation<any>();
+  const weatherBg = useWeatherBg();
   const { t } = useTranslation();
 
   const total = groceryList.reduce((sum, i) => sum + (i.price || 0), 0);
@@ -52,7 +54,7 @@ export function GroceryListScreen() {
   });
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <View style={styles.header}>
         <Text style={styles.title}>{t('list.title')}</Text>
@@ -221,7 +223,7 @@ export function GroceryListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  container: { flex: 1, padding: 16 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },

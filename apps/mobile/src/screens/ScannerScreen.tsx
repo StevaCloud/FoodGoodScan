@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Tex
 import { useNavigation } from '@react-navigation/native';
 import { scanProduct } from '../services/api';
 import { useStore } from '../store/useStore';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 
 export function ScannerScreen() {
+  const weatherBg = useWeatherBg();
   const [loading, setLoading] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [webcamActive, setWebcamActive] = useState(false);
@@ -133,7 +135,7 @@ export function ScannerScreen() {
 
   if (Platform.OS === 'web') {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: weatherBg }]}>
         <View style={styles.topBar}><View /><LanguageSelector /></View>
         <Text style={styles.title}>{ t('scanner.title') }</Text>
         <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
@@ -197,7 +199,7 @@ export function ScannerScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: weatherBg }]}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{ t('scanner.title') }</Text>
       <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
@@ -233,7 +235,7 @@ export function ScannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 20 },
+  container: { flex: 1, padding: 20 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   subtitle: { color: '#ccc', fontSize: 13, marginTop: 4, marginBottom: 30 },

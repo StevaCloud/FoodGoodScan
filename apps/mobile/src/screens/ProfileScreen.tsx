@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useStore } from '../store/useStore';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 import { upgradeSubscription } from '../services/api';
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
@@ -8,6 +9,7 @@ import { useTranslation } from '../i18n/useTranslation';
 const LANGUAGES: Language[] = ['fr', 'en', 'es', 'ar'];
 
 export function ProfileScreen() {
+  const weatherBg = useWeatherBg();
   const user = useStore((s) => s.user);
   const setUser = useStore((s) => s.setUser);
   const logout = useStore((s) => s.logout);
@@ -28,7 +30,7 @@ export function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
       <Text style={styles.title}>{t('profile.title')}</Text>
 
       <View style={styles.card}>
@@ -103,7 +105,7 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 20 },
+  container: { flex: 1, padding: 20 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20, marginBottom: 20 },
   card: {
     backgroundColor: '#1a1a1a',

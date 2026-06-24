@@ -7,6 +7,7 @@ import { usePostalCode } from '../hooks/usePostalCode';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -596,6 +597,7 @@ const HEALTHY_CATEGORIES = [
 const JUNK_KEYWORDS = ['chips', 'pizza surgelée', 'nuggets', 'hot dog', 'saucisse', 'bonbon', 'chocolat', 'gâteau', 'biscuit', 'croustilles', 'frites', 'pogo', 'pop tart', 'sodas', 'energy drink', 'slush'];
 
 export function DietScreen() {
+  const weatherBg = useWeatherBg();
   const healthProfile = useStore((s) => s.healthProfile);
   const token = useStore((s) => s.token);
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
@@ -688,7 +690,7 @@ export function DietScreen() {
 
   if (selectedDeal) {
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
         <TouchableOpacity onPress={() => setSelectedDeal(null)} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{'<'} Retour au régime</Text>
         </TouchableOpacity>
@@ -829,7 +831,7 @@ export function DietScreen() {
         <Text style={styles.zoomClose}>Appuyer pour fermer</Text>
       </Pressable>
     </Modal>
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
 
       <Text style={styles.title}>Mon Régime</Text>
@@ -1074,7 +1076,7 @@ export function DietScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  container: { flex: 1, padding: 16 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   planName: { color: '#22c55e', fontSize: 16, fontWeight: '600', marginTop: 4, marginBottom: 16 },

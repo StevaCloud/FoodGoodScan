@@ -7,6 +7,7 @@ import axios from 'axios';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { showToast } from '../components/Toast';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -37,6 +38,7 @@ interface Flyer {
 const STORES = ['IGA', 'Metro', 'Super C', 'Maxi', 'Walmart', 'Provigo', 'Adonis'];
 
 export function DealsScreen() {
+  const weatherBg = useWeatherBg();
   const user = useStore((s) => s.user);
   const token = useStore((s) => s.token);
   const navigation = useNavigation<any>();
@@ -236,7 +238,7 @@ export function DealsScreen() {
     const daysLeft = selectedDeal.validUntil ? Math.max(0, Math.ceil((new Date(selectedDeal.validUntil).getTime() - Date.now()) / 86400000)) : 0;
 
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
         <TouchableOpacity
           onPress={() => {
             setSelectedDeal(null);
@@ -404,7 +406,7 @@ export function DealsScreen() {
 
   if (selectedFlyer) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: weatherBg }]}>
         <TouchableOpacity
           onPress={() => {
             setSelectedFlyer(null);
@@ -441,7 +443,7 @@ export function DealsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: weatherBg }]}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{t('deals.title')}</Text>
       <Text style={styles.subtitle}>{t('deals.subtitle')}</Text>
@@ -549,7 +551,7 @@ export function DealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  container: { flex: 1, padding: 16 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   subtitle: { color: '#22c55e', fontSize: 13, marginBottom: 16, marginTop: 4 },
@@ -590,7 +592,7 @@ const styles = StyleSheet.create({
   salePrice: { color: '#22c55e', fontSize: 20, fontWeight: '800' },
   priceText: { color: '#ddd', fontSize: 13, fontWeight: '500' },
   validDate: { color: '#aaa', fontSize: 12, fontWeight: '500', marginTop: 4 },
-  locked: { flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  locked: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   lockedTitle: { color: '#f97316', fontSize: 24, fontWeight: 'bold' },
   lockedSubtitle: { color: '#fb923c', fontSize: 14, marginTop: 4, marginBottom: 16 },
   lockedText: { color: '#ccc', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 22 },

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { HealthScoreBadge } from '../components/HealthScoreBadge';
 import { showToast } from '../components/Toast';
+import { useWeatherBg } from '../hooks/useWeatherBg';
 import { NutriScoreBar } from '../components/NutriScoreBar';
 import { addFavorite } from '../services/api';
 import axios from 'axios';
@@ -17,6 +18,7 @@ interface PriceDeal {
 }
 
 export function ProductScreen() {
+  const weatherBg = useWeatherBg();
   const product = useStore((s) => s.lastScannedProduct);
   const navigation = useNavigation<any>();
   const postalCode = usePostalCode();
@@ -82,7 +84,7 @@ export function ProductScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
       {product.imageUrl ? (
         <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="contain" />
       ) : (
@@ -346,8 +348,8 @@ export function ProductScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
+  container: { flex: 1, padding: 16 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#bbb', fontSize: 16 },
   image: { width: '100%', height: 250, borderRadius: 12, marginBottom: 16, backgroundColor: '#222' },
   noImage: { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },

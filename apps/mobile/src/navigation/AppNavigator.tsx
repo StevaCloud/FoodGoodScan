@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationState } from '@react-navigation/native';
 import { Text, View } from 'react-native';
 import { WeatherBackground } from '../components/WeatherBackground';
 
@@ -43,17 +43,11 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function MainTabs() {
   const { t } = useTranslation();
   return (
-    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-      {/* Bannière météo en arrière-plan absolu */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }}>
-        <WeatherBackground />
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#111' }}>
+      <WeatherBackground />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          sceneStyle: { backgroundColor: 'transparent' },
-          detachInactiveScreens: true,
-          freezeOnBlur: true,
           tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
           tabBarActiveTintColor: '#22c55e',
           tabBarInactiveTintColor: '#555',
