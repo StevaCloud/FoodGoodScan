@@ -51,9 +51,7 @@ function MainTabs() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          sceneStyle: { backgroundColor: 'transparent' },
-          lazy: false,
-          unmountOnBlur: true,
+          sceneStyle: { backgroundColor: 'rgba(17,17,17,0.85)' },
           tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
           tabBarActiveTintColor: '#22c55e',
           tabBarInactiveTintColor: '#555',
