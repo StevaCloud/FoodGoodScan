@@ -11,6 +11,7 @@
     "axios": "^1.18.0",
     "barcode-detector": "^3.2.0",
     "expo": "~56.0.12",
+    "expo-av": "^16.0.8",
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~56.0.8",
     "expo-haptics": "~56.0.3",

@@ -6,6 +6,7 @@ import { AdBannerSmall } from '../components/AdBanner';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
 import { openCheckout } from '../services/checkout';
+import { playCorrectSound, playWrongSound } from '../services/sounds';
 
 const COUPONS = [
   { brand: 'Subway', icon: '🥪', deal: 'Achetez un sous-marin 6 pouces, obtenez le 2e a 50%', minScore: 8 },
@@ -176,9 +177,11 @@ export function QuizScreen() {
       setScore(s => s + 1);
       setCorrectCount(c => c + 1);
       setShowConfetti(true);
+      playCorrectSound();
       setTimeout(() => setShowConfetti(false), 2500);
     } else {
       triggerExplosion();
+      playWrongSound();
     }
   };
 
