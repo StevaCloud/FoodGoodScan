@@ -1,13 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
-import { upgradeSubscription } from '../services/api';
+import { createCheckoutSession, createPortalSession, getSubscriptionStatus } from '../services/api';
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
 
 const LANGUAGES: Language[] = ['fr', 'en', 'es', 'ar'];
+
+function openURL(url: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.open(url, '_self');
+  } else {
+    import('react-native').then(({ Linking }) => Linking.openURL(url));
+  }
+}
 
 export function ProfileScreen() {
   const weatherBg = useWeatherBg();
@@ -17,16 +25,29 @@ export function ProfileScreen() {
   const language = useStore((s) => s.language);
   const setLanguage = useStore((s) => s.setLanguage);
   const { t } = useTranslation();
+  const [loading, setLoading] = useState('');
 
-  const handleUpgrade = async (groceryAddon: boolean) => {
+  const handleUpgrade = async (priceKey: 'premium' | 'premium_grocery') => {
     try {
-      await upgradeSubscription('PREMIUM', groceryAddon);
-      if (user) {
-        setUser({ ...user, plan: 'PREMIUM', groceryAddon });
-      }
-      Alert.alert('Félicitations!', 'Ton abonnement est activé!');
+      setLoading(priceKey);
+      const { url } = await createCheckoutSession(priceKey);
+      if (url) openURL(url);
+    } catch (error: any) {
+      Alert.alert('Erreur', error.response?.data?.error || 'Erreur lors de la création de la session');
+    } finally {
+      setLoading('');
+    }
+  };
+
+  const handleManage = async () => {
+    try {
+      setLoading('manage');
+      const { url } = await createPortalSession();
+      if (url) openURL(url);
     } catch (error: any) {
       Alert.alert('Erreur', error.response?.data?.error || 'Erreur');
+    } finally {
+      setLoading('');
     }
   };
 
@@ -39,45 +60,71 @@ export function ProfileScreen() {
         <Text style={styles.name}>{user?.name || 'Utilisateur'}</Text>
         <View style={styles.planBadge}>
           <Text style={styles.planText}>
-            {user?.plan === 'PREMIUM' ? 'Premium' : 'Gratuit'}
+            {user?.plan === 'PREMIUM' ? (user?.groceryAddon ? 'Premium + Épicerie' : 'Premium') : 'Gratuit'}
           </Text>
         </View>
       </View>
 
       {user?.plan !== 'PREMIUM' && (
-        <View style={styles.upgradeCard}>
-          <Text style={styles.upgradeTitle}>Passe au Premium</Text>
-          <Text style={styles.upgradeDesc}>
-            Scans illimités, analyse complète, historique, favoris et recommandations
-          </Text>
-          <TouchableOpacity
-            style={styles.upgradeButton}
-            onPress={() => handleUpgrade(false)}
-          >
-            <Text style={styles.upgradeButtonText}>Premium — $3.99/mois</Text>
-          </TouchableOpacity>
-        </View>
+        <>
+          <View style={styles.upgradeCard}>
+            <Text style={styles.upgradeTitle}>Premium</Text>
+            <Text style={styles.upgradeDesc}>
+              Circulaires en temps réel, comparateur de prix, régime santé personnalisé, sans pub
+            </Text>
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => handleUpgrade('premium')}
+              disabled={loading === 'premium'}
+            >
+              {loading === 'premium' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.upgradeButtonText}>Premium — $3.99/mois</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.upgradeCard, { borderColor: '#f59e0b' }]}>
+            <View style={styles.popularBadge}><Text style={styles.popularText}>POPULAIRE</Text></View>
+            <Text style={[styles.upgradeTitle, { color: '#f59e0b' }]}>Premium + Épicerie</Text>
+            <Text style={styles.upgradeDesc}>
+              Tout le Premium + liste d'épicerie intelligente, suggestions ciblées, tout inclus
+            </Text>
+            <TouchableOpacity
+              style={[styles.upgradeButton, { backgroundColor: '#f59e0b' }]}
+              onPress={() => handleUpgrade('premium_grocery')}
+              disabled={loading === 'premium_grocery'}
+            >
+              {loading === 'premium_grocery' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.upgradeButtonText}>Premium + Épicerie — $5.99/mois</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </>
       )}
 
-      {user?.plan === 'PREMIUM' && !user?.groceryAddon && (
-        <View style={[styles.upgradeCard, { borderColor: '#f97316' }]}>
-          <Text style={[styles.upgradeTitle, { color: '#f97316' }]}>Add-on Épicerie</Text>
-          <Text style={styles.upgradeDesc}>
-            Accès aux articles en solde, alertes, comparateur de prix
-          </Text>
-          <TouchableOpacity
-            style={[styles.upgradeButton, { backgroundColor: '#f97316' }]}
-            onPress={() => handleUpgrade(true)}
-          >
-            <Text style={styles.upgradeButtonText}>Épicerie — $1.99/mois</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {user?.groceryAddon && (
+      {user?.plan === 'PREMIUM' && (
         <View style={styles.activeCard}>
-          <Text style={styles.activeText}>Premium + Épicerie actifs</Text>
-          <Text style={styles.activePrice}>$5.98/mois</Text>
+          <Text style={styles.activeText}>
+            {user?.groceryAddon ? 'Premium + Épicerie actifs' : 'Premium actif'}
+          </Text>
+          <Text style={styles.activePrice}>
+            {user?.groceryAddon ? '$5.99/mois' : '$3.99/mois'}
+          </Text>
+          <TouchableOpacity
+            style={styles.manageButton}
+            onPress={handleManage}
+            disabled={loading === 'manage'}
+          >
+            {loading === 'manage' ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.manageButtonText}>Gérer mon abonnement</Text>
+            )}
+          </TouchableOpacity>
         </View>
       )}
 
@@ -130,27 +177,40 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#22c55e',
   },
-  upgradeTitle: { color: '#22c55e', fontSize: 18, fontWeight: 'bold' },
-  upgradeDesc: { color: '#ccc', fontSize: 13, marginTop: 8, marginBottom: 16 },
+  upgradeTitle: { color: '#22c55e', fontSize: 20, fontWeight: '800' },
+  upgradeDesc: { color: '#ccc', fontSize: 14, marginTop: 8, marginBottom: 16, lineHeight: 20 },
   upgradeButton: {
     backgroundColor: '#22c55e',
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
   },
-  upgradeButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  upgradeButtonText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  popularBadge: { backgroundColor: '#f59e0b', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, marginBottom: 8 },
+  popularText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   activeCard: {
     backgroundColor: '#14532d',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#22c55e',
   },
   activeText: { color: '#86efac', fontSize: 16, fontWeight: 'bold' },
-  activePrice: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 4 },
+  activePrice: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 4 },
+  manageButton: {
+    backgroundColor: '#166534',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    width: '100%',
+  },
+  manageButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   logoutButton: {
     backgroundColor: '#333',
     borderRadius: 12,

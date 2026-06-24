@@ -8,6 +8,7 @@ import { productRouter } from './routes/products';
 import { subscriptionRouter } from './routes/subscriptions';
 import { dealRouter } from './routes/deals';
 import { categoryRouter } from './routes/categories';
+import { webhookRouter } from './routes/webhooks';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   console.error('FATAL: JWT_SECRET manquant en production');
@@ -31,6 +32,9 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// Webhook Stripe AVANT express.json (besoin du raw body)
+app.use('/api/stripe', webhookRouter);
 
 app.use(express.json({ limit: '10kb' }));
 

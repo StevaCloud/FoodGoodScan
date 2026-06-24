@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.2.25:3001/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -65,8 +65,23 @@ export async function getSubscriptionStatus() {
   return data;
 }
 
-export async function upgradeSubscription(plan: string, groceryAddon: boolean) {
-  const { data } = await api.post('/subscriptions/upgrade', { plan, groceryAddon });
+export async function createCheckoutSession(priceKey: 'premium' | 'premium_grocery') {
+  const { data } = await api.post('/subscriptions/create-checkout-session', { priceKey });
+  return data;
+}
+
+export async function createPortalSession() {
+  const { data } = await api.post('/subscriptions/create-portal-session');
+  return data;
+}
+
+export async function forgotPassword(email: string) {
+  const { data } = await api.post('/auth/forgot-password', { email });
+  return data;
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string) {
+  const { data } = await api.post('/auth/reset-password', { email, code, newPassword });
   return data;
 }
 

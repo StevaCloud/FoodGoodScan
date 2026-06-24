@@ -1,59 +1,138 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import stripe from '../services/stripe';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+const PRICES: Record<string, string> = {
+  premium: process.env.STRIPE_PRICE_PREMIUM || '',
+  premium_grocery: process.env.STRIPE_PRICE_PREMIUM_GROCERY || '',
+};
 
 router.get('/status', authenticateToken, async (req: AuthRequest, res: Response) => {
   const sub = await prisma.subscription.findUnique({
     where: { userId: req.userId },
   });
 
+  const isExpired = sub?.expiresAt && sub.expiresAt < new Date();
+  const effectivePlan = isExpired && !sub?.stripeSubId ? 'FREE' : (sub?.plan || 'FREE');
+
   res.json({
-    plan: sub?.plan || 'FREE',
-    groceryAddon: sub?.groceryAddon || false,
+    plan: effectivePlan,
+    groceryAddon: isExpired && !sub?.stripeSubId ? false : (sub?.groceryAddon || false),
     expiresAt: sub?.expiresAt,
+    hasStripe: !!sub?.stripeSubId,
     prices: {
       premium: '$3.99/mois',
-      groceryAddon: '$1.99/mois',
+      premiumGrocery: '$5.99/mois',
     },
   });
 });
 
-router.post('/upgrade', authenticateToken, async (req: AuthRequest, res: Response) => {
-  // TODO: Intégrer Stripe pour le vrai paiement
-  // Pour le dev, on upgrade directement
-  const { plan, groceryAddon } = req.body;
+router.post('/create-checkout-session', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { priceKey } = req.body;
+    const priceId = PRICES[priceKey];
 
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
+    if (!priceId) {
+      res.status(400).json({ error: 'Plan invalide' });
+      return;
+    }
 
-  const sub = await prisma.subscription.upsert({
-    where: { userId: req.userId! },
-    create: {
-      userId: req.userId!,
-      plan: plan || 'PREMIUM',
-      groceryAddon: groceryAddon || false,
-      expiresAt,
-    },
-    update: {
-      plan: plan || 'PREMIUM',
-      groceryAddon: groceryAddon ?? undefined,
-      expiresAt,
-    },
-  });
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      include: { subscription: true },
+    });
 
-  res.json(sub);
+    if (!user) {
+      res.status(404).json({ error: 'Utilisateur non trouvé' });
+      return;
+    }
+
+    let customerId = user.subscription?.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name || undefined,
+        metadata: { userId: user.id },
+      });
+      customerId = customer.id;
+
+      await prisma.subscription.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, stripeCustomerId: customerId },
+        update: { stripeCustomerId: customerId },
+      });
+    }
+
+    const plan = priceKey === 'premium_grocery' ? 'PREMIUM' : 'PREMIUM';
+    const groceryAddon = priceKey === 'premium_grocery' ? 'true' : 'false';
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${process.env.CLIENT_URL}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL}/subscription-cancel`,
+      subscription_data: {
+        metadata: { userId: user.id, plan, groceryAddon },
+      },
+      allow_promotion_codes: true,
+    });
+
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error('Checkout session error:', error.message);
+    res.status(500).json({ error: 'Erreur lors de la création de la session de paiement' });
+  }
+});
+
+router.post('/create-portal-session', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const sub = await prisma.subscription.findUnique({
+      where: { userId: req.userId },
+    });
+
+    if (!sub?.stripeCustomerId) {
+      res.status(400).json({ error: 'Aucun abonnement Stripe trouvé' });
+      return;
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: sub.stripeCustomerId,
+      return_url: `${process.env.CLIENT_URL}`,
+    });
+
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error('Portal session error:', error.message);
+    res.status(500).json({ error: 'Erreur' });
+  }
 });
 
 router.post('/cancel', authenticateToken, async (req: AuthRequest, res: Response) => {
-  await prisma.subscription.update({
-    where: { userId: req.userId! },
-    data: { plan: 'FREE', groceryAddon: false },
-  });
+  try {
+    const sub = await prisma.subscription.findUnique({
+      where: { userId: req.userId },
+    });
 
-  res.json({ ok: true, message: 'Abonnement annulé' });
+    if (sub?.stripeSubId) {
+      await stripe.subscriptions.cancel(sub.stripeSubId);
+    } else {
+      await prisma.subscription.update({
+        where: { userId: req.userId! },
+        data: { plan: 'FREE', groceryAddon: false },
+      });
+    }
+
+    res.json({ ok: true, message: 'Abonnement annulé' });
+  } catch (error: any) {
+    console.error('Cancel error:', error.message);
+    res.status(500).json({ error: 'Erreur lors de l\'annulation' });
+  }
 });
 
 export { router as subscriptionRouter };

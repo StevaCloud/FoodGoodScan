@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Text, View } from 'react-native';
 import { InterstitialProvider, triggerInterstitial } from '../components/Interstitial';
+import { SubscriptionSuccessScreen } from '../screens/SubscriptionSuccessScreen';
+import { SubscriptionCancelScreen } from '../screens/SubscriptionCancelScreen';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
@@ -72,8 +74,21 @@ export function AppNavigator() {
   const isLoggedIn = useStore((s) => s.isLoggedIn);
   const onboarded = useStore((s) => s.onboarded);
 
+  const linking = {
+    prefixes: ['http://localhost:8081', 'http://localhost:8082', 'http://localhost:19006'],
+    config: {
+      screens: {
+        SubscriptionSuccess: 'subscription-success',
+        SubscriptionCancel: 'subscription-cancel',
+        Main: '',
+        Login: 'login',
+        Onboarding: 'onboarding',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <View style={{ flex: 1, backgroundColor: '#111' }}>
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#111' } }}>
         {!isLoggedIn ? (
@@ -103,6 +118,8 @@ export function AppNavigator() {
                 headerTintColor: '#fff',
               }}
             />
+            <Stack.Screen name="SubscriptionSuccess" component={SubscriptionSuccessScreen} />
+            <Stack.Screen name="SubscriptionCancel" component={SubscriptionCancelScreen} />
           </>
         )}
         </Stack.Navigator>
