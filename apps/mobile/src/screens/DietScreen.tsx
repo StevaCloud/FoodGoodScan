@@ -600,6 +600,8 @@ const JUNK_KEYWORDS = ['chips', 'pizza surgelée', 'nuggets', 'hot dog', 'saucis
 export function DietScreen() {
   const weatherBg = useWeatherBg();
   const weatherText = useWeatherText();
+  const user = useStore((s) => s.user);
+  const isPremium = user?.plan === 'PREMIUM';
   const healthProfile = useStore((s) => s.healthProfile);
   const token = useStore((s) => s.token);
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
@@ -784,13 +786,19 @@ export function DietScreen() {
                 <View style={styles.storePriceCol}>
                   {store.price && <Text style={[styles.storePrice, i === 0 && { color: '#22c55e' }]}>${store.price.toFixed(2)}</Text>}
                   <TouchableOpacity
-                    style={styles.storeAddBtn}
+                    style={[styles.storeAddBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
                     onPress={() => {
-                      addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
-                      showToast(`${store.name} ajouté à ta liste`);
+                      if (isPremium) {
+                        addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
+                        showToast(`${store.name} ajouté à ta liste`);
+                      } else {
+                        navigation.navigate('Profil');
+                      }
                     }}
                   >
-                    <Text style={styles.storeAddBtnText}>Ajouter</Text>
+                    <Text style={[styles.storeAddBtnText, !isPremium && { color: '#000' }]}>
+                      {isPremium ? 'Ajouter' : 'Premium'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -802,14 +810,20 @@ export function DietScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.addListBtn}
+          style={[styles.addListBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
           onPress={() => {
-            addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price, undefined, selectedDeal.imageUrl);
-            showToast(`${selectedDeal.name} ajouté à ta liste`);
-            setSelectedDeal(null);
+            if (isPremium) {
+              addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price, undefined, selectedDeal.imageUrl);
+              showToast(`${selectedDeal.name} ajouté à ta liste`);
+              setSelectedDeal(null);
+            } else {
+              navigation.navigate('Profil');
+            }
           }}
         >
-          <Text style={styles.addListBtnText}>Ajouter à ma liste d'épicerie</Text>
+          <Text style={[styles.addListBtnText, !isPremium && { color: '#000' }]}>
+            {isPremium ? 'Ajouter à ma liste d\'épicerie' : 'Passe à Premium pour ajouter à ta liste'}
+          </Text>
         </TouchableOpacity>
 
         <Text style={styles.scanTip}>Pour voir les ingrédients et la valeur nutritive, scanne le code-barres du produit en magasin.</Text>
@@ -1009,13 +1023,19 @@ export function DietScreen() {
                       {item.price && <Text style={styles.dealPrice}>${item.price.toFixed(2)}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.dealAddBtn}
+                      style={[styles.dealAddBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
                       onPress={() => {
-                        addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
-                        showToast(`${item.name} ajouté à ta liste`);
+                        if (isPremium) {
+                          addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
+                          showToast(`${item.name} ajouté à ta liste`);
+                        } else {
+                          navigation.navigate('Profil');
+                        }
                       }}
                     >
-                      <Text style={styles.dealAddBtnText}>+ Liste d'épicerie</Text>
+                      <Text style={[styles.dealAddBtnText, !isPremium && { color: '#000' }]}>
+                        {isPremium ? '+ Liste d\'épicerie' : 'Premium pour ajouter'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 ))}
