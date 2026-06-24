@@ -533,11 +533,12 @@ export const WeatherBackground = memo(WeatherBackgroundInner);
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'absolute',
+    // @ts-ignore — fixed works on web
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
-    height: WEATHER_HEADER_H,
+    bottom: 0,
     overflow: 'hidden',
     zIndex: -1,
   },
