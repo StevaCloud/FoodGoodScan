@@ -482,9 +482,7 @@ function WeatherCanvas({ code }: { code: number }) {
       style={{
         width: '100%',
         height: WEATHER_HEADER_H,
-        position: 'relative',
         overflow: 'hidden',
-        flexShrink: 0,
       } as any}
     />
   );
@@ -529,7 +527,7 @@ function WeatherBackgroundInner() {
   );
 }
 
-export const WeatherBackground = memo(WeatherBackgroundInner);
+export const WeatherBackground = WeatherBackgroundInner;
 
 const styles = StyleSheet.create({
   wrapper: {
