@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator, Animated } from 'react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import { useStore } from '../store/useStore';
 import { AdBannerSmall } from '../components/AdBanner';
 import { useWeatherBg } from '../hooks/useWeatherBg';
@@ -138,6 +139,25 @@ export function QuizScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showExplosion, setShowExplosion] = useState(false);
+  const explosionBalloons = useRef(Array.from({ length: 8 }, () => ({ x: new Animated.Value(0), y: new Animated.Value(0), scale: new Animated.Value(1), opacity: new Animated.Value(1) }))).current;
+
+  const triggerExplosion = () => {
+    setShowExplosion(true);
+    explosionBalloons.forEach((b) => {
+      b.x.setValue(0); b.y.setValue(0); b.scale.setValue(1); b.opacity.setValue(1);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 120;
+      Animated.parallel([
+        Animated.timing(b.x, { toValue: Math.cos(angle) * dist, duration: 600, useNativeDriver: true }),
+        Animated.timing(b.y, { toValue: Math.sin(angle) * dist, duration: 600, useNativeDriver: true }),
+        Animated.timing(b.scale, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(b.opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]).start();
+    });
+    setTimeout(() => setShowExplosion(false), 700);
+  };
 
   const startQuiz = () => {
     setQuestions(shuffle(QUESTIONS).slice(0, QUIZ_SIZE));
@@ -155,6 +175,10 @@ export function QuizScreen() {
     if (correct) {
       setScore(s => s + 1);
       setCorrectCount(c => c + 1);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 2500);
+    } else {
+      triggerExplosion();
     }
   };
 
@@ -323,6 +347,26 @@ export function QuizScreen() {
           <Text style={s.nextBtnText}>{index < QUIZ_SIZE - 1 ? 'Suivant →' : 'Voir le résultat'}</Text>
         </TouchableOpacity>
       )}
+
+      {showConfetti && (
+        <ConfettiCannon count={80} origin={{ x: 200, y: -20 }} fadeOut autoStart explosionSpeed={400} fallSpeed={2500} />
+      )}
+
+      {showExplosion && (
+        <View style={s.explosionContainer} pointerEvents="none">
+          {explosionBalloons.map((b, i) => (
+            <Animated.Text
+              key={i}
+              style={[s.explosionBalloon, {
+                transform: [{ translateX: b.x }, { translateY: b.y }, { scale: b.scale }],
+                opacity: b.opacity,
+              }]}
+            >
+              {['💥', '💣', '❌', '🔴', '⭕', '💢', '🚫', '😵'][i]}
+            </Animated.Text>
+          ))}
+        </View>
+      )}
     </ScrollView></WeatherScreen>
   );
 }
@@ -374,4 +418,6 @@ const s = StyleSheet.create({
   couponUpgradeBtn: { backgroundColor: '#f59e0b', borderRadius: 14, padding: 16, width: '100%', alignItems: 'center', marginTop: 16 },
   couponUpgradeBtnTitle: { color: '#000', fontSize: 16, fontWeight: '900' },
   couponUpgradeBtnSub: { color: '#000', fontSize: 11, fontWeight: '700', marginTop: 3 },
+  explosionContainer: { position: 'absolute', top: '40%', left: '50%', width: 0, height: 0, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  explosionBalloon: { position: 'absolute', fontSize: 36 },
 });
