@@ -188,79 +188,112 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
   ctx.globalAlpha = 1;
 }
 
+function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+  // Gros nuages blancs réalistes en bas
+  const cloudData = [
+    { x: w * 0.15, y: h * 0.58, s: 1.2 },
+    { x: w * 0.45, y: h * 0.62, s: 1.5 },
+    { x: w * 0.75, y: h * 0.55, s: 1.0 },
+    { x: w * -0.05, y: h * 0.68, s: 0.9 },
+    { x: w * 0.9, y: h * 0.65, s: 1.1 },
+  ];
+  cloudData.forEach((c) => {
+    const drift = Math.sin(t * 0.0003 + c.x) * 8;
+    const cx2 = c.x + drift;
+    ctx.globalAlpha = 0.9;
+    // Ombre
+    ctx.fillStyle = 'rgba(180,200,220,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(cx2 + 3, c.y + 8, 70 * c.s, 25 * c.s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Nuage blanc
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(cx2, c.y, 60 * c.s, 22 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 - 40 * c.s, c.y + 5, 45 * c.s, 20 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 + 45 * c.s, c.y + 3, 50 * c.s, 18 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 + 10 * c.s, c.y - 15 * c.s, 40 * c.s, 22 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 - 20 * c.s, c.y - 10 * c.s, 35 * c.s, 18 * c.s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w * 0.78;
-  const cy = h * 0.35;
-  const r  = 42;
+  const cx = w * 0.3;
+  const cy = h * 0.25;
+  const r  = 28;
 
-  const pulse = 1 + Math.sin(t * 0.002) * 0.1;
+  const pulse = 1 + Math.sin(t * 0.002) * 0.05;
 
-  // Brillance large autour du soleil
-  const maxR = Math.max(w, h) * 1.2 * pulse;
-  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-  glare.addColorStop(0, 'rgba(255,250,220,0.25)');
-  glare.addColorStop(0.05, 'rgba(251,191,36,0.15)');
-  glare.addColorStop(0.15, 'rgba(251,191,36,0.08)');
-  glare.addColorStop(0.4, 'rgba(251,191,36,0.03)');
-  glare.addColorStop(1, 'rgba(251,191,36,0)');
-  ctx.fillStyle = glare;
-  ctx.fillRect(0, 0, w, h);
-
-  // Halo intense autour du disque
-  const halo = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 4);
-  halo.addColorStop(0, 'rgba(255,255,255,0.35)');
-  halo.addColorStop(0.15, 'rgba(254,243,199,0.25)');
-  halo.addColorStop(0.4, 'rgba(251,191,36,0.1)');
-  halo.addColorStop(1, 'rgba(251,191,36,0)');
+  // Glow doux autour du soleil
+  const glow = ctx.createRadialGradient(cx, cy, r, cx, cy, r * 5 * pulse);
+  glow.addColorStop(0, 'rgba(255,255,255,0.3)');
+  glow.addColorStop(0.2, 'rgba(255,250,200,0.15)');
+  glow.addColorStop(0.5, 'rgba(255,240,150,0.05)');
+  glow.addColorStop(1, 'rgba(255,240,150,0)');
   ctx.beginPath();
-  ctx.arc(cx, cy, r * 4, 0, Math.PI * 2);
-  ctx.fillStyle = halo;
+  ctx.arc(cx, cy, r * 5 * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = glow;
   ctx.fill();
 
-
-  // Longs rayons lumineux style lens flare — partent vers le bas
-  const rayCount = 14;
-  const rotAngle = t * 0.00015;
+  // Rayons en étoile pointus (comme la photo)
+  const starPoints = 8;
+  const rotAngle = t * 0.0002;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(rotAngle);
-  for (let i = 0; i < rayCount; i++) {
-    const baseAngle = (i / rayCount) * Math.PI * 2;
-    const spread = (0.02 + (i % 3) * 0.015);
-    const breathe = Math.sin(t * 0.002 + i * 1.1) * 0.15;
-    const opacity = 0.12 + (i % 2) * 0.08 + breathe;
-    const len = h * (0.6 + (i % 3) * 0.25 + Math.sin(t * 0.0015 + i * 0.7) * 0.15);
+
+  // Grands rayons pointus
+  for (let i = 0; i < starPoints; i++) {
+    const angle = (i / starPoints) * Math.PI * 2;
+    const len = h * 0.45 + Math.sin(t * 0.002 + i) * 15;
+    const tipWidth = 0.008;
 
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(baseAngle - spread) * len, Math.sin(baseAngle - spread) * len);
-    ctx.lineTo(Math.cos(baseAngle + spread) * len, Math.sin(baseAngle + spread) * len);
+    ctx.moveTo(Math.cos(angle - tipWidth) * r * 0.8, Math.sin(angle - tipWidth) * r * 0.8);
+    ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+    ctx.lineTo(Math.cos(angle + tipWidth) * r * 0.8, Math.sin(angle + tipWidth) * r * 0.8);
     ctx.closePath();
 
     const rayGrad = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, len);
-    rayGrad.addColorStop(0, `rgba(255,250,220,${opacity})`);
-    rayGrad.addColorStop(0.3, `rgba(251,210,80,${opacity * 0.5})`);
-    rayGrad.addColorStop(0.7, `rgba(251,191,36,${opacity * 0.15})`);
-    rayGrad.addColorStop(1, 'rgba(251,191,36,0)');
+    rayGrad.addColorStop(0, 'rgba(255,255,255,0.6)');
+    rayGrad.addColorStop(0.2, 'rgba(255,250,200,0.3)');
+    rayGrad.addColorStop(0.5, 'rgba(255,240,150,0.1)');
+    rayGrad.addColorStop(1, 'rgba(255,240,150,0)');
     ctx.fillStyle = rayGrad;
     ctx.fill();
   }
+
+  // Petits rayons entre les grands
+  for (let i = 0; i < starPoints; i++) {
+    const angle = ((i + 0.5) / starPoints) * Math.PI * 2;
+    const len = h * 0.2 + Math.sin(t * 0.003 + i * 2) * 10;
+
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * r * 0.9, Math.sin(angle) * r * 0.9);
+    ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
   ctx.restore();
 
-  // Disque solaire — surexposé blanc au centre
+  // Disque solaire blanc
   const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
   sunGrad.addColorStop(0, '#ffffff');
-  sunGrad.addColorStop(0.2, '#fffef5');
-  sunGrad.addColorStop(0.5, '#fef3c7');
-  sunGrad.addColorStop(0.75, '#fbbf24');
-  sunGrad.addColorStop(1, '#f59e0b');
+  sunGrad.addColorStop(0.6, '#fffde8');
+  sunGrad.addColorStop(1, '#fef3c7');
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = sunGrad;
-  ctx.shadowBlur = 60;
-  ctx.shadowColor = 'rgba(255,250,220,0.9)';
+  ctx.shadowBlur = 40;
+  ctx.shadowColor = 'rgba(255,255,255,0.8)';
   ctx.fill();
   ctx.shadowBlur = 0;
+
+  // Nuages
+  drawSunClouds(ctx, w, h, t);
 }
 
 function drawCloud(ctx: CanvasRenderingContext2D, cloud: Cloud, w: number, partly = false) {
