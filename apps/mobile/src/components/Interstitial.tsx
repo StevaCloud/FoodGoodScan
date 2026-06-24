@@ -107,12 +107,9 @@ export function InterstitialProvider({ children }: { children: React.ReactNode }
                 {ad.price && <Text style={s.adPrice}>${ad.price.toFixed(2)}</Text>}
                 <TouchableOpacity
                   style={s.addBtn}
-                  onPress={() => {
-                    addGroceryItem(ad.name, ad.merchant, ad.price, undefined, ad.imageUrl);
-                    setVisible(false);
-                  }}
+                  onPress={() => { setVisible(false); navigation.navigate('Profil'); }}
                 >
-                  <Text style={s.addBtnText}>+ Ajouter a ma liste</Text>
+                  <Text style={s.addBtnText}>Plan Premium pour ajouter a la liste</Text>
                 </TouchableOpacity>
               </View>
             )}
