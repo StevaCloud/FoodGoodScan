@@ -65,7 +65,7 @@ export function AdBanner() {
         </View>
       </TouchableOpacity>
       <TouchableOpacity style={s.upgradeBar} onPress={() => navigation.navigate('Profil')}>
-        <Text style={s.upgradeText}>Passe a Premium pour enlever les pubs</Text>
+        <Text style={s.upgradeText}>Premium $3.99/mois — Circulaires, comparateur de prix, liste d'epicerie, sans pub</Text>
       </TouchableOpacity>
     </View>
   );
@@ -79,7 +79,7 @@ export function AdBannerSmall() {
 
   return (
     <TouchableOpacity style={s.smallBanner} onPress={() => navigation.navigate('Profil')} activeOpacity={0.8}>
-      <Text style={s.smallText}>Enleve les pubs — Passe a Premium $3.99/mois</Text>
+      <Text style={s.smallText}>Premium $3.99/mois — Economise avec les circulaires et le comparateur de prix</Text>
     </TouchableOpacity>
   );
 }

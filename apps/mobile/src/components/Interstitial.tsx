@@ -118,7 +118,8 @@ export function InterstitialProvider({ children }: { children: React.ReactNode }
               style={s.upgradeBtn}
               onPress={() => { setVisible(false); navigation.navigate('Profil'); }}
             >
-              <Text style={s.upgradeBtnText}>Passe a Premium pour enlever les pubs — $3.99/mois</Text>
+              <Text style={s.upgradeBtnTitle}>Premium — $3.99/mois</Text>
+              <Text style={s.upgradeBtnFeatures}>Circulaires + Comparateur de prix + Liste d'epicerie + Sans pub</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -182,5 +183,6 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  upgradeBtnText: { color: '#000', fontSize: 13, fontWeight: '800' },
+  upgradeBtnTitle: { color: '#000', fontSize: 15, fontWeight: '900' },
+  upgradeBtnFeatures: { color: 'rgba(0,0,0,0.7)', fontSize: 11, fontWeight: '600', marginTop: 2 },
 });
