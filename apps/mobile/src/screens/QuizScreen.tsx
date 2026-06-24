@@ -183,6 +183,7 @@ export function QuizScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [selectedCoupon, setSelectedCoupon] = useState<typeof COUPONS[0] | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showExplosion, setShowExplosion] = useState(false);
   const explosionBalloons = useRef(Array.from({ length: 8 }, () => ({ x: new Animated.Value(0), y: new Animated.Value(0), scale: new Animated.Value(1), opacity: new Animated.Value(1) }))).current;
@@ -278,6 +279,48 @@ export function QuizScreen() {
     );
   }
 
+  if (selectedCoupon) {
+    const now = new Date();
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + 7);
+    return (
+      <WeatherScreen><ScrollView style={s.container} contentContainerStyle={s.content}>
+        <TouchableOpacity style={s.couponBackBtn} onPress={() => setSelectedCoupon(null)}>
+          <Text style={s.couponBackBtnText}>{'<'} Retour aux resultats</Text>
+        </TouchableOpacity>
+
+        <View style={s.couponProof}>
+          <View style={s.couponProofHeader}>
+            <Text style={s.couponProofIcon}>{selectedCoupon.icon}</Text>
+            <Text style={s.couponProofBrand}>{selectedCoupon.brand}</Text>
+          </View>
+
+          <View style={s.couponProofBody}>
+            <Text style={s.couponProofLabel}>COUPON RABAIS</Text>
+            <Text style={s.couponProofDeal}>{selectedCoupon.deal}</Text>
+            <View style={s.couponProofDivider} />
+            <View style={s.couponProofDates}>
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={s.couponProofDateLabel}>Valide du</Text>
+                <Text style={s.couponProofDateValue}>{now.toLocaleDateString('fr-CA')}</Text>
+              </View>
+              <View style={s.couponProofDateDivider} />
+              <View style={{ alignItems: 'center', flex: 1 }}>
+                <Text style={s.couponProofDateLabel}>Valide jusqu'au</Text>
+                <Text style={s.couponProofDateValue}>{expiry.toLocaleDateString('fr-CA')}</Text>
+              </View>
+            </View>
+            <View style={s.couponProofBadge}>
+              <Text style={s.couponProofBadgeText}>Coupon FoodGoodScan — Montrez cet ecran au marchand</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={s.couponProofHint}>Montre cet ecran au caissier pour profiter du rabais</Text>
+      </ScrollView></WeatherScreen>
+    );
+  }
+
   if (phase === 'result') {
     const emoji = score >= 8 ? '🏆' : score >= 5 ? '👍' : '💪';
     const msg = score >= 8 ? 'Excellent !' : score >= 5 ? 'Pas mal !' : 'Continue à apprendre !';
@@ -300,9 +343,9 @@ export function QuizScreen() {
                   <Text style={s.couponDeal}>{c.deal}</Text>
                 </View>
                 {isPremium ? (
-                  <View style={s.couponUnlocked}>
-                    <Text style={s.couponUnlockedText}>Actif</Text>
-                  </View>
+                  <TouchableOpacity style={s.couponUnlocked} onPress={() => setSelectedCoupon(c)}>
+                    <Text style={s.couponUnlockedText}>Utiliser</Text>
+                  </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={s.couponLocked} onPress={() => openCheckout()}>
                     <Text style={s.couponLockedText}>Premium</Text>
@@ -466,4 +509,21 @@ const s = StyleSheet.create({
   couponUpgradeBtnSub: { color: '#000', fontSize: 11, fontWeight: '700', marginTop: 3 },
   explosionContainer: { position: 'absolute', top: '40%', left: '50%', width: 0, height: 0, alignItems: 'center', justifyContent: 'center', zIndex: 100 },
   explosionBalloon: { position: 'absolute', fontSize: 36 },
+  couponBackBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, alignSelf: 'flex-start', marginBottom: 20 },
+  couponBackBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  couponProof: { width: '100%', borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#e0e0e0' },
+  couponProofHeader: { backgroundColor: '#dc2626', padding: 20, alignItems: 'center', gap: 8 },
+  couponProofIcon: { fontSize: 50 },
+  couponProofBrand: { color: '#fff', fontSize: 28, fontWeight: '900' },
+  couponProofBody: { backgroundColor: '#fff', padding: 20 },
+  couponProofLabel: { color: '#dc2626', fontSize: 12, fontWeight: '800', letterSpacing: 2, textAlign: 'center', marginBottom: 10 },
+  couponProofDeal: { color: '#000', fontSize: 20, fontWeight: '800', textAlign: 'center', lineHeight: 28 },
+  couponProofDivider: { height: 1, backgroundColor: '#e5e5e5', marginVertical: 16 },
+  couponProofDates: { flexDirection: 'row', alignItems: 'center' },
+  couponProofDateLabel: { color: '#888', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  couponProofDateValue: { color: '#111', fontSize: 15, fontWeight: '800', marginTop: 3 },
+  couponProofDateDivider: { width: 1, height: 30, backgroundColor: '#ddd' },
+  couponProofBadge: { backgroundColor: '#f0fdf4', borderTopWidth: 1, borderTopColor: '#bbf7d0', padding: 12, marginTop: 16, marginHorizontal: -20, marginBottom: -20, alignItems: 'center' },
+  couponProofBadgeText: { color: '#15803d', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  couponProofHint: { color: '#fff', fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 16, opacity: 0.8 },
 });
