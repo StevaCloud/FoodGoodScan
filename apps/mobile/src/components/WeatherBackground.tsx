@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
 const { width: W } = Dimensions.get('window');
-export const WEATHER_HEADER_H = 200;
+export const WEATHER_HEADER_H = 2000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Drop  { x: number; y: number; speed: number; length: number; opacity: number; }
