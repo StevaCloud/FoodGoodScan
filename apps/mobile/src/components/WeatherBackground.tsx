@@ -292,8 +292,6 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Nuages
-  drawSunClouds(ctx, w, h, t);
 }
 
 function drawCloud(ctx: CanvasRenderingContext2D, cloud: Cloud, w: number, partly = false) {
@@ -391,7 +389,8 @@ function WeatherCanvas({ code }: { code: number }) {
     const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
-    const clouds = isPartly  ? makeClouds(3, w, h)
+    const clouds = (code === 0) ? makeClouds(3, w, h)
+                 : isPartly  ? makeClouds(3, w, h)
                  : (isCloud || isStorm) ? makeClouds(5, w, h)
                  : [];
 
@@ -429,7 +428,7 @@ function WeatherCanvas({ code }: { code: number }) {
       if (isSun && !night) drawSun(ctx, w, h, elapsed);
       if (isRain || isStorm) drawRain(ctx, drops, w, h, isHeavy || isStorm);
       if (isSnow)  drawSnow(ctx, flakes, w, h, elapsed);
-      if (isPartly || isCloud || isStorm) clouds.forEach(c => drawCloud(ctx, c, w, isPartly));
+      if (code === 0 || isPartly || isCloud || isStorm) clouds.forEach(c => drawCloud(ctx, c, w, code === 0 || isPartly));
       if (isFog)   drawFog(ctx, w, h, elapsed);
 
       // Lightning
