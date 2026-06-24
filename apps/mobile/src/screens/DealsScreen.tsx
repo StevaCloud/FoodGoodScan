@@ -433,7 +433,7 @@ export function DealsScreen() {
             <Text style={styles.loadingText}>Chargement de la circulaire...</Text>
           </View>
         ) : (
-          <FlatList
+          <FlatList style={{ backgroundColor: 'transparent' }}
             data={flyerItems}
             renderItem={renderDeal}
             keyExtractor={(item) => String(item.id)}
@@ -445,7 +445,6 @@ export function DealsScreen() {
 
   return (
     <WeatherScreen><View style={styles.container}>
-      <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{t('deals.title')}</Text>
       <Text style={styles.subtitle}>{t('deals.subtitle')}</Text>
@@ -472,7 +471,7 @@ export function DealsScreen() {
             <Text style={styles.loadingText}>Chargement des circulaires...</Text>
           </View>
         ) : (
-          <FlatList
+          <FlatList style={{ backgroundColor: 'transparent' }}
             data={flyers}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => (
@@ -533,7 +532,7 @@ export function DealsScreen() {
           <Text style={styles.loadingText}>Recherche dans les circulaires...</Text>
         </View>
       ) : (
-        <FlatList
+        <FlatList style={{ backgroundColor: 'transparent' }}
           data={deals}
           renderItem={renderDeal}
           keyExtractor={(item) => String(item.id)}
