@@ -218,49 +218,32 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   ctx.fill();
 
 
-  // Grands rayons lumineux (longs faisceaux)
-  const bigRayCount = 12;
-  const bigRotAngle = t * 0.0002;
+  // Longs rayons lumineux style lens flare — partent vers le bas
+  const rayCount = 14;
+  const rotAngle = t * 0.00015;
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(bigRotAngle);
-  for (let i = 0; i < bigRayCount; i++) {
-    const a = (i / bigRayCount) * Math.PI * 2;
-    const inner = r + 5;
-    const breathe = Math.sin(t * 0.003 + i * 0.8) * 15;
-    const outer = r + 55 + breathe + (i % 2 === 0 ? 25 : 0);
-    const grad = ctx.createLinearGradient(
-      Math.cos(a) * inner, Math.sin(a) * inner,
-      Math.cos(a) * outer, Math.sin(a) * outer
-    );
-    grad.addColorStop(0, 'rgba(254,243,199,0.4)');
-    grad.addColorStop(0.5, 'rgba(251,191,36,0.15)');
-    grad.addColorStop(1, 'rgba(251,191,36,0)');
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
-    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = i % 2 === 0 ? 3 : 1.8;
-    ctx.stroke();
-  }
-  ctx.restore();
+  ctx.rotate(rotAngle);
+  for (let i = 0; i < rayCount; i++) {
+    const baseAngle = (i / rayCount) * Math.PI * 2;
+    const spread = (0.02 + (i % 3) * 0.015);
+    const breathe = Math.sin(t * 0.002 + i * 1.1) * 0.15;
+    const opacity = 0.12 + (i % 2) * 0.08 + breathe;
+    const len = h * (0.6 + (i % 3) * 0.25 + Math.sin(t * 0.0015 + i * 0.7) * 0.15);
 
-  // Petits rayons fins qui tournent plus vite
-  const smallRayCount = 24;
-  const smallRotAngle = t * 0.0006;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(smallRotAngle);
-  for (let i = 0; i < smallRayCount; i++) {
-    const a = (i / smallRayCount) * Math.PI * 2;
-    const inner = r + 2;
-    const outer = r + 18 + Math.sin(t * 0.004 + i) * 6;
     ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
-    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
-    ctx.strokeStyle = `rgba(254,243,199,${0.12 + Math.sin(t * 0.005 + i * 1.3) * 0.08})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(baseAngle - spread) * len, Math.sin(baseAngle - spread) * len);
+    ctx.lineTo(Math.cos(baseAngle + spread) * len, Math.sin(baseAngle + spread) * len);
+    ctx.closePath();
+
+    const rayGrad = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, len);
+    rayGrad.addColorStop(0, `rgba(255,250,220,${opacity})`);
+    rayGrad.addColorStop(0.3, `rgba(251,210,80,${opacity * 0.5})`);
+    rayGrad.addColorStop(0.7, `rgba(251,191,36,${opacity * 0.15})`);
+    rayGrad.addColorStop(1, 'rgba(251,191,36,0)');
+    ctx.fillStyle = rayGrad;
+    ctx.fill();
   }
   ctx.restore();
 
