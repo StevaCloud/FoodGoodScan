@@ -195,16 +195,16 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
 
   const pulse = 1 + Math.sin(t * 0.002) * 0.1;
 
-  // Brillance légère autour du soleil
-  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 6 * pulse);
+  // Brillance large autour du soleil
+  const maxR = Math.max(w, h) * 1.2 * pulse;
+  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
   glare.addColorStop(0, 'rgba(255,250,220,0.25)');
-  glare.addColorStop(0.1, 'rgba(251,191,36,0.12)');
-  glare.addColorStop(0.3, 'rgba(251,191,36,0.04)');
+  glare.addColorStop(0.05, 'rgba(251,191,36,0.15)');
+  glare.addColorStop(0.15, 'rgba(251,191,36,0.08)');
+  glare.addColorStop(0.4, 'rgba(251,191,36,0.03)');
   glare.addColorStop(1, 'rgba(251,191,36,0)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 6 * pulse, 0, Math.PI * 2);
   ctx.fillStyle = glare;
-  ctx.fill();
+  ctx.fillRect(0, 0, w, h);
 
   // Halo intense autour du disque
   const halo = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 4);
