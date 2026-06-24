@@ -7,7 +7,7 @@ import { usePostalCode } from '../hooks/usePostalCode';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
-import { useWeatherBg } from '../hooks/useWeatherBg';
+import { useWeatherBg, useWeatherText } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -599,6 +599,7 @@ const JUNK_KEYWORDS = ['chips', 'pizza surgelée', 'nuggets', 'hot dog', 'saucis
 
 export function DietScreen() {
   const weatherBg = useWeatherBg();
+  const weatherText = useWeatherText();
   const healthProfile = useStore((s) => s.healthProfile);
   const token = useStore((s) => s.token);
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
@@ -1038,37 +1039,37 @@ export function DietScreen() {
       )}
 
       <View style={styles.tipsSection}>
-        <Text style={styles.sectionTitle}>Conseils</Text>
+        <Text style={[styles.sectionTitle, { color: weatherText.title }]}>Conseils</Text>
         {goal === 'lose' && (
           <>
-            <Text style={styles.tipItem}>• Bois un verre d'eau avant chaque repas</Text>
-            <Text style={styles.tipItem}>• Mange lentement — 20 min minimum par repas</Text>
-            <Text style={styles.tipItem}>• Évite les aliments ultra-transformés (NOVA 4)</Text>
-            <Text style={styles.tipItem}>• Privilégie les protéines pour la satiété</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Bois un verre d'eau avant chaque repas</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Mange lentement — 20 min minimum par repas</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Évite les aliments ultra-transformés (NOVA 4)</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Privilégie les protéines pour la satiété</Text>
           </>
         )}
         {goal === 'gain' && (
           <>
-            <Text style={styles.tipItem}>• Mange toutes les 3 heures</Text>
-            <Text style={styles.tipItem}>• Ajoute des calories saines (avocat, noix, huiles)</Text>
-            <Text style={styles.tipItem}>• Shake protéiné après l'entraînement</Text>
-            <Text style={styles.tipItem}>• Ne saute jamais le petit-déjeuner</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Mange toutes les 3 heures</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Ajoute des calories saines (avocat, noix, huiles)</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Shake protéiné après l'entraînement</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Ne saute jamais le petit-déjeuner</Text>
           </>
         )}
         {goal === 'muscle' && (
           <>
-            <Text style={styles.tipItem}>• 1.6-2.2g de protéines par kg de poids</Text>
-            <Text style={styles.tipItem}>• Mange dans les 30 min après l'entraînement</Text>
-            <Text style={styles.tipItem}>• Dors 7-9 heures par nuit</Text>
-            <Text style={styles.tipItem}>• Créatine 3-5g par jour</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• 1.6-2.2g de protéines par kg de poids</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Mange dans les 30 min après l'entraînement</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Dors 7-9 heures par nuit</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Créatine 3-5g par jour</Text>
           </>
         )}
         {(goal === 'health' || goal === 'maintain') && (
           <>
-            <Text style={styles.tipItem}>• Mange 5 portions de fruits/légumes par jour</Text>
-            <Text style={styles.tipItem}>• Limite le sucre ajouté à 25g par jour</Text>
-            <Text style={styles.tipItem}>• Choisis des grains entiers</Text>
-            <Text style={styles.tipItem}>• Varie tes sources de protéines</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Mange 5 portions de fruits/légumes par jour</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Limite le sucre ajouté à 25g par jour</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Choisis des grains entiers</Text>
+            <Text style={[styles.tipItem, { color: weatherText.body }]}>• Varie tes sources de protéines</Text>
           </>
         )}
       </View>

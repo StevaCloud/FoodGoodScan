@@ -10,7 +10,12 @@ export function useWeatherBg(): string {
   return '#080d1f';
 }
 
-export function useWeatherBgStyle() {
-  const bg = useWeatherBg();
-  return { flex: 1, backgroundColor: bg, position: 'relative' as const };
+export function useWeatherText(): { title: string; body: string } {
+  const weatherData = useStore((s) => s.weatherData);
+  const code = weatherData?.weatherCode ?? 0;
+  const isLight = code <= 3;
+  return {
+    title: isLight ? '#000' : '#fff',
+    body: isLight ? '#222' : '#aaa',
+  };
 }
