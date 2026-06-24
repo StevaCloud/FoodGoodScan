@@ -692,6 +692,7 @@ export function DietScreen() {
   if (selectedDeal) {
     return (
       <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+        <WeatherBackground />
         <TouchableOpacity onPress={() => setSelectedDeal(null)} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{'<'} Retour au régime</Text>
         </TouchableOpacity>

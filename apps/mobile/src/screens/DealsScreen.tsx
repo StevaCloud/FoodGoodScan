@@ -240,6 +240,7 @@ export function DealsScreen() {
 
     return (
       <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+        <WeatherBackground />
         <TouchableOpacity
           onPress={() => {
             setSelectedDeal(null);
@@ -408,6 +409,7 @@ export function DealsScreen() {
   if (selectedFlyer) {
     return (
       <View style={[styles.container, { backgroundColor: weatherBg }]}>
+        <WeatherBackground />
         <TouchableOpacity
           onPress={() => {
             setSelectedFlyer(null);
