@@ -251,7 +251,7 @@ export function DealsScreen() {
           }}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>{'<'} Retour</Text>
+          <Text style={styles.backText}>{'<'} {returnToTab.current === 'Liste' ? 'Retour à la liste' : 'Retour'}</Text>
         </TouchableOpacity>
 
         {/* === PREUVE CIRCULAIRE === */}
