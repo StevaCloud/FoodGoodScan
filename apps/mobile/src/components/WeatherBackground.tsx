@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
 const { width: W } = Dimensions.get('window');
-export const WEATHER_HEADER_H = 300;
+export const WEATHER_HEADER_H = 900;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Drop  { x: number; y: number; speed: number; length: number; opacity: number; }
@@ -529,10 +529,26 @@ function WeatherBackgroundInner() {
 
 export const WeatherBackground = WeatherBackgroundInner;
 
+export function WeatherScreen({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={wsStyles.root}>
+      <View style={wsStyles.bg}>
+        <WeatherBackgroundInner />
+      </View>
+      {children}
+    </View>
+  );
+}
+
+const wsStyles = StyleSheet.create({
+  root: { flex: 1 },
+  bg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
+});
+
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
-    height: WEATHER_HEADER_H,
+    height: '100%',
     overflow: 'hidden',
   },
   infoOverlay: {

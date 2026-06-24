@@ -8,7 +8,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
-import { WeatherBackground } from '../components/WeatherBackground';
+import { WeatherScreen } from '../components/WeatherBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -691,8 +691,8 @@ export function DietScreen() {
 
   if (selectedDeal) {
     return (
-      <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
-        <WeatherBackground />
+      <WeatherScreen>
+      <ScrollView style={styles.container}>
         <TouchableOpacity onPress={() => setSelectedDeal(null)} style={styles.backBtn}>
           <Text style={styles.backBtnText}>{'<'} Retour au régime</Text>
         </TouchableOpacity>
@@ -815,6 +815,7 @@ export function DietScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      </WeatherScreen>
     );
   }
 
@@ -833,8 +834,8 @@ export function DietScreen() {
         <Text style={styles.zoomClose}>Appuyer pour fermer</Text>
       </Pressable>
     </Modal>
-    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
-      <WeatherBackground />
+    <WeatherScreen>
+    <ScrollView style={styles.container}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
 
       <Text style={styles.title}>Mon Régime</Text>
@@ -1074,6 +1075,7 @@ export function DietScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+    </WeatherScreen>
     </>
   );
 }

@@ -8,7 +8,7 @@ import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
-import { WeatherBackground } from '../components/WeatherBackground';
+import { WeatherScreen } from '../components/WeatherBackground';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -183,7 +183,7 @@ export function DealsScreen() {
 
   if (!hasAccess) {
     return (
-      <View style={styles.locked}>
+      <WeatherScreen><View style={styles.locked}>
         <Text style={styles.lockedTitle}>Soldes Épicerie</Text>
         <Text style={styles.lockedSubtitle}>En temps réel de vos circulaires</Text>
         <Text style={styles.lockedText}>
@@ -199,7 +199,7 @@ export function DealsScreen() {
             <Text style={styles.upgradeButtonText}>Add-on Épicerie — $1.99/mois</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </View></WeatherScreen>
     );
   }
 
@@ -239,8 +239,7 @@ export function DealsScreen() {
     const daysLeft = selectedDeal.validUntil ? Math.max(0, Math.ceil((new Date(selectedDeal.validUntil).getTime() - Date.now()) / 86400000)) : 0;
 
     return (
-      <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
-        <WeatherBackground />
+      <WeatherScreen><ScrollView style={styles.container}>
         <TouchableOpacity
           onPress={() => {
             setSelectedDeal(null);
@@ -402,14 +401,13 @@ export function DealsScreen() {
         </View>
 
         <View style={{ height: 40 }} />
-      </ScrollView>
+      </ScrollView></WeatherScreen>
     );
   }
 
   if (selectedFlyer) {
     return (
-      <View style={[styles.container, { backgroundColor: weatherBg }]}>
-        <WeatherBackground />
+      <WeatherScreen><View style={styles.container}>
         <TouchableOpacity
           onPress={() => {
             setSelectedFlyer(null);
@@ -441,12 +439,12 @@ export function DealsScreen() {
             keyExtractor={(item) => String(item.id)}
           />
         )}
-      </View>
+      </View></WeatherScreen>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: weatherBg }]}>
+    <WeatherScreen><View style={styles.container}>
       <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{t('deals.title')}</Text>
@@ -550,7 +548,7 @@ export function DealsScreen() {
       )}
       </>
       )}
-    </View>
+    </View></WeatherScreen>
   );
 }
 
