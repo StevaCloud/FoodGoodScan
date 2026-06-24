@@ -9,6 +9,7 @@ export interface FlippDeal {
   validFrom: string;
   validUntil: string;
   category: string;
+  saleStory: string;
 }
 
 export async function searchFlippDeals(query: string, postalCode: string = 'J1H1A1'): Promise<FlippDeal[]> {
@@ -34,6 +35,7 @@ export async function searchFlippDeals(query: string, postalCode: string = 'J1H1
     validFrom: item.valid_from || '',
     validUntil: item.valid_to || '',
     category: item._L2 || item._L1 || '',
+    saleStory: item.sale_story || '',
   }));
 }
 
@@ -97,5 +99,6 @@ export async function getFlyerItems(flyerId: number, postalCode: string = 'J1H1A
     validFrom: item.valid_from || '',
     validUntil: item.valid_to || '',
     category: item._L2 || item._L1 || '',
+    saleStory: item.sale_story || '',
   }));
 }

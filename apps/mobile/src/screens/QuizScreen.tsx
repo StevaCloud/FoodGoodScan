@@ -19,6 +19,7 @@ interface DealReward {
   merchant: string;
   price: number | null;
   imageUrl: string;
+  saleStory: string;
 }
 
 
@@ -247,10 +248,11 @@ export function QuizScreen() {
             params: { search: term, postal_code: 'J1H1A1' },
             headers: { Authorization: `Bearer ${token}` },
           });
-          const best = (Array.isArray(data) ? data : [])
-            .filter((d: any) => d.price && d.imageUrl)
-            .sort((a: any, b: any) => a.price - b.price)[0];
-          if (best) allDeals.push({ name: best.name, merchant: best.merchant, price: best.price, imageUrl: best.imageUrl });
+          const withSale = (Array.isArray(data) ? data : [])
+            .filter((d: any) => d.imageUrl && d.saleStory)
+            .sort((a: any, b: any) => (a.price || 999) - (b.price || 999));
+          const best = withSale[0] || (Array.isArray(data) ? data : []).filter((d: any) => d.price && d.imageUrl).sort((a: any, b: any) => a.price - b.price)[0];
+          if (best) allDeals.push({ name: best.name, merchant: best.merchant, price: best.price, imageUrl: best.imageUrl, saleStory: best.saleStory || '' });
         } catch {}
       }
       setDealRewards(allDeals);
@@ -334,8 +336,8 @@ export function QuizScreen() {
 
         {dealRewards.length > 0 && (
           <View style={s.dealsSection}>
-            <Text style={s.dealsSectionTitle}>Meilleurs rabais de la semaine</Text>
-            <Text style={s.dealsSectionSub}>Vrais prix en circulaire — en temps reel</Text>
+            <Text style={s.dealsSectionTitle}>Coupons rabais de la semaine</Text>
+            <Text style={s.dealsSectionSub}>Vrais coupons des circulaires — mis a jour chaque semaine</Text>
             {dealRewards.map((deal, i) => (
               <TouchableOpacity
                 key={i}
@@ -358,6 +360,11 @@ export function QuizScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.dealRewardName} numberOfLines={2}>{deal.name}</Text>
                   <Text style={s.dealRewardStore}>{isPremium ? deal.merchant : 'Magasin — Premium'}</Text>
+                  {deal.saleStory ? (
+                    <View style={s.dealRewardCoupon}>
+                      <Text style={s.dealRewardCouponText}>{deal.saleStory}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={s.dealRewardPrice}>{isPremium && deal.price ? `$${deal.price.toFixed(2)}` : '$ ?.??'}</Text>
@@ -511,4 +518,6 @@ const s = StyleSheet.create({
   dealRewardUpgrade: { backgroundColor: '#f59e0b', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   dealRewardUpgradeTitle: { color: '#000', fontSize: 15, fontWeight: '900' },
   dealRewardUpgradeSub: { color: '#000', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  dealRewardCoupon: { backgroundColor: '#dc2626', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start', marginTop: 4 },
+  dealRewardCouponText: { color: '#fff', fontSize: 11, fontWeight: '800' },
 });
