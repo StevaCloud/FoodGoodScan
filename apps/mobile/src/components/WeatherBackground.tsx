@@ -222,7 +222,7 @@ function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: n
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.3;
   const cy = h * 0.4;
-  const r  = 28;
+  const r  = 50;
 
   const pulse = 1 + Math.sin(t * 0.002) * 0.05;
 
