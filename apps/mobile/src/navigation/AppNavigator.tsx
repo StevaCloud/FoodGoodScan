@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Text, View } from 'react-native';
+import { InterstitialProvider, triggerInterstitial } from '../components/Interstitial';
 
 import { HomeScreen } from '../screens/HomeScreen';
 import { ScannerScreen } from '../screens/ScannerScreen';
@@ -42,8 +43,10 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function MainTabs() {
   const { t } = useTranslation();
   return (
+    <InterstitialProvider>
     <View style={{ flex: 1, backgroundColor: '#111' }}>
       <Tab.Navigator
+        screenListeners={{ tabPress: () => triggerInterstitial() }}
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
@@ -61,6 +64,7 @@ function MainTabs() {
         <Tab.Screen name="Profil"   component={ProfileScreen}     options={{ tabBarLabel: t('nav.profile') }} />
       </Tab.Navigator>
     </View>
+    </InterstitialProvider>
   );
 }
 

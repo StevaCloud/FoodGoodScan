@@ -5,6 +5,7 @@ import { scanProduct } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
+import { triggerInterstitial } from '../components/Interstitial';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -40,6 +41,7 @@ export function ScannerScreen() {
       const product = await scanProduct(barcode);
       setLastScannedProduct(product);
       stopWebcam();
+      triggerInterstitial();
       navigation.navigate('Product');
     } catch (error: any) {
       if (error.response?.data?.upgrade) {
