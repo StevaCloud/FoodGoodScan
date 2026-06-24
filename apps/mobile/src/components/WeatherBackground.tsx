@@ -457,13 +457,7 @@ function WeatherCanvas({ code }: { code: number }) {
         }
       }
 
-      // Fondu vers le bas (#111) — transition douce vers le contenu
-      const fade = ctx.createLinearGradient(0, h * 0.55, 0, h);
-      fade.addColorStop(0, 'rgba(17,17,17,0)');
-      fade.addColorStop(0.5, 'rgba(17,17,17,0.4)');
-      fade.addColorStop(1, 'rgba(17,17,17,1)');
-      ctx.fillStyle = fade;
-      ctx.fillRect(0, h * 0.55, w, h * 0.45);
+      // Pas de fondu — le ciel continue jusqu'en bas
 
       raf = requestAnimationFrame(frame);
     };
