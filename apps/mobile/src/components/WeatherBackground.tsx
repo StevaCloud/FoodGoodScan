@@ -247,7 +247,7 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   // Grands rayons pointus
   for (let i = 0; i < starPoints; i++) {
     const angle = (i / starPoints) * Math.PI * 2;
-    const len = h * 0.45 + Math.sin(t * 0.002 + i) * 15;
+    const len = 350 + Math.sin(t * 0.002 + i) * 30 + (i % 2 === 0 ? 80 : 0);
     const tipWidth = 0.008;
 
     ctx.beginPath();
@@ -268,7 +268,7 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   // Petits rayons entre les grands
   for (let i = 0; i < starPoints; i++) {
     const angle = ((i + 0.5) / starPoints) * Math.PI * 2;
-    const len = h * 0.2 + Math.sin(t * 0.003 + i * 2) * 10;
+    const len = 180 + Math.sin(t * 0.003 + i * 2) * 20;
 
     ctx.beginPath();
     ctx.moveTo(Math.cos(angle) * r * 0.9, Math.sin(angle) * r * 0.9);
