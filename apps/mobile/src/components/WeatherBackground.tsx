@@ -413,6 +413,9 @@ function WeatherCanvas({ code }: { code: number }) {
       if (night && isSun) {
         bg.addColorStop(0, '#020818');
         bg.addColorStop(1, '#050d28');
+      } else if (code === 0) {
+        bg.addColorStop(0, '#3b95ed');
+        bg.addColorStop(1, '#3b95ed');
       } else {
         const [c1, c2] = [theme.bg[0], theme.bg[1]];
         bg.addColorStop(0, c2);
