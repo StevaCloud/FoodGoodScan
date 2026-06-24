@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIn
 import { useStore } from '../store/useStore';
 import { AdBannerSmall } from '../components/AdBanner';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 
 interface Question {
   q: string;
@@ -156,6 +157,7 @@ export function QuizScreen() {
     const accuracy = quizTotal > 0 ? Math.round((quizCorrect / (quizTotal * QUIZ_SIZE)) * 100) : 0;
     return (
       <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
+        <WeatherBackground />
         <Text style={s.bigEmoji}>🧠</Text>
         <Text style={s.title}>Quiz Nutrition</Text>
         <Text style={s.subtitle}>Teste tes connaissances en nutrition !</Text>
@@ -195,6 +197,7 @@ export function QuizScreen() {
     const msg = score >= 8 ? 'Excellent !' : score >= 5 ? 'Pas mal !' : 'Continue à apprendre !';
     return (
       <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
+        <WeatherBackground />
         <Text style={s.bigEmoji}>{emoji}</Text>
         <Text style={s.title}>{msg}</Text>
         <Text style={s.resultScore}>{score} / {QUIZ_SIZE}</Text>
@@ -215,6 +218,7 @@ export function QuizScreen() {
   const q = questions[index];
   return (
     <ScrollView style={[s.container, { backgroundColor: weatherBg }]} contentContainerStyle={s.content}>
+      <WeatherBackground />
       <View style={s.progressRow}>
         <Text style={s.progressText}>Question {index + 1}/{QUIZ_SIZE}</Text>
         <Text style={s.scoreText}>Score : {score}</Text>

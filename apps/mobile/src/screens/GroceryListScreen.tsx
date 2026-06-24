@@ -6,6 +6,7 @@ import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { AdBanner } from '../components/AdBanner';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 
 export function GroceryListScreen() {
   const groceryList = useStore((s) => s.groceryList);
@@ -55,6 +56,7 @@ export function GroceryListScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <View style={styles.header}>
         <Text style={styles.title}>{t('list.title')}</Text>

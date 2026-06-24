@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 import { upgradeSubscription } from '../services/api';
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
@@ -31,6 +32,7 @@ export function ProfileScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <Text style={styles.title}>{t('profile.title')}</Text>
 
       <View style={styles.card}>

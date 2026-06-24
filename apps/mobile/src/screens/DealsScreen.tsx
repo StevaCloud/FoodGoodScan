@@ -8,6 +8,7 @@ import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -444,6 +445,7 @@ export function DealsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{t('deals.title')}</Text>
       <Text style={styles.subtitle}>{t('deals.subtitle')}</Text>

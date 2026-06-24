@@ -6,6 +6,7 @@ import axios from 'axios';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { usePostalCode } from '../hooks/usePostalCode';
+import { WeatherBackground } from '../components/WeatherBackground';
 import { getCurrentWeather } from '../services/weatherService';
 import { calculateWaterIntake } from '../services/waterIntakeService';
 import { showToast } from '../components/Toast';
@@ -137,6 +138,7 @@ export function HomeScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <View style={styles.topBar}>
         <View />
         <LanguageSelector />

@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -832,6 +833,7 @@ export function DietScreen() {
       </Pressable>
     </Modal>
     <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
 
       <Text style={styles.title}>Mon Régime</Text>

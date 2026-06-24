@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { scanProduct } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
+import { WeatherBackground } from '../components/WeatherBackground';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -136,6 +137,7 @@ export function ScannerScreen() {
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.container, { backgroundColor: weatherBg }]}>
+        <WeatherBackground />
         <View style={styles.topBar}><View /><LanguageSelector /></View>
         <Text style={styles.title}>{ t('scanner.title') }</Text>
         <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
@@ -200,6 +202,7 @@ export function ScannerScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: weatherBg }]}>
+      <WeatherBackground />
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       <Text style={styles.title}>{ t('scanner.title') }</Text>
       <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
