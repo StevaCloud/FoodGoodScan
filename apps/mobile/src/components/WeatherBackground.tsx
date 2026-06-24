@@ -16,7 +16,7 @@ const randInt = (min: number, max: number) => Math.floor(rand(min, max));
 
 // ─── Thème par code météo ─────────────────────────────────────────────────────
 function getTheme(code: number) {
-  if (code === 0)        return { bg: ['#1c0900', '#2d1200', '#1c0900'], accent: '#fbbf24', type: 'sun'     };
+  if (code === 0)        return { bg: ['#4a2000', '#2d1200', '#1a0a00'], accent: '#fbbf24', type: 'sun'     };
   if (code <= 3)         return { bg: ['#0d1520', '#1a2540', '#0d1520'], accent: '#fbbf24', type: 'partly'  };
   if (code <= 49)        return { bg: ['#111520', '#1a1f2e', '#111520'], accent: '#94a3b8', type: 'fog'   };
   if (code <= 69)        return { bg: ['#060d1c', '#0d1a30', '#060d1c'], accent: '#60a5fa', type: 'rain'  };
@@ -193,15 +193,17 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   const cy = h * 0.22;
   const r  = 42;
 
-  // Brillance éblouissante — lave tout le haut en blanc/doré
+  // Brillance éblouissante — remplit tout l'espace
   const pulse = 1 + Math.sin(t * 0.002) * 0.1;
-  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, h * 1.2 * pulse);
-  glare.addColorStop(0, 'rgba(255,255,240,0.45)');
-  glare.addColorStop(0.05, 'rgba(255,250,220,0.35)');
-  glare.addColorStop(0.12, 'rgba(251,191,36,0.2)');
-  glare.addColorStop(0.3, 'rgba(251,191,36,0.07)');
-  glare.addColorStop(0.6, 'rgba(251,191,36,0.02)');
-  glare.addColorStop(1, 'rgba(251,191,36,0)');
+  const maxR = Math.max(w, h) * 1.5 * pulse;
+  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+  glare.addColorStop(0, 'rgba(255,255,240,0.5)');
+  glare.addColorStop(0.03, 'rgba(255,250,220,0.4)');
+  glare.addColorStop(0.08, 'rgba(253,224,140,0.3)');
+  glare.addColorStop(0.2, 'rgba(251,191,36,0.15)');
+  glare.addColorStop(0.45, 'rgba(200,120,20,0.08)');
+  glare.addColorStop(0.75, 'rgba(150,70,10,0.04)');
+  glare.addColorStop(1, 'rgba(100,40,5,0.02)');
   ctx.fillStyle = glare;
   ctx.fillRect(0, 0, w, h);
 
@@ -456,11 +458,11 @@ function WeatherCanvas({ code }: { code: number }) {
       }
 
       // Fondu vers le bas (#111)
-      const fade = ctx.createLinearGradient(0, h * 0.6, 0, h);
+      const fade = ctx.createLinearGradient(0, h * 0.82, 0, h);
       fade.addColorStop(0, 'rgba(17,17,17,0)');
       fade.addColorStop(1, 'rgba(17,17,17,1)');
       ctx.fillStyle = fade;
-      ctx.fillRect(0, h * 0.6, w, h * 0.4);
+      ctx.fillRect(0, h * 0.82, w, h * 0.18);
 
       raf = requestAnimationFrame(frame);
     };
