@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 
 const { width: W } = Dimensions.get('window');
-export const WEATHER_HEADER_H = 2000;
+export const WEATHER_HEADER_H = 300;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Drop  { x: number; y: number; speed: number; length: number; opacity: number; }
@@ -221,7 +221,7 @@ function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: n
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.3;
-  const cy = 120;
+  const cy = h * 0.4;
   const r  = 28;
 
   const pulse = 1 + Math.sin(t * 0.002) * 0.05;
@@ -389,7 +389,7 @@ function WeatherCanvas({ code }: { code: number }) {
     const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
-    const visibleH = 350;
+    const visibleH = h;
     const clouds = (code === 0) ? makeClouds(4, w, visibleH)
                  : isPartly  ? makeClouds(3, w, visibleH)
                  : (isCloud || isStorm) ? makeClouds(5, w, visibleH)
@@ -533,14 +533,9 @@ export const WeatherBackground = memo(WeatherBackgroundInner);
 
 const styles = StyleSheet.create({
   wrapper: {
-    // @ts-ignore — fixed works on web
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    width: '100%',
+    height: WEATHER_HEADER_H,
     overflow: 'hidden',
-    zIndex: -1,
   },
   infoOverlay: {
     position: 'absolute',
