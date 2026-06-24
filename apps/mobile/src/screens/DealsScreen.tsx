@@ -644,8 +644,8 @@ const styles = StyleSheet.create({
   flyerTitle: { color: '#fff', fontSize: 24, fontWeight: '800', marginTop: 10 },
   flyerSubtitle: { color: '#ddd', fontSize: 14, fontWeight: '500', marginTop: 4, lineHeight: 19 },
   flyerCount: { color: '#22c55e', fontSize: 15, fontWeight: '700', marginTop: 8, marginBottom: 12 },
-  backButton: { paddingVertical: 10, marginTop: 10 },
-  backText: { color: '#3b82f6', fontSize: 15 },
+  backButton: { backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, marginTop: 14, alignSelf: 'flex-start' },
+  backText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   // === PREUVE CIRCULAIRE ===
   flyerProof: {
