@@ -1074,7 +1074,7 @@ export function DietScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 16 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   planName: { color: '#22c55e', fontSize: 16, fontWeight: '600', marginTop: 4, marginBottom: 16 },

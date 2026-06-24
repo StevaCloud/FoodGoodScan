@@ -43,12 +43,15 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 function MainTabs() {
   const { t } = useTranslation();
   return (
-    <View style={{ flex: 1, backgroundColor: '#111' }}>
-      {/* Bannière météo animée en haut de tous les onglets */}
-      <WeatherBackground />
+    <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+      {/* Bannière météo en arrière-plan absolu */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0 }}>
+        <WeatherBackground />
+      </View>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
+          sceneStyle: { backgroundColor: 'transparent' },
           tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
           tabBarActiveTintColor: '#22c55e',
           tabBarInactiveTintColor: '#555',
