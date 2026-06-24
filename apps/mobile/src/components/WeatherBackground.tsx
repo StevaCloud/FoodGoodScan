@@ -16,7 +16,7 @@ const randInt = (min: number, max: number) => Math.floor(rand(min, max));
 
 // ─── Thème par code météo ─────────────────────────────────────────────────────
 function getTheme(code: number) {
-  if (code === 0)        return { bg: ['#0a0a12', '#0d0d18', '#0a0a12'], accent: '#fbbf24', type: 'sun'     };
+  if (code === 0)        return { bg: ['#1a6fc4', '#2d8be0', '#0f4a8a'], accent: '#fbbf24', type: 'sun'     };
   if (code <= 3)         return { bg: ['#0d1520', '#1a2540', '#0d1520'], accent: '#fbbf24', type: 'partly'  };
   if (code <= 49)        return { bg: ['#111520', '#1a1f2e', '#111520'], accent: '#94a3b8', type: 'fog'   };
   if (code <= 69)        return { bg: ['#060d1c', '#0d1a30', '#060d1c'], accent: '#60a5fa', type: 'rain'  };
