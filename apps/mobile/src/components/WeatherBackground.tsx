@@ -462,12 +462,13 @@ function WeatherCanvas({ code }: { code: number }) {
         }
       }
 
-      // Fondu vers le bas (#111) — juste les derniers pixels
-      const fade = ctx.createLinearGradient(0, h * 0.92, 0, h);
+      // Fondu vers le bas (#111) — transition douce vers le contenu
+      const fade = ctx.createLinearGradient(0, h * 0.55, 0, h);
       fade.addColorStop(0, 'rgba(17,17,17,0)');
-      fade.addColorStop(1, 'rgba(17,17,17,0.8)');
+      fade.addColorStop(0.5, 'rgba(17,17,17,0.4)');
+      fade.addColorStop(1, 'rgba(17,17,17,1)');
       ctx.fillStyle = fade;
-      ctx.fillRect(0, h * 0.92, w, h * 0.08);
+      ctx.fillRect(0, h * 0.55, w, h * 0.45);
 
       raf = requestAnimationFrame(frame);
     };
