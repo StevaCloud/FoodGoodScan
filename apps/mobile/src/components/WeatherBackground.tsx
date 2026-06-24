@@ -389,9 +389,10 @@ function WeatherCanvas({ code }: { code: number }) {
     const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
-    const clouds = (code === 0) ? makeClouds(3, w, h)
-                 : isPartly  ? makeClouds(3, w, h)
-                 : (isCloud || isStorm) ? makeClouds(5, w, h)
+    const visibleH = Math.min(h, 600);
+    const clouds = (code === 0) ? makeClouds(4, w, visibleH)
+                 : isPartly  ? makeClouds(3, w, visibleH)
+                 : (isCloud || isStorm) ? makeClouds(5, w, visibleH)
                  : [];
 
     // Lightning state
