@@ -26,6 +26,10 @@ export function ScannerScreen() {
 
   const handleScan = async (barcode: string) => {
     if (loading || !barcode) return;
+    if (!/^\d{8,14}$/.test(barcode)) {
+      Alert.alert('Code invalide', 'Le code-barres doit contenir entre 8 et 14 chiffres.');
+      return;
+    }
     setLoading(true);
     setScanStatus('');
 
@@ -229,7 +233,7 @@ export function ScannerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 20 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 20 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   subtitle: { color: '#ccc', fontSize: 13, marginTop: 4, marginBottom: 30 },

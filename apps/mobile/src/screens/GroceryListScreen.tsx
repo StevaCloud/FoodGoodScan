@@ -221,7 +221,7 @@ export function GroceryListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 16 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold' },

@@ -278,7 +278,7 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   waterCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0c1a2e', borderRadius: 14, padding: 14, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#1e3a5f', gap: 10 },
   waterIcon: { fontSize: 26 },
   waterAmount: { color: '#38bdf8', fontSize: 15, fontWeight: 'bold' },

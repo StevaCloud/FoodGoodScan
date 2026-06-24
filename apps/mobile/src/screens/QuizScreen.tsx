@@ -264,7 +264,7 @@ export function QuizScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: 20, paddingTop: 16, alignItems: 'center' },
   bigEmoji: { fontSize: 64, marginBottom: 12 },
   title: { color: '#fff', fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },

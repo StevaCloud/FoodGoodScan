@@ -193,7 +193,7 @@ export function WaterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 16 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20 },
   subtitle: { color: '#ccc', fontSize: 13, marginTop: 4, marginBottom: 16 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#1a1a1a', borderRadius: 10 },

@@ -346,8 +346,8 @@ export function ProductScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 16 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' },
   emptyText: { color: '#bbb', fontSize: 16 },
   image: { width: '100%', height: 250, borderRadius: 12, marginBottom: 16, backgroundColor: '#222' },
   noImage: { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },

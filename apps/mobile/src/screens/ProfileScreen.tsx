@@ -103,7 +103,7 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#111', padding: 20 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 20 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 20, marginBottom: 20 },
   card: {
     backgroundColor: '#1a1a1a',
