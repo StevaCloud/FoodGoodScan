@@ -98,14 +98,14 @@ export function DealsScreen() {
     if (hasAccess && token) loadFlyers();
   }, [hasAccess, token]);
 
-  // Ouvre directement la fiche produit passée en paramètre (depuis DietScreen)
+  // Ouvre directement la fiche produit passée en paramètre (depuis DietScreen ou Liste)
   useEffect(() => {
     const dealItem = route.params?.dealItem;
     if (!dealItem) return;
-    returnToTab.current = 'Régime';
+    returnToTab.current = route.params?.returnTo || 'Régime';
     setSelectedDeal(dealItem);
     setOtherStores([]);
-    navigation.setParams({ dealItem: undefined });
+    navigation.setParams({ dealItem: undefined, returnTo: undefined });
   }, [route.params?.dealItem]);
 
   // Recherche automatique depuis un autre écran (ex: DietScreen)

@@ -175,7 +175,23 @@ export function GroceryListScreen() {
 
                 <TouchableOpacity
                   style={[styles.itemInfo, item.checked && { opacity: 0.45 }]}
-                  onPress={() => toggleGroceryItem(item.id)}
+                  onPress={() => {
+                    navigation.navigate('Soldes', {
+                      dealItem: {
+                        id: 0,
+                        name: item.name,
+                        merchant: item.store,
+                        merchantLogo: '',
+                        price: item.price,
+                        priceText: '',
+                        imageUrl: item.imageUrl || '',
+                        validFrom: '',
+                        validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+                        category: '',
+                      },
+                      returnTo: 'Liste',
+                    });
+                  }}
                 >
                   <Text style={[styles.itemName, item.checked && styles.itemNameChecked]} numberOfLines={2}>
                     {item.name}
@@ -183,6 +199,7 @@ export function GroceryListScreen() {
                   {item.calories > 0 && (
                     <Text style={styles.itemNutri}>{item.calories} kcal | G:{item.fat.toFixed(0)}g S:{item.sugars.toFixed(0)}g P:{item.proteins.toFixed(0)}g</Text>
                   )}
+                  <Text style={styles.proofHint}>Voir la circulaire →</Text>
                 </TouchableOpacity>
                 <View style={styles.itemActions}>
                   {item.price ? (
@@ -190,15 +207,6 @@ export function GroceryListScreen() {
                       ${item.price.toFixed(2)}
                     </Text>
                   ) : null}
-                  <TouchableOpacity
-                    style={styles.proofBtn}
-                    onPress={() => {
-                      const searchTerm = item.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 3).join(' ') || item.name;
-                      navigation.navigate('Soldes', { searchQuery: searchTerm });
-                    }}
-                  >
-                    <Text style={styles.proofBtnText}>Voir circulaire</Text>
-                  </TouchableOpacity>
                 </View>
                 <TouchableOpacity
                   style={styles.deleteBtn}
@@ -273,7 +281,6 @@ const styles = StyleSheet.create({
   itemActions: { alignItems: 'flex-end', gap: 4, marginLeft: 8 },
   itemPrice: { color: '#22c55e', fontSize: 16, fontWeight: 'bold' },
   itemPriceChecked: { color: '#bbb' },
-  proofBtn: { backgroundColor: '#1e3a5f', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-  proofBtnText: { color: '#60a5fa', fontSize: 11, fontWeight: '700' },
+  proofHint: { color: '#60a5fa', fontSize: 11, fontWeight: '700', marginTop: 4 },
   hint: { color: '#aaa', fontSize: 11, textAlign: 'center', marginTop: 12 },
 });
