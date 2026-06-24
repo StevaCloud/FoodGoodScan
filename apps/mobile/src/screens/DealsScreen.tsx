@@ -553,7 +553,7 @@ export function DealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, padding: 16, backgroundColor: 'transparent' },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
   title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
   subtitle: { color: '#22c55e', fontSize: 13, marginBottom: 16, marginTop: 4 },
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   salePrice: { color: '#22c55e', fontSize: 20, fontWeight: '800' },
   priceText: { color: '#ddd', fontSize: 13, fontWeight: '500' },
   validDate: { color: '#aaa', fontSize: 12, fontWeight: '500', marginTop: 4 },
-  locked: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  locked: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: 'transparent' },
   lockedTitle: { color: '#f97316', fontSize: 24, fontWeight: 'bold' },
   lockedSubtitle: { color: '#fb923c', fontSize: 14, marginTop: 4, marginBottom: 16 },
   lockedText: { color: '#ccc', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 22 },
