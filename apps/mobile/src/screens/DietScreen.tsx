@@ -693,6 +693,38 @@ export function DietScreen() {
 
   const totalMealCalories = dayMeals.reduce((sum: number, m: any) => sum + m.calories, 0);
 
+  if (!isPremium) {
+    return (
+      <WeatherScreen>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 }}>
+        <Text style={{ fontSize: 50, marginBottom: 16 }}>🥗</Text>
+        <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', textAlign: 'center' }}>Regime personnalise</Text>
+        <Text style={{ color: '#ccc', fontSize: 15, textAlign: 'center', marginTop: 12, lineHeight: 22 }}>
+          Plan de repas sur 7 jours adapte a ton profil, suivi des calories, objectif eau, et articles en special.
+        </Text>
+        <View style={{ backgroundColor: '#1a1a1a', borderRadius: 14, padding: 16, marginTop: 20, width: '100%' }}>
+          <Text style={{ color: '#22c55e', fontSize: 14, fontWeight: '700', marginBottom: 8 }}>Inclus dans Premium :</Text>
+          <Text style={{ color: '#ddd', fontSize: 13, lineHeight: 22 }}>
+            {'✓ Plan repas 7 jours personnalise\n✓ Suivi calories et macros\n✓ Objectif hydratation\n✓ Circulaires en temps reel\n✓ Comparateur de prix\n✓ Sans publicite'}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={{ backgroundColor: '#22c55e', borderRadius: 14, paddingVertical: 16, paddingHorizontal: 30, marginTop: 20, width: '100%', alignItems: 'center' }}
+          onPress={() => openCheckout('premium')}
+        >
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Premium — $3.99/mois</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ backgroundColor: '#f59e0b', borderRadius: 14, paddingVertical: 16, paddingHorizontal: 30, marginTop: 10, width: '100%', alignItems: 'center' }}
+          onPress={() => openCheckout('premium_grocery')}
+        >
+          <Text style={{ color: '#000', fontSize: 18, fontWeight: '800' }}>Premium + Epicerie — $5.99/mois</Text>
+        </TouchableOpacity>
+      </View>
+      </WeatherScreen>
+    );
+  }
+
   if (selectedDeal) {
     return (
       <WeatherScreen>
