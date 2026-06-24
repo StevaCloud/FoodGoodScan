@@ -530,8 +530,11 @@ function WeatherBackgroundInner() {
 export const WeatherBackground = WeatherBackgroundInner;
 
 export function WeatherScreen({ children }: { children: React.ReactNode }) {
+  const weatherData = useStore((s) => s.weatherData);
+  const code = weatherData?.weatherCode ?? 0;
+  const fallbackBg = code <= 3 ? '#3b95ed' : code <= 49 ? '#1a1f2e' : code <= 69 ? '#0d1a30' : code <= 79 ? '#101929' : '#080d1f';
   return (
-    <View style={wsStyles.root}>
+    <View style={[wsStyles.root, { backgroundColor: fallbackBg }]}>
       <View style={wsStyles.bg}>
         <WeatherBackgroundInner />
       </View>
