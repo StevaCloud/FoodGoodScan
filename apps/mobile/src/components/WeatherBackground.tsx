@@ -16,7 +16,7 @@ const randInt = (min: number, max: number) => Math.floor(rand(min, max));
 
 // ─── Thème par code météo ─────────────────────────────────────────────────────
 function getTheme(code: number) {
-  if (code === 0)        return { bg: ['#6b3a10', '#5a2c08', '#4a2000'], accent: '#fbbf24', type: 'sun'     };
+  if (code === 0)        return { bg: ['#0a0a12', '#0d0d18', '#0a0a12'], accent: '#fbbf24', type: 'sun'     };
   if (code <= 3)         return { bg: ['#0d1520', '#1a2540', '#0d1520'], accent: '#fbbf24', type: 'partly'  };
   if (code <= 49)        return { bg: ['#111520', '#1a1f2e', '#111520'], accent: '#94a3b8', type: 'fog'   };
   if (code <= 69)        return { bg: ['#060d1c', '#0d1a30', '#060d1c'], accent: '#60a5fa', type: 'rain'  };
@@ -193,24 +193,7 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   const cy = h * 0.35;
   const r  = 42;
 
-  // Brillance éblouissante — remplit TOUT l'espace
   const pulse = 1 + Math.sin(t * 0.002) * 0.1;
-  const maxR = Math.max(w, h) * 2 * pulse;
-  const glare = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-  glare.addColorStop(0, 'rgba(255,255,240,0.55)');
-  glare.addColorStop(0.03, 'rgba(255,250,220,0.45)');
-  glare.addColorStop(0.08, 'rgba(253,224,140,0.35)');
-  glare.addColorStop(0.15, 'rgba(251,191,36,0.25)');
-  glare.addColorStop(0.35, 'rgba(220,150,30,0.18)');
-  glare.addColorStop(0.6, 'rgba(180,100,15,0.12)');
-  glare.addColorStop(0.85, 'rgba(140,70,10,0.08)');
-  glare.addColorStop(1, 'rgba(120,55,5,0.05)');
-  ctx.fillStyle = glare;
-  ctx.fillRect(0, 0, w, h);
-
-  // Lumière ambiante qui remplit le fond uniformément
-  ctx.fillStyle = 'rgba(180,120,30,0.08)';
-  ctx.fillRect(0, 0, w, h);
 
   // Halo intense autour du disque
   const halo = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 4);
@@ -223,21 +206,6 @@ function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number)
   ctx.fillStyle = halo;
   ctx.fill();
 
-  // Lens flare horizontal
-  const flareW = w * 0.7;
-  const flareH = 8 + Math.sin(t * 0.003) * 3;
-  const flare = ctx.createRadialGradient(cx, cy, 0, cx, cy, flareW / 2);
-  flare.addColorStop(0, 'rgba(255,255,255,0.2)');
-  flare.addColorStop(0.3, 'rgba(251,191,36,0.06)');
-  flare.addColorStop(1, 'rgba(251,191,36,0)');
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(1, flareH / (flareW / 2));
-  ctx.beginPath();
-  ctx.arc(0, 0, flareW / 2, 0, Math.PI * 2);
-  ctx.fillStyle = flare;
-  ctx.fill();
-  ctx.restore();
 
   // Grands rayons lumineux (longs faisceaux)
   const bigRayCount = 12;
