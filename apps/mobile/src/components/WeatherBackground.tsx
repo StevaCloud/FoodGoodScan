@@ -29,9 +29,9 @@ function makeDrops(n: number, w: number, h: number, heavy: boolean): Drop[] {
   return Array.from({ length: n }, () => ({
     x: rand(0, w),
     y: rand(-h, h),
-    speed: heavy ? rand(14, 22) : rand(7, 14),
-    length: heavy ? rand(22, 35) : rand(12, 22),
-    opacity: rand(0.25, heavy ? 0.65 : 0.45),
+    speed: heavy ? rand(18, 28) : rand(7, 14),
+    length: heavy ? rand(28, 45) : rand(12, 22),
+    opacity: rand(0.3, heavy ? 0.75 : 0.45),
   }));
 }
 
@@ -386,7 +386,7 @@ function WeatherCanvas({ code }: { code: number }) {
     const isCloud      = code >= 4  && code <= 49;
 
     // Particules
-    const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 35 : 22, w, h, isHeavy || isStorm) : [];
+    const drops  = (isRain || isStorm) ? makeDrops(isStorm ? 60 : isHeavy ? 80 : 25, w, h, isHeavy || isStorm) : [];
     const flakes = isSnow    ? makeFlakes(28, w, h) : [];
     // Partiellement nuageux : 2-3 nuages légers; couvert : 5 nuages denses
     const visibleH = h;
