@@ -2,7 +2,7 @@
 cmds = ["cd server && npm install"]
 
 [phases.build]
-cmds = ["cd server && npx prisma generate && npx tsc"]
+cmds = ["cd server && ./node_modules/.bin/prisma generate && ./node_modules/.bin/tsc"]
 
 [start]
-cmd = "cd server && npx prisma migrate deploy && node dist/index.js"
+cmd = "cd server && ./node_modules/.bin/prisma migrate deploy && node dist/index.js"
