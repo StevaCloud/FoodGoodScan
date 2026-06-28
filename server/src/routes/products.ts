@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { requirePremium } from '../middleware/subscription';
+import { requirePremium, requireGroceryAddon } from '../middleware/subscription';
 import { getProductByBarcode } from '../services/openfoodfacts';
 import { analyzeAdditives } from '../services/additives';
 import { getWaterInfo, isWaterProduct, getPhRating } from '../services/water';
@@ -12,9 +12,17 @@ const prisma = new PrismaClient();
 
 const FREE_SCAN_LIMIT = 3;
 
+const BARCODE_REGEX = /^\d{8,14}$/;
+
 router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const { barcode } = req.params;
+
+    if (!BARCODE_REGEX.test(barcode)) {
+      res.status(400).json({ error: 'Code-barres invalide (8 à 14 chiffres requis)' });
+      return;
+    }
+
     const userId = req.userId!;
 
     const sub = await prisma.subscription.findUnique({ where: { userId } });
@@ -70,6 +78,42 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
   } catch (error) {
     console.error('Scan error:', error);
     res.status(500).json({ error: 'Erreur lors du scan' });
+  }
+});
+
+router.get('/prices', authenticateToken, requireGroceryAddon, async (req: AuthRequest, res: Response) => {
+  try {
+    const name = (req.query.name as string || '').trim();
+    const postal = (req.query.postal as string) || 'J1H1A1';
+    if (!name) { res.status(400).json({ error: 'name requis' }); return; }
+
+    const searchTerms = name.split(' ').slice(0, 3).join(' ');
+    const url = `https://backflipp.wishabi.com/flipp/items/search?q=${encodeURIComponent(searchTerms)}&postal_code=${encodeURIComponent(postal)}&locale=fr`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    });
+
+    if (!response.ok) { res.json({ prices: [] }); return; }
+
+    const data = await response.json();
+    const items = (data.items || [])
+      .filter((i: any) => i.current_price && i.merchant_name)
+      .slice(0, 8)
+      .map((i: any) => ({
+        merchant: i.merchant_name || '',
+        merchantLogo: i.merchant_logo || '',
+        price: i.current_price,
+        priceText: i.pre_price_text || '',
+        name: i.name || '',
+        saleStory: i.sale_story || '',
+        validUntil: i.valid_to || '',
+        imageUrl: i.clean_image_url || i.clipping_image_url || '',
+      }));
+
+    res.json({ prices: items });
+  } catch (err) {
+    console.error('prices error:', err);
+    res.json({ prices: [] });
   }
 });
 

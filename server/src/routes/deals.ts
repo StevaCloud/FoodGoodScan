@@ -61,7 +61,11 @@ router.get('/flyers', authenticateToken, requireGroceryAddon, async (req: AuthRe
 
 router.get('/flyer/:id', authenticateToken, requireGroceryAddon, async (req: AuthRequest, res: Response) => {
   try {
-    const flyerId = parseInt(req.params.id);
+    const flyerId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(flyerId) || flyerId <= 0) {
+      res.status(400).json({ error: 'ID de circulaire invalide' });
+      return;
+    }
     const postalCode = (req.query.postal_code as string) || 'J1H1A1';
     const items = await getFlyerItems(flyerId, postalCode);
     res.json(items);
@@ -71,7 +75,7 @@ router.get('/flyer/:id', authenticateToken, requireGroceryAddon, async (req: Aut
   }
 });
 
-router.get('/featured', async (req: AuthRequest, res: Response) => {
+router.get('/featured', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const postalCode = (req.query.postal_code as string) || 'J1H1A1';
     const searches = ['poulet', 'fromage', 'fruits', 'lait', 'pain', 'chips', 'yogourt', 'pizza'];

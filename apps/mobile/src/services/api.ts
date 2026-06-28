@@ -75,6 +75,11 @@ export async function createPortalSession() {
   return data;
 }
 
+export async function verifyCheckoutSession(sessionId: string) {
+  const { data } = await api.post('/subscriptions/verify-session', { sessionId });
+  return data;
+}
+
 export async function forgotPassword(email: string) {
   const { data } = await api.post('/auth/forgot-password', { email });
   return data;
@@ -82,6 +87,11 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword(email: string, code: string, newPassword: string) {
   const { data } = await api.post('/auth/reset-password', { email, code, newPassword });
+  return data;
+}
+
+export async function getProductPrices(name: string, postal: string) {
+  const { data } = await api.get('/products/prices', { params: { name, postal } });
   return data;
 }
 

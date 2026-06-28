@@ -33,7 +33,7 @@ async function checkSubscription(req: AuthRequest, res: Response, next: NextFunc
   }
 
   if (requireGrocery && !sub.groceryAddon) {
-    res.status(403).json({ error: 'Add-on Épicerie requis ($1.99/mois)' });
+    res.status(403).json({ error: 'Scan Plus requis ($5.99/mois)', upgradeToScanPlus: true });
     return;
   }
 

@@ -110,7 +110,7 @@ export async function getProductByBarcode(barcode: string): Promise<ProductData 
 
   if (!response.ok) return null;
 
-  const data = await response.json();
+  const data = await response.json() as any;
   if (data.status !== 1 || !data.product) return null;
 
   const p = data.product;

@@ -10,7 +10,7 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
 const translations: Record<Language, Record<string, string>> = {
   fr: {
     // General
-    'app.name': 'FoodCheck',
+    'app.name': 'FoodGoodScan',
     'app.tagline': 'Scanne. Analyse. Mange mieux.',
 
     // Navigation
@@ -182,7 +182,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
 
   en: {
-    'app.name': 'FoodCheck',
+    'app.name': 'FoodGoodScan',
     'app.tagline': 'Scan. Analyze. Eat better.',
     'nav.home': 'Home',
     'nav.scanner': 'Scan',
@@ -332,7 +332,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
 
   es: {
-    'app.name': 'FoodCheck',
+    'app.name': 'FoodGoodScan',
     'app.tagline': 'Escanea. Analiza. Come mejor.',
     'nav.home': 'Inicio',
     'nav.scanner': 'Escanear',
@@ -482,7 +482,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
 
   ar: {
-    'app.name': 'FoodCheck',
+    'app.name': 'FoodGoodScan',
     'app.tagline': 'امسح. حلل. كل أفضل.',
     'nav.home': 'الرئيسية',
     'nav.scanner': 'ماسح',

@@ -1,0 +1,141 @@
+============================================
+  FOODCHECK - GUIDE D'INSTALLATION
+============================================
+
+ÉTAPE 1 : PRÉREQUIS
+--------------------
+Installer ces logiciels sur le nouveau PC :
+
+1. Node.js (version 18 ou plus)
+   -> Télécharger sur : https://nodejs.org
+   -> Prendre la version LTS
+   -> Installer avec les options par défaut
+
+2. Vérifier l'installation :
+   -> Ouvrir un terminal (PowerShell ou CMD)
+   -> Taper : node --version
+   -> Doit afficher v18 ou plus
+
+
+ÉTAPE 2 : COPIER LE PROJET
+----------------------------
+1. Copier tout le dossier "foodcheck" sur le nouveau PC
+   (par clé USB, Google Drive, etc.)
+
+2. Mettre le dossier où tu veux, exemple :
+   C:\Users\TonNom\Desktop\foodcheck
+
+
+ÉTAPE 3 : INSTALLER LES DÉPENDANCES
+--------------------------------------
+Ouvrir un terminal (PowerShell) et taper ces commandes une par une :
+
+1. Installer pnpm :
+   npm install -g pnpm
+
+2. Aller dans le dossier du projet :
+   cd C:\Users\TonNom\Desktop\foodcheck
+
+3. Installer les dépendances du backend :
+   pnpm install
+
+4. Si pnpm demande d'approuver les builds, taper :
+   pnpm approve-builds
+
+5. Refaire l'installation :
+   pnpm install
+
+6. Installer les dépendances de l'app mobile :
+   cd apps\mobile
+   npm install --legacy-peer-deps
+
+7. Retourner à la racine :
+   cd ..\..
+
+
+ÉTAPE 4 : CRÉER LA BASE DE DONNÉES
+-------------------------------------
+1. Aller dans le dossier serveur :
+   cd server
+
+2. Créer la base de données SQLite :
+   npx prisma migrate dev --name init
+
+3. Générer le client Prisma :
+   npx prisma generate
+
+4. Retourner à la racine :
+   cd ..
+
+
+ÉTAPE 5 : LANCER L'APPLICATION
+---------------------------------
+Tu as besoin de 2 terminaux ouverts en même temps.
+
+TERMINAL 1 - Backend (serveur API) :
+   cd C:\Users\TonNom\Desktop\foodcheck\server
+   npx tsx src/index.ts
+
+   -> Doit afficher : "FoodCheck server running on port 3001"
+   -> NE PAS FERMER ce terminal
+
+
+TERMINAL 2 - App mobile/web :
+   cd C:\Users\TonNom\Desktop\foodcheck\apps\mobile
+   npx expo start --web --port 8081
+
+   -> Attendre que ça charge
+   -> Ouvrir Chrome : http://localhost:8081
+
+
+ÉTAPE 6 : TESTER
+------------------
+1. Ouvrir Chrome et aller à : http://localhost:8081
+2. Créer un compte (email + mot de passe)
+3. Remplir le questionnaire d'onboarding
+4. Tester le scanner, les circulaires, le régime, etc.
+
+
+ÉTAPE 7 : ACTIVER LE PREMIUM (pour tester)
+---------------------------------------------
+Ouvrir un 3ème terminal et taper :
+
+   cd C:\Users\TonNom\Desktop\foodcheck\server
+   npx tsx prisma/upgrade-all.ts
+
+   -> Ça active Premium + Épicerie pour tous les comptes
+
+
+TESTER SUR MOBILE
+-------------------
+1. Installer "Expo Go" sur ton téléphone (Play Store / App Store)
+2. Être sur le même WiFi que le PC
+3. Dans le terminal de l'app mobile, taper :
+   npx expo start --tunnel
+4. Scanner le QR code avec Expo Go
+
+
+PROBLÈMES COURANTS
+---------------------
+- "Port déjà utilisé" : Fermer les autres terminaux et réessayer
+- "Module not found" : Refaire npm install dans le bon dossier
+- "Prisma error" : Refaire npx prisma migrate dev --name init
+- L'app ne charge pas sur mobile : Vérifier le WiFi + pare-feu
+
+
+STRUCTURE DU PROJET
+---------------------
+foodcheck/
+  apps/mobile/     -> App React Native (Expo)
+  server/          -> Backend Node.js + SQLite
+  packages/shared/ -> Code partagé
+  package.json     -> Configuration monorepo
+
+
+COMMANDES UTILES
+------------------
+Lancer le backend :          cd server && npx tsx src/index.ts
+Lancer l'app web :           cd apps/mobile && npx expo start --web
+Lancer l'app tunnel :        cd apps/mobile && npx expo start --tunnel
+Upgrader les comptes :       cd server && npx tsx prisma/upgrade-all.ts
+Reset la base de données :   cd server && rm prisma/dev.db && npx prisma migrate dev --name init

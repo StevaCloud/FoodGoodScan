@@ -35,7 +35,7 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
-      { headers: { 'User-Agent': 'FoodCheck/1.0' } }
+      { headers: { 'User-Agent': 'FoodGoodScan/1.0' } }
     );
     const data = await response.json();
     const postcode = data.address?.postcode || '';

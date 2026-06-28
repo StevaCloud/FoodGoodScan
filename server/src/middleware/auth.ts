@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'foodcheck-dev-secret-change-in-prod';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production'
+  ? (() => { throw new Error('JWT_SECRET manquant'); })()
+  : 'foodcheck-dev-secret-change-in-prod');
 
 export interface AuthRequest extends Request {
   userId?: string;

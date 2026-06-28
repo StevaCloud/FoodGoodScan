@@ -6,26 +6,30 @@ import { HealthScoreBadge } from '../components/HealthScoreBadge';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { NutriScoreBar } from '../components/NutriScoreBar';
-import { addFavorite } from '../services/api';
-import axios from 'axios';
+import { addFavorite, getProductPrices } from '../services/api';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 interface PriceDeal {
   merchant: string;
+  merchantLogo: string;
   price: number | null;
+  priceText: string;
   name: string;
+  saleStory: string;
   validUntil: string;
 }
 
 export function ProductScreen() {
   const weatherBg = useWeatherBg();
   const product = useStore((s) => s.lastScannedProduct);
+  const user = useStore((s) => s.user);
   const navigation = useNavigation<any>();
   const postalCode = usePostalCode();
   const [prices, setPrices] = useState<PriceDeal[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
-  const [showPrices, setShowPrices] = useState(false);
   const addGroceryItem = useStore((s) => s.addGroceryItem);
+  const isPremium = user?.plan === 'PREMIUM';
+  const hasScanPlus = isPremium && (user?.groceryAddon === true);
 
   const addToGroceryList = (name: string, store: string, price: number | null) => {
     const n = product?.nutriments || {};
@@ -42,29 +46,14 @@ export function ProductScreen() {
 
   useEffect(() => {
     setPrices([]);
-    setShowPrices(false);
+    if (product && hasScanPlus) {
+      setLoadingPrices(true);
+      getProductPrices(product.name, postalCode || 'J1H1A1')
+        .then((res) => setPrices(res.prices || []))
+        .catch(() => setPrices([]))
+        .finally(() => setLoadingPrices(false));
+    }
   }, [product]);
-
-  const loadPrices = async () => {
-    if (!product) return;
-    if (showPrices) { setShowPrices(false); return; }
-    setLoadingPrices(true);
-    setShowPrices(true);
-    try {
-      const searchName = product.name.split(' ').slice(0, 3).join(' ');
-      const url = `https://backflipp.wishabi.com/flipp/items/search?q=${encodeURIComponent(searchName)}&postal_code=${postalCode}&locale=fr`;
-      const { data } = await axios.get(url);
-      const items = (data.items || [])
-        .filter((i: any) => i.current_price)
-        .map((i: any) => ({
-          merchant: i.merchant_name || '',
-          price: i.current_price,
-          name: i.name || '',
-          validUntil: i.valid_to || '',
-        }));
-      setPrices(items);
-    } catch { setPrices([]); } finally { setLoadingPrices(false); }
-  };
 
   if (!product) {
     return (
@@ -298,39 +287,72 @@ export function ProductScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.priceButton} onPress={loadPrices}>
-        {loadingPrices ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.priceButtonText}>
-            {showPrices ? '✕ Fermer les prix' : '$ Voir les prix spéciaux de cette semaine'}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {showPrices && prices.length > 0 && (
+      {/* ── Prix en circulaire ── */}
+      {hasScanPlus ? (
         <View style={styles.priceSection}>
-          <Text style={styles.priceSectionTitle}>{prices.length} prix trouvés cette semaine</Text>
-          {prices.map((p, i) => (
-            <TouchableOpacity key={i} style={styles.priceCard} onPress={() => addToGroceryList(p.name, p.merchant, p.price)}>
-              <View style={styles.priceInfo}>
-                <Text style={styles.priceStore}>{p.merchant}</Text>
-                <Text style={styles.priceName} numberOfLines={2}>{p.name}</Text>
-                {p.validUntil && (
-                  <Text style={styles.priceDate}>Jusqu'au {new Date(p.validUntil).toLocaleDateString('fr-CA')}</Text>
-                )}
-                <Text style={styles.addToListHint}>Clique pour ajouter à la liste</Text>
-              </View>
-              <Text style={styles.priceValue}>${p.price?.toFixed(2)}</Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.priceSectionHeader}>
+            <Text style={styles.priceSectionTitle}>🏷️ Prix en circulaire</Text>
+            {loadingPrices && <ActivityIndicator size="small" color="#3b82f6" />}
+          </View>
+          {loadingPrices && prices.length === 0 && (
+            <Text style={styles.priceLoading}>Recherche des meilleurs prix...</Text>
+          )}
+          {!loadingPrices && prices.length === 0 && (
+            <Text style={styles.noPriceText}>Aucun prix en circulaire cette semaine</Text>
+          )}
+          {prices.length > 0 && (
+            <>
+              {(() => {
+                const best = [...prices].sort((a, b) => (a.price || 999) - (b.price || 999))[0];
+                return (
+                  <View style={styles.bestPriceCard}>
+                    <View style={styles.bestPriceBadge}><Text style={styles.bestPriceBadgeText}>MEILLEUR PRIX</Text></View>
+                    <Text style={styles.bestPriceStore}>{best.merchant}</Text>
+                    <Text style={styles.bestPriceName} numberOfLines={1}>{best.name}</Text>
+                    {best.saleStory ? <Text style={styles.bestPriceSale}>{best.saleStory}</Text> : null}
+                    <View style={styles.bestPriceRow}>
+                      <Text style={styles.bestPriceValue}>${best.price?.toFixed(2)}</Text>
+                      <TouchableOpacity style={styles.addBtn} onPress={() => addToGroceryList(best.name, best.merchant, best.price)}>
+                        <Text style={styles.addBtnText}>+ Liste</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })()}
+              {prices.slice(1, 5).map((p, i) => (
+                <TouchableOpacity key={i} style={styles.priceCard} onPress={() => addToGroceryList(p.name, p.merchant, p.price)}>
+                  <View style={styles.priceInfo}>
+                    <Text style={styles.priceStore}>{p.merchant}</Text>
+                    <Text style={styles.priceName} numberOfLines={1}>{p.name}</Text>
+                    {p.validUntil && <Text style={styles.priceDate}>Jusqu'au {new Date(p.validUntil).toLocaleDateString('fr-CA')}</Text>}
+                  </View>
+                  <View style={styles.priceRight}>
+                    <Text style={styles.priceValue}>${p.price?.toFixed(2)}</Text>
+                    <Text style={styles.addHint}>+ liste</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </View>
-      )}
-
-      {showPrices && prices.length === 0 && !loadingPrices && (
-        <View style={styles.noPriceSection}>
-          <Text style={styles.noPriceText}>Aucun prix en circulaire cette semaine pour ce produit</Text>
-        </View>
+      ) : isPremium ? (
+        <TouchableOpacity style={styles.scanPlusLocked} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.priceLockedIcon}>🏷️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.priceLockedTitle}>Prix en circulaire</Text>
+            <Text style={styles.priceLockedSub}>Compare les prix de toutes les épiceries • Scan Plus $5.99/mois</Text>
+          </View>
+          <Text style={styles.priceLockedArrow}>›</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.priceLocked} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.priceLockedIcon}>🔒</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.priceLockedTitle}>Prix en circulaire</Text>
+            <Text style={styles.priceLockedSub}>Vois les prix de toutes les épiceries • Scan Plus $5.99/mois</Text>
+          </View>
+          <Text style={styles.priceLockedArrow}>›</Text>
+        </TouchableOpacity>
       )}
 
       <View style={styles.actionButtons}>
@@ -389,19 +411,35 @@ const styles = StyleSheet.create({
   nutriLabel: { color: '#ddd', fontSize: 14, fontWeight: '600' },
   nutriLabelIndent: { color: '#aaa', fontSize: 13, paddingLeft: 16 },
   nutriValue: { color: '#ddd', fontSize: 14, fontWeight: 'bold' },
-  priceButton: { backgroundColor: '#3b82f6', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16 },
-  priceButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  priceSection: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginTop: 12 },
-  priceSectionTitle: { color: '#3b82f6', fontSize: 14, fontWeight: 'bold', marginBottom: 10 },
-  priceCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#2a2a2a' },
+  priceSection: { backgroundColor: '#111827', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#1e3a5f' },
+  priceSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  priceSectionTitle: { color: '#60a5fa', fontSize: 15, fontWeight: 'bold' },
+  priceLoading: { color: '#555', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  bestPriceCard: { backgroundColor: '#0f2d1a', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: '#22c55e' },
+  bestPriceBadge: { backgroundColor: '#22c55e', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginBottom: 6 },
+  bestPriceBadgeText: { color: '#000', fontSize: 10, fontWeight: '900' },
+  bestPriceStore: { color: '#86efac', fontSize: 13, fontWeight: 'bold' },
+  bestPriceName: { color: '#ccc', fontSize: 13, marginTop: 2 },
+  bestPriceSale: { color: '#f59e0b', fontSize: 12, marginTop: 2, fontWeight: '600' },
+  bestPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  bestPriceValue: { color: '#22c55e', fontSize: 28, fontWeight: '900' },
+  addBtn: { backgroundColor: '#22c55e', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  addBtnText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
+  priceCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1f2937' },
   priceInfo: { flex: 1, marginRight: 12 },
-  priceStore: { color: '#3b82f6', fontSize: 12, fontWeight: 'bold' },
-  priceName: { color: '#ccc', fontSize: 13, marginTop: 2 },
-  priceDate: { color: '#ccc', fontSize: 10, marginTop: 2 },
-  priceValue: { color: '#22c55e', fontSize: 22, fontWeight: 'bold' },
-  noPriceSection: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginTop: 12, alignItems: 'center' },
-  noPriceText: { color: '#ccc', fontSize: 13, textAlign: 'center' },
-  addToListHint: { color: '#3b82f6', fontSize: 10, marginTop: 3 },
+  priceStore: { color: '#60a5fa', fontSize: 12, fontWeight: 'bold' },
+  priceName: { color: '#ccc', fontSize: 12, marginTop: 2 },
+  priceDate: { color: '#555', fontSize: 10, marginTop: 2 },
+  priceRight: { alignItems: 'flex-end' },
+  priceValue: { color: '#86efac', fontSize: 18, fontWeight: 'bold' },
+  addHint: { color: '#3b82f6', fontSize: 10, marginTop: 2 },
+  noPriceText: { color: '#555', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  priceLocked: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#1f2937', gap: 12 },
+  scanPlusLocked: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#f59e0b50', gap: 12 },
+  priceLockedIcon: { fontSize: 28 },
+  priceLockedTitle: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  priceLockedSub: { color: '#555', fontSize: 12, marginTop: 2 },
+  priceLockedArrow: { color: '#3b82f6', fontSize: 24, fontWeight: 'bold' },
   additiveCard: { backgroundColor: '#222', borderRadius: 10, padding: 12, marginBottom: 8 },
   additiveHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   additiveCode: { color: '#fff', fontSize: 15, fontWeight: 'bold' },

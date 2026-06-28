@@ -34,6 +34,20 @@ interface WeatherData {
   description: string;
 }
 
+export interface Pet {
+  type: 'dog' | 'cat';
+  name: string;
+  color: string;
+  hunger: number;
+  thirst: number;
+  lastFed: string;
+  lastWatered: string;
+  lastUpdated: string;
+  coins: number;
+  xp: number;
+  stage: 'baby' | 'child' | 'teen' | 'adult';
+}
+
 interface AppState {
   user: User | null;
   token: string | null;
@@ -45,6 +59,7 @@ interface AppState {
   healthProfile: any | null;
   postalCode: string;
   weatherData: WeatherData | null;
+  pet: Pet | null;
 
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -66,6 +81,13 @@ interface AppState {
   quizTotal: number;
   quizCorrect: number;
   updateQuizStats: (score: number, correct: number) => void;
+
+  setPet: (pet: Pet) => void;
+  feedPet: () => void;
+  waterPet: () => void;
+  earnCoins: (n: number) => void;
+  earnXP: (n: number) => void;
+  tickPet: () => void;
 }
 
 const webStorage = createJSONStorage(() =>

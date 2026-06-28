@@ -21,7 +21,7 @@ export async function searchFlippDeals(query: string, postalCode: string = 'J1H1
 
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const items = data.items || [];
 
   return items.map((item: any) => ({
@@ -59,7 +59,7 @@ export async function getGroceryFlyers(postalCode: string = 'J1H1A1'): Promise<F
 
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const flyers = Array.isArray(data) ? data : data.flyers || [];
 
   return flyers
@@ -85,7 +85,7 @@ export async function getFlyerItems(flyerId: number, postalCode: string = 'J1H1A
 
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const items = data.items || [];
 
   return items.map((item: any) => ({

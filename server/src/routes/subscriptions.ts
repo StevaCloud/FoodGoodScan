@@ -113,6 +113,55 @@ router.post('/create-portal-session', authenticateToken, async (req: AuthRequest
   }
 });
 
+router.post('/verify-session', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) { res.status(400).json({ error: 'sessionId requis' }); return; }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+
+    if (session.payment_status !== 'paid' && session.status !== 'complete') {
+      res.status(400).json({ error: 'Paiement non complété' });
+      return;
+    }
+
+    const sub = session.subscription as any;
+    const userId = req.userId!;
+    const plan = sub?.metadata?.plan || 'PREMIUM';
+    const groceryAddon = sub?.metadata?.groceryAddon === 'true';
+    const customerId = session.customer as string;
+    const stripeSubId = sub?.id;
+    const expiresAt = sub?.current_period_end ? new Date(sub.current_period_end * 1000) : null;
+
+    await prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        plan,
+        groceryAddon,
+        stripeCustomerId: customerId,
+        stripeSubId,
+        expiresAt,
+      },
+      update: {
+        plan,
+        groceryAddon,
+        stripeCustomerId: customerId,
+        stripeSubId,
+        expiresAt,
+      },
+    });
+
+    console.log(`Subscription verified for user ${userId}: ${plan}, grocery: ${groceryAddon}`);
+    res.json({ ok: true, plan, groceryAddon });
+  } catch (error: any) {
+    console.error('verify-session error:', error.message);
+    res.status(500).json({ error: 'Erreur de vérification' });
+  }
+});
+
 router.post('/cancel', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const sub = await prisma.subscription.findUnique({

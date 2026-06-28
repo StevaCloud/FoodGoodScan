@@ -12,5 +12,11 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.0"
+  },
+  "dependencies": {
+    "sharp": "^0.35.2"
   }
 }
