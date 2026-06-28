@@ -61,7 +61,7 @@ router.get('/flyers', authenticateToken, requireGroceryAddon, async (req: AuthRe
 
 router.get('/flyer/:id', authenticateToken, requireGroceryAddon, async (req: AuthRequest, res: Response) => {
   try {
-    const flyerId = parseInt(req.params.id, 10);
+    const flyerId = parseInt(String(req.params.id), 10);
     if (!Number.isInteger(flyerId) || flyerId <= 0) {
       res.status(400).json({ error: 'ID de circulaire invalide' });
       return;

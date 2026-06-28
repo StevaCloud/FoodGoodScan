@@ -16,7 +16,7 @@ const BARCODE_REGEX = /^\d{8,14}$/;
 
 router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const { barcode } = req.params;
+    const barcode = String(req.params.barcode);
 
     if (!BARCODE_REGEX.test(barcode)) {
       res.status(400).json({ error: 'Code-barres invalide (8 à 14 chiffres requis)' });
@@ -95,7 +95,7 @@ router.get('/prices', authenticateToken, requireGroceryAddon, async (req: AuthRe
 
     if (!response.ok) { res.json({ prices: [] }); return; }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     const items = (data.items || [])
       .filter((i: any) => i.current_price && i.merchant_name)
       .slice(0, 8)
@@ -119,11 +119,11 @@ router.get('/prices', authenticateToken, requireGroceryAddon, async (req: AuthRe
 
 router.get('/search-name/:name', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const { name } = req.params;
+    const name = String(req.params.name);
     const response = await fetch(
       `https://world.openfoodfacts.net/cgi/search.pl?search_terms=${encodeURIComponent(name)}&json=1&page_size=1&fields=product_name,brands,ingredients_text,allergens_tags,additives_tags,nutriscore_grade,nova_group,nutriments,image_url`
     );
-    const data = await response.json();
+    const data = await response.json() as any;
     const products = data.products || [];
     if (products.length === 0) {
       res.json({ found: false });
@@ -159,7 +159,7 @@ router.get('/history', authenticateToken, requirePremium, async (req: AuthReques
 });
 
 router.post('/favorites/:barcode', authenticateToken, requirePremium, async (req: AuthRequest, res: Response) => {
-  const { barcode } = req.params;
+  const barcode = String(req.params.barcode);
   const product = await getProductByBarcode(barcode);
 
   if (!product) {
@@ -178,7 +178,7 @@ router.post('/favorites/:barcode', authenticateToken, requirePremium, async (req
 
 router.delete('/favorites/:barcode', authenticateToken, requirePremium, async (req: AuthRequest, res: Response) => {
   await prisma.favorite.deleteMany({
-    where: { userId: req.userId, barcode: req.params.barcode },
+    where: { userId: req.userId, barcode: String(req.params.barcode) },
   });
   res.json({ ok: true });
 });
