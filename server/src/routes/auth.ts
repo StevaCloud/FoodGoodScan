@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { generateToken, authenticateToken, AuthRequest } from '../middleware/auth';
@@ -11,7 +11,6 @@ const resetCodes = new Map<string, { code: string; expiresAt: number; attempts: 
 const MAX_RESET_ATTEMPTS = 5;
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const registerSchema = z.object({
   email: z.string().email('Email invalide'),

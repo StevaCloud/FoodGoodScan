@@ -1,10 +1,9 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import stripe from '../services/stripe';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const PRICES: Record<string, string> = {
   premium: process.env.STRIPE_PRICE_PREMIUM || '',

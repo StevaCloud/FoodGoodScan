@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { requirePremium, requireGroceryAddon } from '../middleware/subscription';
 import { getProductByBarcode } from '../services/openfoodfacts';
@@ -8,7 +8,6 @@ import { getWaterInfo, isWaterProduct, getPhRating } from '../services/water';
 import { detectCategory } from '../services/categories';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const FREE_SCAN_LIMIT = 3;
 

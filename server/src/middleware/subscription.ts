@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { AuthRequest } from './auth';
 
-const prisma = new PrismaClient();
 
 export function requirePremium(req: AuthRequest, res: Response, next: NextFunction) {
   checkSubscription(req, res, next, false);

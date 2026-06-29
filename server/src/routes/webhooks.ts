@@ -1,11 +1,10 @@
 import { Router, Request, Response } from 'express';
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import stripe from '../services/stripe';
 import Stripe from 'stripe';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
