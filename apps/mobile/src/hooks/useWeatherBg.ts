@@ -1,8 +1,15 @@
 import { useStore } from '../store/useStore';
 
+function isSunsetNow(): boolean {
+  const d = new Date();
+  const total = d.getHours() * 60 + d.getMinutes();
+  return total >= 18 * 60 + 30 && total < 21 * 60;
+}
+
 export function useWeatherBg(): string {
   const weatherData = useStore((s) => s.weatherData);
   const code = weatherData?.weatherCode ?? 0;
+  if (code <= 3 && isSunsetNow()) return '#7b1f5a';
   if (code <= 3) return '#3b95ed';
   if (code <= 49) return '#1a1f2e';
   if (code <= 69) return '#0d1a30';

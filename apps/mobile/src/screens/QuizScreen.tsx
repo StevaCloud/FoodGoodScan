@@ -17,9 +17,12 @@ const DEAL_SEARCHES = ['poulet', 'fromage', 'fruits', 'lait', 'yogourt', 'beurre
 interface DealReward {
   name: string;
   merchant: string;
+  merchantLogo: string;
   price: number | null;
+  priceText: string;
   imageUrl: string;
   saleStory: string;
+  validUntil: string;
 }
 
 
@@ -252,7 +255,16 @@ export function QuizScreen() {
             .filter((d: any) => d.imageUrl && d.saleStory)
             .sort((a: any, b: any) => (a.price || 999) - (b.price || 999));
           const best = withSale[0] || (Array.isArray(data) ? data : []).filter((d: any) => d.price && d.imageUrl).sort((a: any, b: any) => a.price - b.price)[0];
-          if (best) allDeals.push({ name: best.name, merchant: best.merchant, price: best.price, imageUrl: best.imageUrl, saleStory: best.saleStory || '' });
+          if (best) allDeals.push({
+            name: best.name,
+            merchant: best.merchant,
+            merchantLogo: best.merchantLogo || '',
+            price: best.price,
+            priceText: best.priceText || '',
+            imageUrl: best.imageUrl,
+            saleStory: best.saleStory || '',
+            validUntil: best.validUntil || '',
+          });
         } catch {}
       }
       setDealRewards(allDeals);
@@ -344,7 +356,22 @@ export function QuizScreen() {
                 style={s.dealRewardCard}
                 onPress={() => {
                   if (isPremium) {
-                    navigation.navigate('Soldes', { searchQuery: deal.name.split(/[,|/()]/).shift()?.trim().split(' ').slice(0, 2).join(' ') || deal.name });
+                    navigation.navigate('Soldes', {
+                      dealItem: {
+                        id: i,
+                        name: deal.name,
+                        merchant: deal.merchant,
+                        merchantLogo: deal.merchantLogo,
+                        price: deal.price,
+                        priceText: deal.priceText,
+                        imageUrl: deal.imageUrl,
+                        saleStory: deal.saleStory,
+                        validFrom: '',
+                        validUntil: deal.validUntil,
+                        category: '',
+                      },
+                      returnTo: 'Quiz',
+                    });
                   } else {
                     openCheckout();
                   }

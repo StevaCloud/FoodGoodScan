@@ -97,24 +97,33 @@ export function ProductScreen() {
 
       <NutriScoreBar grade={product.nutriScore} />
 
-      {product.waterInfo && product.waterInfo.ph > 0 && (
+      {product.waterInfo && (
         <View style={styles.waterSection}>
           <Text style={styles.sectionTitle}>Analyse de l'eau</Text>
-          <View style={styles.phRow}>
-            <Text style={styles.phLabel}>pH</Text>
-            <Text style={[styles.phValue, { color: product.waterInfo.ph >= 6.5 && product.waterInfo.ph <= 8.0 ? '#22c55e' : '#f97316' }]}>
-              {product.waterInfo.ph}
-            </Text>
-            <Text style={styles.phRating}>{product.waterInfo.phRating}</Text>
-          </View>
-          <View style={styles.phBar}>
-            <View style={[styles.phIndicator, { left: `${Math.min(Math.max((product.waterInfo.ph - 4) / 7 * 100, 0), 100)}%` }]} />
-            <Text style={[styles.phScale, { left: '0%' }]}>4</Text>
-            <Text style={[styles.phScale, { left: '36%' }]}>6.5</Text>
-            <Text style={[styles.phScale, { left: '57%' }]}>8</Text>
-            <Text style={[styles.phScale, { right: '0%' }]}>11</Text>
-          </View>
-          <Text style={[styles.waterVerdict, { color: product.waterInfo.verdict.includes('Excellent') ? '#22c55e' : product.waterInfo.verdict.includes('Très') ? '#84cc16' : '#eab308' }]}>
+          {product.waterInfo.ph > 0 ? (
+            <>
+              <View style={styles.phRow}>
+                <Text style={styles.phLabel}>pH</Text>
+                <Text style={[styles.phValue, { color: product.waterInfo.ph >= 6.5 && product.waterInfo.ph <= 8.0 ? '#22c55e' : '#f97316' }]}>
+                  {product.waterInfo.ph}
+                </Text>
+                <Text style={styles.phRating}>{product.waterInfo.phRating}</Text>
+              </View>
+              <View style={styles.phBar}>
+                <View style={[styles.phIndicator, { left: `${Math.min(Math.max((product.waterInfo.ph - 4) / 7 * 100, 0), 100)}%` }]} />
+                <Text style={[styles.phScale, { left: '0%' }]}>4</Text>
+                <Text style={[styles.phScale, { left: '36%' }]}>6.5</Text>
+                <Text style={[styles.phScale, { left: '57%' }]}>8</Text>
+                <Text style={[styles.phScale, { right: '0%' }]}>11</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.phRow}>
+              <Text style={styles.phLabel}>pH</Text>
+              <Text style={[styles.phValue, { color: '#888', fontSize: 16 }]}>Non disponible</Text>
+            </View>
+          )}
+          <Text style={[styles.waterVerdict, { color: product.waterInfo.verdict.includes('Excellent') ? '#22c55e' : product.waterInfo.verdict.includes('Très') ? '#84cc16' : product.waterInfo.verdict.includes('non') ? '#888' : '#eab308' }]}>
             Verdict: {product.waterInfo.verdict}
           </Text>
           {product.waterInfo.minerals && (

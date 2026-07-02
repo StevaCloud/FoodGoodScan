@@ -51,7 +51,7 @@ function MainTabs() {
         screenListeners={{ tabPress: () => triggerInterstitial() }}
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 60, paddingBottom: 8 },
+          tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 48, paddingBottom: 4 },
           tabBarActiveTintColor: '#22c55e',
           tabBarInactiveTintColor: '#555',
           tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,

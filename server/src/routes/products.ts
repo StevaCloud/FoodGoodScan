@@ -4,7 +4,7 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { requirePremium, requireGroceryAddon } from '../middleware/subscription';
 import { getProductByBarcode } from '../services/openfoodfacts';
 import { analyzeAdditives } from '../services/additives';
-import { getWaterInfo, isWaterProduct, getPhRating } from '../services/water';
+import { getWaterInfo, getWaterInfoByName, isWaterProduct, getPhRating } from '../services/water';
 import { detectCategory } from '../services/categories';
 
 const router = Router();
@@ -71,7 +71,37 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     }
 
     const additivesDetails = analyzeAdditives(product.additives || []);
-    const waterInfo = getWaterInfo(barcode) || (isWaterProduct(product.name) ? { detected: true, message: 'Eau détectée mais données pH non disponibles pour cette marque' } : null);
+
+    let waterInfo = getWaterInfo(barcode) || getWaterInfoByName(product.name, product.brand);
+    if (!waterInfo && isWaterProduct(product.name)) {
+      const n = product.nutriments as any;
+      const ph = n?.ph_100g ?? n?.ph ?? 0;
+      const calcium = n?.calcium_100g ?? 0;
+      const magnesium = n?.magnesium_100g ?? 0;
+      const sodium = n?.sodium_100g ? Math.round(n.sodium_100g * 1000) : (n?.salt_100g ? Math.round(n.salt_100g * 400) : 0);
+      const potassium = n?.potassium_100g ? Math.round(n.potassium_100g * 1000) : 0;
+      const bicarbonate = n?.bicarbonate_100g ? Math.round(n.bicarbonate_100g * 1000) : 0;
+      const tds = Math.round(calcium + magnesium + sodium + potassium + bicarbonate);
+      waterInfo = {
+        brand: product.brand || product.name,
+        ph,
+        phRating: ph > 0 ? getPhRating(ph).rating : 'Données non disponibles',
+        tds,
+        minerals: {
+          ...(calcium > 0 ? { calcium } : {}),
+          ...(magnesium > 0 ? { magnesium } : {}),
+          ...(sodium > 0 ? { sodium } : {}),
+          ...(potassium > 0 ? { potassium } : {}),
+          ...(bicarbonate > 0 ? { bicarbonate } : {}),
+        },
+        source: 'OpenFoodFacts',
+        verdict: ph > 0
+          ? (ph >= 6.5 && ph <= 8.0 ? 'Bonne' : ph < 6.5 ? 'Attention (eau acide)' : 'Alcaline')
+          : 'Données non disponibles pour cette marque',
+        details: ph === 0 ? ['pH non renseigné pour ce produit sur OpenFoodFacts'] : [],
+      };
+    }
+
     const category = detectCategory(product.name);
     res.json({ ...product, additivesDetails, waterInfo, category, premium: true });
   } catch (error) {

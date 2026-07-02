@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, Image, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useStore } from '../store/useStore';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -54,7 +54,8 @@ export function DealsScreen() {
   const [flyerItems, setFlyerItems] = useState<Deal[]>([]);
   const [loadingFlyers, setLoadingFlyers] = useState(false);
   const [viewMode, setViewMode] = useState<'search' | 'flyers'>('flyers');
-  const returnToTab = useRef<string | null>(null);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [returnToTab, setReturnToTab] = useState<string | null>(null);
 
   const hasAccess = user?.plan === 'PREMIUM' && user?.groceryAddon;
   const { t } = useTranslation();
@@ -66,6 +67,12 @@ export function DealsScreen() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [otherStores, setOtherStores] = useState<any[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
+
+  const goBackToOrigin = () => {
+    setCanGoBack(false);
+    if (returnToTab) { setReturnToTab(null); navigation.navigate(returnToTab); }
+    else navigation.goBack();
+  };
 
   const handleDealClick = async (deal: Deal) => {
     setSelectedDeal(deal);
@@ -103,17 +110,19 @@ export function DealsScreen() {
   useEffect(() => {
     const dealItem = route.params?.dealItem;
     if (!dealItem) return;
-    returnToTab.current = route.params?.returnTo || 'Régime';
+    setCanGoBack(true);
+    setReturnToTab(route.params?.returnTo || null);
     setSelectedDeal(dealItem);
     setOtherStores([]);
     navigation.setParams({ dealItem: undefined, returnTo: undefined });
   }, [route.params?.dealItem]);
 
-  // Recherche automatique depuis un autre écran (ex: DietScreen)
+  // Recherche automatique depuis un autre écran (ex: DietScreen, Quiz)
   useEffect(() => {
     const q = route.params?.searchQuery;
     if (!q) return;
-    returnToTab.current = route.params?.returnTo || 'Régime';
+    setCanGoBack(true);
+    setReturnToTab(route.params?.returnTo || null);
     setViewMode('search');
     setSearch(q);
     setSelectedDeal(null);
@@ -245,15 +254,11 @@ export function DealsScreen() {
         <TouchableOpacity
           onPress={() => {
             setSelectedDeal(null);
-            if (returnToTab.current) {
-              const tab = returnToTab.current;
-              returnToTab.current = null;
-              navigation.navigate(tab);
-            }
+            if (canGoBack) goBackToOrigin();
           }}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>{'<'} {returnToTab.current === 'Liste' ? 'Retour à la liste' : returnToTab.current === 'Régime' ? 'Retour au régime' : returnToTab.current === 'Accueil' ? 'Retour à l\'accueil' : 'Retour'}</Text>
+          <Text style={styles.backText}>{'<'} Retour</Text>
         </TouchableOpacity>
 
         {/* === PREUVE CIRCULAIRE === */}
@@ -414,15 +419,11 @@ export function DealsScreen() {
           onPress={() => {
             setSelectedFlyer(null);
             setFlyerItems([]);
-            if (returnToTab.current) {
-              const tab = returnToTab.current;
-              returnToTab.current = null;
-              navigation.navigate(tab);
-            }
+            if (canGoBack) goBackToOrigin();
           }}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>{'<'} {returnToTab.current ? 'Retour' : 'Retour aux circulaires'}</Text>
+          <Text style={styles.backText}>{'<'} {canGoBack ? 'Retour' : 'Retour aux circulaires'}</Text>
         </TouchableOpacity>
         <Text style={styles.flyerTitle}>{selectedFlyer.merchant}</Text>
         <Text style={styles.flyerSubtitle}>
@@ -448,9 +449,14 @@ export function DealsScreen() {
   return (
     <WeatherScreen><View style={styles.container}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
-      <Text style={styles.title}>{t('deals.title')}</Text>
-      <Text style={styles.subtitle}>{t('deals.subtitle')}</Text>
-
+      {canGoBack && (
+        <TouchableOpacity
+          onPress={() => goBackToOrigin()}
+          style={styles.backButton}
+        >
+          <Text style={styles.backText}>{'<'} Retour</Text>
+        </TouchableOpacity>
+      )}
       <View style={styles.modeToggle}>
         <TouchableOpacity
           style={[styles.modeButton, viewMode === 'flyers' && styles.modeActive]}
@@ -554,27 +560,27 @@ export function DealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: 'transparent' },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, zIndex: 100 },
-  title: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 10 },
-  subtitle: { color: '#22c55e', fontSize: 13, marginBottom: 16, marginTop: 4 },
+  container: { flex: 1, padding: 10, backgroundColor: 'transparent' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, zIndex: 100 },
+  title: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 2 },
+  subtitle: { color: '#22c55e', fontSize: 11, marginBottom: 6, marginTop: 1 },
   searchInput: {
     backgroundColor: '#222',
     color: '#fff',
     borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    marginBottom: 10,
+    padding: 9,
+    fontSize: 14,
+    marginBottom: 7,
     borderWidth: 1,
     borderColor: '#333',
   },
-  quickSearches: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  quickChip: { backgroundColor: '#1a2a1a', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#2a3a2a' },
+  quickSearches: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 6 },
+  quickChip: { backgroundColor: '#1a2a1a', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, borderWidth: 1, borderColor: '#2a3a2a' },
   quickChipActive: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
-  quickChipText: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
+  quickChipText: { color: '#22c55e', fontSize: 12, fontWeight: '600' },
   quickChipTextActive: { color: '#fff', fontWeight: '800' },
-  storeFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  storeChip: { backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  storeFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 },
+  storeChip: { backgroundColor: '#222', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   storeChipActive: { backgroundColor: '#3b82f6' },
   storeChipText: { color: '#ccc', fontSize: 13, fontWeight: '600' },
   storeChipTextActive: { color: '#fff', fontWeight: '800' },
@@ -634,8 +640,8 @@ const styles = StyleSheet.create({
   storeTapHint: { color: '#60a5fa', fontSize: 12, fontWeight: '600', marginTop: 3 },
   miniAddBtn: { backgroundColor: '#22c55e', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   miniAddBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  modeToggle: { flexDirection: 'row', backgroundColor: '#222', borderRadius: 10, marginBottom: 12, padding: 3 },
-  modeButton: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  modeToggle: { flexDirection: 'row', backgroundColor: '#222', borderRadius: 10, marginBottom: 8, padding: 3 },
+  modeButton: { flex: 1, paddingVertical: 7, alignItems: 'center', borderRadius: 8 },
   modeActive: { backgroundColor: '#22c55e' },
   modeText: { color: '#ccc', fontSize: 14, fontWeight: '600' },
   modeTextActive: { color: '#fff' },

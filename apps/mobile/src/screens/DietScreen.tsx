@@ -792,7 +792,8 @@ export function DietScreen() {
                       validFrom: '',
                       validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
                       category: '',
-                    }
+                    },
+                    returnTo: 'Régime',
                   })}
                 >
                   {store.imageUrl ? (

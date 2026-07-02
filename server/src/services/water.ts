@@ -413,6 +413,14 @@ export function getWaterInfo(barcode: string): WaterInfo | null {
   return WATER_DB[barcode] || null;
 }
 
+export function getWaterInfoByName(productName: string, brand: string): WaterInfo | null {
+  const search = `${productName} ${brand}`.toLowerCase();
+  const entry = Object.values(WATER_DB).find(w =>
+    w.brand && w.ph > 0 && search.includes(w.brand.toLowerCase().split(' ')[0])
+  );
+  return entry || null;
+}
+
 export function isWaterProduct(productName: string, categories?: string): boolean {
   const name = (productName || '').toLowerCase();
   const cats = (categories || '').toLowerCase();

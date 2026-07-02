@@ -14,8 +14,21 @@ interface Cloud { x: number; y: number; w: number; h: number; speed: number; opa
 const rand  = (min: number, max: number) => min + Math.random() * (max - min);
 const randInt = (min: number, max: number) => Math.floor(rand(min, max));
 
+// ─── Détection heure ─────────────────────────────────────────────────────────
+function isNightTime(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 21 || hour < 6;
+}
+
+function isSunsetTime(): boolean {
+  const d = new Date();
+  const total = d.getHours() * 60 + d.getMinutes();
+  return total >= 18 * 60 + 30 && total < 21 * 60;
+}
+
 // ─── Thème par code météo ─────────────────────────────────────────────────────
 function getTheme(code: number) {
+  if (code <= 3 && isSunsetTime()) return { bg: ['#0a0a2e', '#6b1f5a', '#f39c12'], accent: '#f39c12', type: 'sunset' };
   if (code === 0)        return { bg: ['#3b95ed', '#3b95ed', '#3b95ed'], accent: '#fbbf24', type: 'sun'     };
   if (code <= 3)         return { bg: ['#3b95ed', '#3b95ed', '#3b95ed'], accent: '#fbbf24', type: 'partly'  };
   if (code <= 49)        return { bg: ['#111520', '#1a1f2e', '#111520'], accent: '#94a3b8', type: 'fog'   };
@@ -122,11 +135,6 @@ function drawSnow(ctx: CanvasRenderingContext2D, flakes: Flake[], w: number, h: 
   });
 }
 
-function isNightTime(): boolean {
-  const hour = new Date().getHours();
-  return hour >= 20 || hour < 6;
-}
-
 function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const cx = w * 0.78;
   const cy = h * 0.32;
@@ -218,6 +226,91 @@ function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: n
     ctx.fill();
     ctx.globalAlpha = 1;
   });
+}
+
+function drawSunset(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+  // Ciel dégradé coucher de soleil
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0,    '#0a0820');
+  sky.addColorStop(0.25, '#1a0d3e');
+  sky.addColorStop(0.48, '#7b1f5a');
+  sky.addColorStop(0.65, '#c0392b');
+  sky.addColorStop(0.8,  '#e67e22');
+  sky.addColorStop(1,    '#f5a623');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
+
+  const sunX = w * 0.5;
+  const sunY = h * 0.80;
+  const sunR = 70;
+
+  // Grand halo orange
+  const halo = ctx.createRadialGradient(sunX, sunY, sunR * 0.5, sunX, sunY, sunR * 8);
+  halo.addColorStop(0,   'rgba(255,180,40,0.35)');
+  halo.addColorStop(0.25,'rgba(255,80,10,0.18)');
+  halo.addColorStop(0.6, 'rgba(200,50,0,0.06)');
+  halo.addColorStop(1,   'rgba(200,50,0,0)');
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 8, 0, Math.PI * 2);
+  ctx.fillStyle = halo;
+  ctx.fill();
+
+  // Rayon horizontal (reflet sur horizon)
+  const ray = ctx.createLinearGradient(0, sunY - 4, 0, sunY + 4);
+  ray.addColorStop(0, 'rgba(255,180,40,0)');
+  ray.addColorStop(0.5, 'rgba(255,180,40,0.25)');
+  ray.addColorStop(1, 'rgba(255,180,40,0)');
+  ctx.fillStyle = ray;
+  ctx.fillRect(0, sunY - 4, w, 8);
+
+  // Disque solaire bas (partiellement caché par l'horizon)
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunR);
+  sunGrad.addColorStop(0, '#fffde0');
+  sunGrad.addColorStop(0.35, '#ffcc00');
+  sunGrad.addColorStop(0.7, '#ff8000');
+  sunGrad.addColorStop(1, '#e03000');
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.fillStyle = sunGrad;
+  ctx.shadowBlur = 60;
+  ctx.shadowColor = 'rgba(255,100,0,0.9)';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Nuages roses/oranges en silhouette
+  const sunsetClouds = [
+    { x: w * 0.08, y: h * 0.52, s: 1.1, tint: 'rgba(255,120,60,0.55)' },
+    { x: w * 0.38, y: h * 0.46, s: 1.4, tint: 'rgba(255,80,40,0.45)'  },
+    { x: w * 0.68, y: h * 0.50, s: 1.0, tint: 'rgba(255,140,80,0.5)'  },
+    { x: w * 0.82, y: h * 0.56, s: 0.9, tint: 'rgba(220,80,60,0.4)'   },
+  ];
+  sunsetClouds.forEach((c, i) => {
+    const drift = Math.sin(t * 0.0002 + i * 1.3) * 10;
+    const cx2 = c.x + drift;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = c.tint;
+    ctx.beginPath();
+    ctx.ellipse(cx2,              c.y,           65 * c.s, 22 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 - 45 * c.s,  c.y + 5,       48 * c.s, 19 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 + 50 * c.s,  c.y + 3,       52 * c.s, 17 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx2 + 12 * c.s,  c.y - 16 * c.s,42 * c.s, 22 * c.s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Quelques étoiles naissantes en haut
+  const stars = [[0.08,0.05],[0.22,0.10],[0.55,0.07],[0.80,0.04],[0.93,0.12]];
+  stars.forEach(([sx, sy], i) => {
+    const fade = (Math.sin(t * 0.0015 + i * 1.9) + 1) / 2 * 0.55;
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = '#ffe';
+    ctx.beginPath();
+    ctx.arc(sx * w, sy * h, 1, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
 }
 
 function drawSun(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
@@ -377,6 +470,7 @@ function WeatherCanvas({ code }: { code: number }) {
     const ctx = canvas.getContext('2d')!;
     const theme        = getTheme(code);
     const night        = isNightTime();
+    const sunset       = isSunsetTime();
     const isRain       = code >= 50 && code <= 69;
     const isHeavy      = code >= 63 && code <= 69;
     const isStorm      = code >= 80 && code <= 99;
@@ -410,25 +504,28 @@ function WeatherCanvas({ code }: { code: number }) {
       lastTime = now;
       elapsed += dt;
 
-      // Fond dégradé — nuit = plus sombre/bleu
-      const bg = ctx.createLinearGradient(0, 0, 0, h);
-      if (night && isSun) {
-        bg.addColorStop(0, '#020818');
-        bg.addColorStop(1, '#050d28');
-      } else if (code <= 3) {
-        bg.addColorStop(0, '#3b95ed');
-        bg.addColorStop(1, '#3b95ed');
-      } else {
-        const [c1, c2] = [theme.bg[0], theme.bg[1]];
-        bg.addColorStop(0, c2);
-        bg.addColorStop(1, c1);
+      // Fond dégradé — coucher de soleil gère son propre fond dans drawSunset
+      if (!( isSun && sunset )) {
+        const bg = ctx.createLinearGradient(0, 0, 0, h);
+        if (night && isSun) {
+          bg.addColorStop(0, '#020818');
+          bg.addColorStop(1, '#050d28');
+        } else if (code <= 3) {
+          bg.addColorStop(0, '#3b95ed');
+          bg.addColorStop(1, '#3b95ed');
+        } else {
+          const [c1, c2] = [theme.bg[0], theme.bg[1]];
+          bg.addColorStop(0, c2);
+          bg.addColorStop(1, c1);
+        }
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
       }
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, w, h);
 
-      // Dessin météo — nuit = lune + étoiles, jour = soleil
-      if (isSun && night)  drawMoon(ctx, w, h, elapsed);
-      if (isSun && !night) drawSun(ctx, w, h, elapsed);
+      // Dessin météo — coucher de soleil, nuit, ou jour
+      if (isSun && sunset) drawSunset(ctx, w, h, elapsed);
+      else if (isSun && night)  drawMoon(ctx, w, h, elapsed);
+      else if (isSun && !night) drawSun(ctx, w, h, elapsed);
       if (isRain || isStorm) drawRain(ctx, drops, w, h, isHeavy || isStorm);
       if (isSnow)  drawSnow(ctx, flakes, w, h, elapsed);
       if (code === 0 || isPartly || isCloud || isStorm) clouds.forEach(c => drawCloud(ctx, c, w, code === 0 || isPartly));
@@ -534,7 +631,8 @@ export const WeatherBackground = WeatherBackgroundInner;
 export function WeatherScreen({ children }: { children: React.ReactNode }) {
   const weatherData = useStore((s) => s.weatherData);
   const code = weatherData?.weatherCode ?? 0;
-  const fallbackBg = code <= 3 ? '#3b95ed' : code <= 49 ? '#1a1f2e' : code <= 69 ? '#0d1a30' : code <= 79 ? '#101929' : '#080d1f';
+  const sunset = isSunsetTime();
+  const fallbackBg = (code <= 3 && sunset) ? '#7b1f5a' : code <= 3 ? '#3b95ed' : code <= 49 ? '#1a1f2e' : code <= 69 ? '#0d1a30' : code <= 79 ? '#101929' : '#080d1f';
   return (
     <View style={[wsStyles.root, { backgroundColor: fallbackBg }]}>
       <View style={wsStyles.bg}>

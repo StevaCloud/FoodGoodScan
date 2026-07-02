@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: foodgoodscan-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx tsx src/index.ts
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM_GROCERY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: CLIENT_URL
+        sync: false
