@@ -9,6 +9,8 @@ import { subscriptionRouter } from './routes/subscriptions';
 import { dealRouter } from './routes/deals';
 import { categoryRouter } from './routes/categories';
 import { webhookRouter } from './routes/webhooks';
+import { couponsRouter } from './routes/coupons';
+import { nutritionRouter } from './routes/nutrition';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   console.error('FATAL: JWT_SECRET manquant en production');
@@ -63,6 +65,8 @@ app.use('/api/products', productRouter);
 app.use('/api/subscriptions', subscriptionRouter);
 app.use('/api/deals', dealRouter);
 app.use('/api/categories', categoryRouter);
+app.use('/api/coupons', couponsRouter);
+app.use('/api/nutrition', nutritionRouter);
 
 const ALLOWED_IMAGE_HOSTS = ['backflipp.wishabi.com', 'images.flippenterprise.com', 'assets.flippenterprise.com', 'f.wishabi.net'];
 

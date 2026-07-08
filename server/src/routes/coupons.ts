@@ -92,6 +92,10 @@ router.post('/use/:userCouponId', authenticateToken, async (req: AuthRequest, re
   res.json({ ok: true, userCoupon: updated });
 });
 
+const DAILY_QUIZ_LIMIT = 3;
+// userId -> { date: string, count: number }
+const quizTracker = new Map<string, { date: string; count: number }>();
+
 // Ajouter des points depuis le client (quiz, scan, etc.)
 router.post('/earn', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { action, amount } = req.body as { action?: string; amount?: number };
@@ -99,7 +103,17 @@ router.post('/earn', authenticateToken, async (req: AuthRequest, res: Response) 
 
   let pts = 0;
   if (action === 'quiz' && typeof amount === 'number' && amount > 0) {
-    pts = Math.min(amount, 30); // max 30 pts par quiz (10 questions x 3 pts)
+    const today = new Date().toISOString().slice(0, 10);
+    const entry = quizTracker.get(userId);
+    if (entry && entry.date === today && entry.count >= DAILY_QUIZ_LIMIT) {
+      res.status(429).json({ error: `Maximum ${DAILY_QUIZ_LIMIT} quiz par jour` });
+      return;
+    }
+    quizTracker.set(userId, {
+      date: today,
+      count: entry?.date === today ? entry.count + 1 : 1,
+    });
+    pts = Math.min(amount, 30);
   } else if (action === 'scan') {
     pts = POINTS.scan;
   } else if (action === 'dailyLogin') {

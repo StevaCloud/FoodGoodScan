@@ -13,7 +13,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://TON-APP.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "http://165.22.8.129:3001/api"
       }
     }
   },

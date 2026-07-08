@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { usePostalCode } from '../hooks/usePostalCode';
+import { fetchNutritionByName } from '../utils/fetchNutrition';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
@@ -620,6 +621,7 @@ export function DietScreen() {
   const [loadingStores, setLoadingStores] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const addGroceryItem = useStore((s) => s.addGroceryItem);
+  const updateGroceryItemNutrition = useStore((s) => s.updateGroceryItemNutrition);
 
   const handleDealClick = async (item: DealItem) => {
     setSelectedDeal(item);
@@ -823,8 +825,9 @@ export function DietScreen() {
                     style={[styles.storeAddBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
                     onPress={() => {
                       if (isPremium) {
-                        addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
+                        const sid = addGroceryItem(store.name, store.merchant, store.price, undefined, store.imageUrl || selectedDeal?.imageUrl || '');
                         showToast(`${store.name} ajouté à ta liste`);
+                        fetchNutritionByName(store.name).then((n) => { if (n) updateGroceryItemNutrition(sid, n); });
                       } else {
                         openCheckout();
                       }
@@ -847,8 +850,9 @@ export function DietScreen() {
           style={[styles.addListBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
           onPress={() => {
             if (isPremium) {
-              addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price, undefined, selectedDeal.imageUrl);
+              const did = addGroceryItem(selectedDeal.name, selectedDeal.merchant, selectedDeal.price, undefined, selectedDeal.imageUrl);
               showToast(`${selectedDeal.name} ajouté à ta liste`);
+              fetchNutritionByName(selectedDeal.name).then((n) => { if (n) updateGroceryItemNutrition(did, n); });
               setSelectedDeal(null);
             } else {
               openCheckout();
@@ -1066,8 +1070,9 @@ export function DietScreen() {
                       style={[styles.dealAddBtn, !isPremium && { backgroundColor: '#f59e0b' }]}
                       onPress={() => {
                         if (isPremium) {
-                          addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
+                          const iid = addGroceryItem(item.name, item.merchant, item.price, undefined, item.imageUrl);
                           showToast(`${item.name} ajouté à ta liste`);
+                          fetchNutritionByName(item.name).then((n) => { if (n) updateGroceryItemNutrition(iid, n); });
                         } else {
                           openCheckout();
                         }

@@ -50,6 +50,11 @@ router.post('/create-checkout-session', authenticateToken, async (req: AuthReque
       return;
     }
 
+    if (!user.phone) {
+      res.status(400).json({ error: 'PHONE_REQUIRED', message: 'Un numéro de téléphone est requis pour souscrire. Ajoutez-en un dans votre profil.' });
+      return;
+    }
+
     let customerId = user.subscription?.stripeCustomerId;
 
     if (!customerId) {

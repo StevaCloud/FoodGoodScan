@@ -12,6 +12,7 @@ export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,7 +35,7 @@ export function LoginScreen() {
     try {
       const data = mode === 'login'
         ? await login(email, password)
-        : await register(email, password, name);
+        : await register(email, password, name, phone || undefined);
       setToken(data.token);
       setAuthToken(data.token);
       setUser(data.user);
@@ -232,6 +233,23 @@ export function LoginScreen() {
           />
         )}
 
+        {mode === 'register' && (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Téléphone (optionnel)"
+              placeholderTextColor="#666"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+            />
+            <Text style={styles.phoneHint}>
+              Requis pour souscrire un abonnement. Peut être ajouté plus tard dans votre profil.
+            </Text>
+          </>
+        )}
+
         <TextInput
           style={styles.input}
           placeholder={t('login.email')}
@@ -326,4 +344,5 @@ const styles = StyleSheet.create({
   switchText: { color: '#22c55e', textAlign: 'center', marginTop: 20, fontSize: 14 },
   alreadyHaveCode: { marginTop: 12 },
   alreadyHaveCodeText: { color: '#888', textAlign: 'center', fontSize: 13 },
+  phoneHint: { color: '#555', fontSize: 12, textAlign: 'center', marginTop: -4, marginBottom: 12 },
 });

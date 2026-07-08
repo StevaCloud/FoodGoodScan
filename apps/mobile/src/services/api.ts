@@ -24,9 +24,14 @@ export async function login(email: string, password: string) {
   return data;
 }
 
-export async function register(email: string, password: string, name?: string) {
-  const { data } = await api.post('/auth/register', { email, password, name });
+export async function register(email: string, password: string, name?: string, phone?: string) {
+  const { data } = await api.post('/auth/register', { email, password, name, phone: phone || undefined });
   setAuthToken(data.token);
+  return data;
+}
+
+export async function updatePhone(phone: string) {
+  const { data } = await api.put('/auth/phone', { phone });
   return data;
 }
 
@@ -80,6 +85,14 @@ export async function verifyCheckoutSession(sessionId: string) {
   return data;
 }
 
+export async function logout() {
+  try {
+    await api.post('/auth/logout');
+  } catch {
+    // Token déjà invalide ou réseau offline — on déconnecte quand même localement
+  }
+}
+
 export async function forgotPassword(email: string) {
   const { data } = await api.post('/auth/forgot-password', { email });
   return data;
@@ -105,6 +118,36 @@ export async function getDeals(store?: string, search?: string) {
 
 export async function getDealStores() {
   const { data } = await api.get('/deals/stores');
+  return data;
+}
+
+export async function getLocalDeals(postalCode: string) {
+  const { data } = await api.get('/deals/local', { params: { postal_code: postalCode } });
+  return data;
+}
+
+export async function getCoupons() {
+  const { data } = await api.get('/coupons');
+  return data;
+}
+
+export async function getRealCoupons() {
+  const { data } = await api.get('/coupons/real');
+  return data;
+}
+
+export async function getMyCoupons() {
+  const { data } = await api.get('/coupons/my');
+  return data;
+}
+
+export async function claimCoupon(couponId: string) {
+  const { data } = await api.post(`/coupons/claim/${couponId}`);
+  return data;
+}
+
+export async function useCoupon(userCouponId: string) {
+  const { data } = await api.post(`/coupons/use/${userCouponId}`);
   return data;
 }
 

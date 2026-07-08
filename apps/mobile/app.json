@@ -22,7 +22,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -34,13 +35,13 @@
         {
           "cameraPermission": "FoodGoodScan utilise la caméra pour scanner les codes-barres des produits."
         }
-      ],
-      [
-        "react-native-applovin-max",
-        {
-          "sdkKey": "VOTRE_SDK_KEY_APPLOVIN_ICI"
-        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6fcf68c2-7836-4864-81a7-97873415f73e"
+      }
+    },
+    "owner": "staworkyss-organization"
   }
 }

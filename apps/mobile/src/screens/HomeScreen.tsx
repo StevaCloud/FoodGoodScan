@@ -12,6 +12,7 @@ import { calculateWaterIntake } from '../services/waterIntakeService';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { AdBanner, AdBannerSmall } from '../components/AdBanner';
+import { fetchNutritionByName } from '../utils/fetchNutrition';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -61,6 +62,7 @@ export function HomeScreen() {
   const healthProfile = useStore((s) => s.healthProfile);
   const foodPreferences = useStore((s) => s.foodPreferences);
   const addGroceryItem = useStore((s) => s.addGroceryItem);
+  const updateGroceryItemNutrition = useStore((s) => s.updateGroceryItemNutrition);
   const { t } = useTranslation();
   const postalCode = usePostalCode();
   const [deals, setDeals] = useState<DealSlide[]>([]);
@@ -240,8 +242,9 @@ export function HomeScreen() {
                     style={styles.sugAddBtn}
                     onPress={(e) => {
                       e.stopPropagation?.();
-                      addGroceryItem(s.name, s.merchant, s.price, undefined, s.imageUrl);
+                      const hid = addGroceryItem(s.name, s.merchant, s.price, undefined, s.imageUrl);
                       showToast(`${s.name} ajouté à ta liste`);
+                      fetchNutritionByName(s.name).then((n) => { if (n) updateGroceryItemNutrition(hid, n); });
                     }}
                   >
                     <Text style={styles.sugAddText}>+ Liste</Text>

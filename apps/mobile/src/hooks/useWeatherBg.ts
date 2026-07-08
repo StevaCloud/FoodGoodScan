@@ -6,6 +6,11 @@ function isSunsetNow(): boolean {
   return total >= 18 * 60 + 30 && total < 21 * 60;
 }
 
+function isNightNow(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 21 || hour < 6;
+}
+
 export function useWeatherBg(): string {
   const weatherData = useStore((s) => s.weatherData);
   const code = weatherData?.weatherCode ?? 0;
@@ -20,9 +25,9 @@ export function useWeatherBg(): string {
 export function useWeatherText(): { title: string; body: string } {
   const weatherData = useStore((s) => s.weatherData);
   const code = weatherData?.weatherCode ?? 0;
-  const isLight = code <= 3;
+  const isDayClear = code <= 3 && !isSunsetNow() && !isNightNow();
   return {
-    title: isLight ? '#000' : '#fff',
-    body: isLight ? '#222' : '#aaa',
+    title: isDayClear ? '#000' : '#fff',
+    body: isDayClear ? '#222' : '#fff',
   };
 }

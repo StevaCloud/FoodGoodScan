@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { generateToken, authenticateToken, AuthRequest } from '../middleware/auth';
 import { sendResetCode } from '../services/email';
+import { addPoints, POINTS } from './coupons';
 
 // In-memory reset codes: email -> { code, expiresAt, attempts }
 const resetCodes = new Map<string, { code: string; expiresAt: number; attempts: number }>();
@@ -16,6 +17,7 @@ const registerSchema = z.object({
   email: z.string().email('Email invalide'),
   password: z.string().min(6, 'Mot de passe minimum 6 caractères'),
   name: z.string().optional(),
+  phone: z.string().min(7, 'Numéro de téléphone invalide').optional(),
 });
 
 const loginSchema = z.object({
@@ -25,12 +27,20 @@ const loginSchema = z.object({
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, name } = registerSchema.parse(req.body);
+    const { email, password, name, phone } = registerSchema.parse(req.body);
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       res.status(400).json({ error: 'Email déjà utilisé' });
       return;
+    }
+
+    if (phone) {
+      const existingPhone = await prisma.user.findUnique({ where: { phone } });
+      if (existingPhone) {
+        res.status(400).json({ error: 'Ce numéro de téléphone est déjà associé à un compte' });
+        return;
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -43,6 +53,7 @@ router.post('/register', async (req: Request, res: Response) => {
         email,
         password: hashedPassword,
         name,
+        phone: phone || null,
         subscription: {
           create: {
             plan: 'PREMIUM',
@@ -53,10 +64,10 @@ router.post('/register', async (req: Request, res: Response) => {
       },
     });
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.tokenVersion);
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name, phone: user.phone },
       trial: { days: 14, endsAt: trialEndsAt },
     });
   } catch (error) {
@@ -82,10 +93,16 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.tokenVersion);
     const sub = user.subscription;
     const isExpired = sub?.expiresAt && sub.expiresAt < new Date();
     const effectivePlan = (isExpired ? 'FREE' : sub?.plan) || 'FREE';
+
+    // Points de connexion quotidienne
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.lastLoginDate !== today) {
+      await prisma.user.update({ where: { id: user.id }, data: { lastLoginDate: today, points: { increment: POINTS.dailyLogin } } });
+    }
 
     res.json({
       token,
@@ -93,6 +110,7 @@ router.post('/login', async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        phone: user.phone,
         plan: effectivePlan,
         groceryAddon: isExpired ? false : (sub?.groceryAddon || false),
         trialEndsAt: sub?.expiresAt || null,
@@ -107,14 +125,27 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
+// Déconnexion : invalide tous les tokens existants de cet utilisateur
+router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    res.json({ message: 'Déconnecté avec succès' });
+  } catch {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    if (!email) { res.status(400).json({ error: 'Email requis' }); return; }
+    if (!email || typeof email !== 'string') { res.status(400).json({ error: 'Email requis' }); return; }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      // Don't reveal whether email exists
+      // Ne pas révéler si l'email existe
       res.json({ message: 'Si cet email existe, un code a été envoyé.' });
       return;
     }
@@ -128,10 +159,11 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
         res.json({ message: 'Un code a été envoyé à ton adresse email.' });
       } catch (emailError: any) {
         console.error('Erreur envoi email:', emailError?.message || emailError);
-        res.json({ message: 'Code généré (erreur email)', code });
+        res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email. Réessaie plus tard.' });
       }
     } else {
-      res.json({ message: 'Code généré', code });
+      console.warn(`[DEV] Reset code for ${email}: ${code}`);
+      res.json({ message: 'Un code a été envoyé à ton adresse email.' });
     }
   } catch (err: any) {
     console.error('forgot-password error:', err?.message || err);
@@ -168,7 +200,11 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({ where: { email }, data: { password: hashedPassword } });
+    // Invalide tous les tokens existants en incrémentant tokenVersion
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword, tokenVersion: { increment: 1 } },
+    });
     resetCodes.delete(email);
 
     res.json({ message: 'Mot de passe réinitialisé avec succès' });
@@ -180,7 +216,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 router.delete('/account', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    // Supprime toutes les données de l'utilisateur (cascade via Prisma)
     await prisma.scanHistory.deleteMany({ where: { userId } });
     await prisma.favorite.deleteMany({ where: { userId } });
     await prisma.subscription.deleteMany({ where: { userId } });
@@ -191,11 +226,34 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res: Respo
   }
 });
 
+router.put('/phone', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { phone } = req.body;
+    if (!phone || typeof phone !== 'string' || phone.trim().length < 7) {
+      res.status(400).json({ error: 'Numéro de téléphone invalide (minimum 7 chiffres)' });
+      return;
+    }
+    const normalized = phone.trim();
+    const conflict = await prisma.user.findUnique({ where: { phone: normalized } });
+    if (conflict && conflict.id !== req.userId) {
+      res.status(400).json({ error: 'Ce numéro de téléphone est déjà associé à un compte' });
+      return;
+    }
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: { phone: normalized },
+    });
+    res.json({ phone: updated.phone });
+  } catch {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
     include: { subscription: true },
-    omit: { password: true },
+    omit: { password: true, tokenVersion: true },
   });
 
   if (!user) {

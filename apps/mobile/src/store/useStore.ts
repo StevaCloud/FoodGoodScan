@@ -6,6 +6,7 @@ interface User {
   id: string;
   email: string;
   name: string | null;
+  phone: string | null;
   plan: 'FREE' | 'PREMIUM';
   groceryAddon: boolean;
   trialEndsAt: string | null;
@@ -32,6 +33,7 @@ interface WeatherData {
   weatherCode: number;
   icon: string;
   description: string;
+  city: string;
 }
 
 export interface Pet {
@@ -66,7 +68,8 @@ interface AppState {
   setLastScannedProduct: (product: any) => void;
   logout: () => void;
   setWeatherData: (data: WeatherData | null) => void;
-  addGroceryItem: (name: string, store: string, price: number | null, nutrition?: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }, imageUrl?: string) => void;
+  addGroceryItem: (name: string, store: string, price: number | null, nutrition?: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }, imageUrl?: string) => string;
+  updateGroceryItemNutrition: (id: string, nutrition: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }) => void;
   toggleGroceryItem: (id: string) => void;
   removeGroceryItem: (id: string) => void;
   clearGroceryList: () => void;
@@ -77,10 +80,17 @@ interface AppState {
   foodPreferences: string[];
   setFoodPreferences: (prefs: string[]) => void;
 
+  dailyCalorieGoal: number;
+  setDailyCalorieGoal: (goal: number) => void;
+
   quizBestScore: number;
   quizTotal: number;
   quizCorrect: number;
   updateQuizStats: (score: number, correct: number) => void;
+
+  savedDeals: any[];
+  saveDeal: (deal: any) => void;
+  removeSavedDeal: (id: string) => void;
 
   setPet: (pet: Pet) => void;
   feedPet: () => void;
@@ -108,9 +118,11 @@ export const useStore = create<AppState>()(
       postalCode: '',
       foodPreferences: [],
       weatherData: null,
+      dailyCalorieGoal: 2000,
       quizBestScore: 0,
       quizTotal: 0,
       quizCorrect: 0,
+      savedDeals: [],
 
       setUser: (user) => set({ user, isLoggedIn: !!user }),
       setToken: (token) => set({ token }),
@@ -118,22 +130,32 @@ export const useStore = create<AppState>()(
       logout: () => set({ user: null, token: null, isLoggedIn: false }),
       setWeatherData: (weatherData) => set({ weatherData }),
 
-      addGroceryItem: (name, store, price, nutrition, imageUrl) => set((state) => ({
-        groceryList: [...state.groceryList, {
-          id: Date.now().toString(),
-          name,
-          store,
-          price,
-          imageUrl: imageUrl || '',
-          checked: false,
-          addedAt: new Date().toISOString(),
-          calories: nutrition?.calories || 0,
-          fat: nutrition?.fat || 0,
-          sugars: nutrition?.sugars || 0,
-          proteins: nutrition?.proteins || 0,
-          salt: nutrition?.salt || 0,
-          healthScore: nutrition?.healthScore || 0,
-        }],
+      addGroceryItem: (name, store, price, nutrition, imageUrl) => {
+        const id = Date.now().toString();
+        set((state) => ({
+          groceryList: [...state.groceryList, {
+            id,
+            name,
+            store,
+            price,
+            imageUrl: imageUrl || '',
+            checked: false,
+            addedAt: new Date().toISOString(),
+            calories: nutrition?.calories || 0,
+            fat: nutrition?.fat || 0,
+            sugars: nutrition?.sugars || 0,
+            proteins: nutrition?.proteins || 0,
+            salt: nutrition?.salt || 0,
+            healthScore: nutrition?.healthScore || 0,
+          }],
+        }));
+        return id;
+      },
+
+      updateGroceryItemNutrition: (id, nutrition) => set((state) => ({
+        groceryList: state.groceryList.map((item) =>
+          item.id === id ? { ...item, ...nutrition } : item
+        ),
       })),
 
       toggleGroceryItem: (id) => set((state) => ({
@@ -147,6 +169,7 @@ export const useStore = create<AppState>()(
       })),
 
       clearGroceryList: () => set({ groceryList: [] }),
+      setDailyCalorieGoal: (goal) => set({ dailyCalorieGoal: goal }),
       setLanguage: (lang) => set({ language: lang }),
       setOnboarded: (v) => set({ onboarded: v }),
       setHealthProfile: (profile) => set({ healthProfile: profile }),
@@ -157,6 +180,15 @@ export const useStore = create<AppState>()(
         quizBestScore: Math.max(state.quizBestScore, score),
         quizTotal: state.quizTotal + 1,
         quizCorrect: state.quizCorrect + correct,
+      })),
+
+      saveDeal: (deal) => set((state) => {
+        const exists = state.savedDeals.some((d) => d.id === deal.id);
+        if (exists) return {};
+        return { savedDeals: [deal, ...state.savedDeals] };
+      }),
+      removeSavedDeal: (id) => set((state) => ({
+        savedDeals: state.savedDeals.filter((d) => d.id !== id),
       })),
 
     }),
@@ -176,6 +208,7 @@ export const useStore = create<AppState>()(
         quizBestScore: state.quizBestScore,
         quizTotal: state.quizTotal,
         quizCorrect: state.quizCorrect,
+        savedDeals: state.savedDeals,
       }),
     }
   )

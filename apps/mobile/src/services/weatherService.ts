@@ -8,18 +8,22 @@ interface WeatherData {
 
 export async function getWeatherByCoords(lat: number, lon: number): Promise<WeatherData | null> {
   try {
-    const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`
-    );
-    const data = await res.json();
+    const [weatherRes, geoRes] = await Promise.all([
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`),
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`, { headers: { 'User-Agent': 'FoodGoodScan/1.0' } }),
+    ]);
+    const data = await weatherRes.json();
+    const geoData = await geoRes.json();
     const temp = Math.round(data.current?.temperature_2m ?? 20);
     const code = data.current?.weathercode ?? 0;
+    const addr = geoData.address || {};
+    const city = addr.city || addr.town || addr.village || addr.county || addr.state || '';
     return {
       temperature: temp,
       weatherCode: code,
       description: weatherCodeToDesc(code),
       icon: weatherCodeToIcon(code),
-      city: '',
+      city,
     };
   } catch {
     return null;

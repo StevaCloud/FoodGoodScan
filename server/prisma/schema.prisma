@@ -11,12 +11,52 @@ model User {
   email         String         @unique
   password      String
   name          String?
+  phone         String?        @unique
   allergies     String         @default("")
+  points        Int            @default(0)
+  tokenVersion  Int            @default(0)
+  lastLoginDate String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   subscription  Subscription?
   scanHistory   ScanHistory[]
   favorites     Favorite[]
+  userCoupons   UserCoupon[]
+}
+
+model Coupon {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  category     String
+  partner      String
+  discount     String
+  imageEmoji   String       @default("🎁")
+  pointsCost   Int
+  stock        Int          @default(-1)
+  expiresAt    DateTime?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  // PROMO_CODE = code public déjà diffusé sur internet (agrégateur)
+  // AFFILIATE  = lien affilié officiel (commission pour FGS)
+  // INTERNAL   = récompense interne à l'app (mois premium, etc.)
+  couponType   String       @default("INTERNAL")
+  promoCode    String?      // code à copier-coller (PROMO_CODE)
+  affiliateUrl String?      // lien affilié (AFFILIATE)
+  rewardAction String?      // action interne ex: "1_month_premium" (INTERNAL)
+  terms        String?      // conditions d'utilisation affichées à l'utilisateur
+  userCoupons  UserCoupon[]
+}
+
+model UserCoupon {
+  id         String    @id @default(cuid())
+  userId     String
+  couponId   String
+  user       User      @relation(fields: [userId], references: [id])
+  coupon     Coupon    @relation(fields: [couponId], references: [id])
+  code       String    @unique
+  claimedAt  DateTime  @default(now())
+  usedAt     DateTime?
 }
 
 model Subscription {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, TextInput, Animated, Easing } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStore, GroceryItem } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
@@ -13,9 +13,14 @@ export function GroceryListScreen() {
   const toggleGroceryItem = useStore((s) => s.toggleGroceryItem);
   const removeGroceryItem = useStore((s) => s.removeGroceryItem);
   const clearGroceryList = useStore((s) => s.clearGroceryList);
+  const dailyCalorieGoal = useStore((s) => s.dailyCalorieGoal);
+  const setDailyCalorieGoal = useStore((s) => s.setDailyCalorieGoal);
   const navigation = useNavigation<any>();
   const weatherBg = useWeatherBg();
   const { t } = useTranslation();
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(String(dailyCalorieGoal));
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const total = groceryList.reduce((sum, i) => sum + (i.price || 0), 0);
   const checkedCount = groceryList.filter((i) => i.checked).length;
@@ -30,8 +35,28 @@ export function GroceryListScreen() {
     ? Math.round(groceryList.reduce((sum, i) => sum + i.healthScore, 0) / groceryList.length)
     : 0;
 
-  const healthColor = avgHealthScore >= 60 ? '#22c55e' : avgHealthScore >= 40 ? '#eab308' : '#ef4444';
-  const healthLabel = avgHealthScore >= 60 ? 'Bon' : avgHealthScore >= 40 ? 'Moyen' : 'Mauvais';
+  const caloriePct = Math.min(totalCalories / dailyCalorieGoal, 1);
+  const calorieRemaining = dailyCalorieGoal - totalCalories;
+  const calorieColor = caloriePct < 0.75 ? '#22c55e' : caloriePct < 1 ? '#f97316' : '#ef4444';
+  const calorieOver = totalCalories > dailyCalorieGoal;
+
+  // Anime la barre de progression à chaque changement
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: caloriePct,
+      duration: 600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [caloriePct]);
+
+  const barWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
+  const handleGoalSave = () => {
+    const v = parseInt(goalInput);
+    if (!isNaN(v) && v > 0) setDailyCalorieGoal(v);
+    setEditingGoal(false);
+  };
 
   const handleClear = () => {
     Alert.alert('Vider la liste?', 'Tous les articles seront supprimés', [
@@ -74,59 +99,86 @@ export function GroceryListScreen() {
             <Text style={styles.totalSub}>{groceryList.length} articles — {checkedCount} cochés</Text>
           </View>
 
-          <View style={styles.nutritionCard}>
-            <Text style={styles.nutritionTitle}>{t('list.nutrition')}</Text>
-            <Text style={styles.nutritionSub}>{t('list.nutrition.sub')}</Text>
+          {/* ── Compteur calorique journalier ── */}
+          <View style={styles.calorieCard}>
+            <View style={styles.calorieHeader}>
+              <Text style={styles.calorieTitle}>Compteur calorique</Text>
+              {editingGoal ? (
+                <View style={styles.goalEditRow}>
+                  <TextInput
+                    style={styles.goalInput}
+                    value={goalInput}
+                    onChangeText={setGoalInput}
+                    keyboardType="numeric"
+                    maxLength={5}
+                    autoFocus
+                    selectTextOnFocus
+                  />
+                  <TouchableOpacity onPress={handleGoalSave} style={styles.goalSaveBtn}>
+                    <Text style={styles.goalSaveTxt}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => { setGoalInput(String(dailyCalorieGoal)); setEditingGoal(true); }}>
+                  <Text style={styles.goalEditTxt}>Objectif: {dailyCalorieGoal} kcal ✏️</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-            <View style={styles.healthScoreRow}>
-              <Text style={styles.healthScoreLabel}>Score santé moyen</Text>
-              <View style={[styles.healthScoreBadge, { borderColor: healthColor }]}>
-                <Text style={[styles.healthScoreValue, { color: healthColor }]}>{avgHealthScore}</Text>
-                <Text style={[styles.healthScoreText, { color: healthColor }]}>{healthLabel}</Text>
+            {/* Calories actuelles vs objectif */}
+            <View style={styles.calorieCountRow}>
+              <Text style={[styles.calorieCount, { color: calorieColor }]}>{totalCalories}</Text>
+              <Text style={styles.calorieSlash}> / {dailyCalorieGoal} kcal</Text>
+            </View>
+
+            {/* Barre de progression animée */}
+            <View style={styles.progressTrack}>
+              <Animated.View style={[styles.progressBar, { width: barWidth, backgroundColor: calorieColor }]} />
+              {/* Marqueur 100% */}
+              <View style={styles.progressMark100} />
+            </View>
+
+            <Text style={[styles.calorieRemaining, { color: calorieColor }]}>
+              {calorieOver
+                ? `+${Math.abs(calorieRemaining)} kcal au-dessus de l'objectif`
+                : calorieRemaining > 0
+                  ? `${calorieRemaining} kcal restants pour aujourd'hui`
+                  : 'Objectif atteint !'}
+            </Text>
+
+            {/* Macros */}
+            <View style={styles.macroRow}>
+              <View style={styles.macroChip}>
+                <Text style={styles.macroVal}>{totalProteins.toFixed(0)}g</Text>
+                <Text style={styles.macroLbl}>Protéines</Text>
+                <View style={[styles.macroBar, { width: `${Math.min(totalProteins / 60 * 100, 100)}%`, backgroundColor: '#22c55e' }]} />
+              </View>
+              <View style={styles.macroChip}>
+                <Text style={styles.macroVal}>{totalFat.toFixed(0)}g</Text>
+                <Text style={styles.macroLbl}>Gras</Text>
+                <View style={[styles.macroBar, { width: `${Math.min(totalFat / 65 * 100, 100)}%`, backgroundColor: totalFat > 65 ? '#ef4444' : '#f97316' }]} />
+              </View>
+              <View style={styles.macroChip}>
+                <Text style={styles.macroVal}>{totalSugars.toFixed(0)}g</Text>
+                <Text style={styles.macroLbl}>Sucres</Text>
+                <View style={[styles.macroBar, { width: `${Math.min(totalSugars / 50 * 100, 100)}%`, backgroundColor: totalSugars > 50 ? '#ef4444' : '#eab308' }]} />
+              </View>
+              <View style={styles.macroChip}>
+                <Text style={styles.macroVal}>{totalSalt.toFixed(1)}g</Text>
+                <Text style={styles.macroLbl}>Sel</Text>
+                <View style={[styles.macroBar, { width: `${Math.min(totalSalt / 5 * 100, 100)}%`, backgroundColor: totalSalt > 5 ? '#ef4444' : '#60a5fa' }]} />
               </View>
             </View>
 
-            <View style={styles.nutriGrid}>
-              <View style={styles.nutriCard}>
-                <Text style={styles.nutriCardValue}>{totalCalories}</Text>
-                <Text style={styles.nutriCardLabel}>Calories</Text>
-                <Text style={styles.nutriCardUnit}>kcal</Text>
+            {/* Alertes */}
+            {calorieOver && (
+              <View style={styles.warningBanner}>
+                <Text style={styles.warningText}>Tu dépasses ton objectif de {Math.abs(calorieRemaining)} kcal</Text>
               </View>
-              <View style={styles.nutriCard}>
-                <Text style={[styles.nutriCardValue, totalProteins > 30 ? { color: '#22c55e' } : {}]}>{totalProteins.toFixed(1)}</Text>
-                <Text style={styles.nutriCardLabel}>Protéines</Text>
-                <Text style={styles.nutriCardUnit}>g</Text>
-              </View>
-              <View style={styles.nutriCard}>
-                <Text style={[styles.nutriCardValue, totalFat > 50 ? { color: '#ef4444' } : {}]}>{totalFat.toFixed(1)}</Text>
-                <Text style={styles.nutriCardLabel}>Gras</Text>
-                <Text style={styles.nutriCardUnit}>g</Text>
-              </View>
-              <View style={styles.nutriCard}>
-                <Text style={[styles.nutriCardValue, totalSugars > 50 ? { color: '#ef4444' } : totalSugars > 25 ? { color: '#f97316' } : {}]}>{totalSugars.toFixed(1)}</Text>
-                <Text style={styles.nutriCardLabel}>Sucres</Text>
-                <Text style={styles.nutriCardUnit}>g</Text>
-              </View>
-              <View style={styles.nutriCard}>
-                <Text style={[styles.nutriCardValue, totalSalt > 3 ? { color: '#ef4444' } : {}]}>{totalSalt.toFixed(2)}</Text>
-                <Text style={styles.nutriCardLabel}>Sel</Text>
-                <Text style={styles.nutriCardUnit}>g</Text>
-              </View>
-            </View>
-
+            )}
             {totalSugars > 50 && (
               <View style={styles.warningBanner}>
-                <Text style={styles.warningText}>Attention : ta commande est très riche en sucres ({totalSugars.toFixed(0)}g)</Text>
-              </View>
-            )}
-            {totalFat > 60 && (
-              <View style={styles.warningBanner}>
-                <Text style={styles.warningText}>Attention : ta commande est très riche en gras ({totalFat.toFixed(0)}g)</Text>
-              </View>
-            )}
-            {avgHealthScore > 0 && avgHealthScore < 30 && (
-              <View style={styles.warningBanner}>
-                <Text style={styles.warningText}>Score santé faible — essaie d'ajouter des produits plus sains</Text>
+                <Text style={styles.warningText}>Trop de sucres ({totalSugars.toFixed(0)}g — max recommandé 50g)</Text>
               </View>
             )}
           </View>
@@ -241,19 +293,26 @@ const styles = StyleSheet.create({
   totalLabel: { color: '#ccc', fontSize: 14 },
   totalValue: { color: '#22c55e', fontSize: 36, fontWeight: 'bold', marginTop: 4 },
   totalSub: { color: '#bbb', fontSize: 12, marginTop: 4 },
-  nutritionCard: { backgroundColor: '#1a1a1a', borderRadius: 14, padding: 16, marginBottom: 16 },
-  nutritionTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  nutritionSub: { color: '#bbb', fontSize: 11, marginBottom: 12 },
-  healthScoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  healthScoreLabel: { color: '#aaa', fontSize: 14 },
-  healthScoreBadge: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 6, alignItems: 'center' },
-  healthScoreValue: { fontSize: 22, fontWeight: 'bold' },
-  healthScoreText: { fontSize: 10, fontWeight: '600' },
-  nutriGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  nutriCard: { backgroundColor: '#222', borderRadius: 10, padding: 10, alignItems: 'center', minWidth: 60, flex: 1 },
-  nutriCardValue: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  nutriCardLabel: { color: '#ccc', fontSize: 10, marginTop: 2 },
-  nutriCardUnit: { color: '#bbb', fontSize: 9 },
+  calorieCard: { backgroundColor: '#0f1f0f', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#22c55e22' },
+  calorieHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  calorieTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  goalEditTxt: { color: '#888', fontSize: 12 },
+  goalEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  goalInput: { backgroundColor: '#222', color: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, fontSize: 14, width: 80, borderWidth: 1, borderColor: '#22c55e' },
+  goalSaveBtn: { backgroundColor: '#22c55e', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  goalSaveTxt: { color: '#000', fontWeight: '700', fontSize: 13 },
+  calorieCountRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 },
+  calorieCount: { fontSize: 42, fontWeight: '900', lineHeight: 46 },
+  calorieSlash: { color: '#888', fontSize: 16, marginBottom: 6 },
+  progressTrack: { height: 10, backgroundColor: '#1e1e1e', borderRadius: 6, overflow: 'hidden', marginBottom: 6, position: 'relative' },
+  progressBar: { height: '100%', borderRadius: 6 },
+  progressMark100: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, backgroundColor: '#333' },
+  calorieRemaining: { fontSize: 12, marginBottom: 14, fontWeight: '600' },
+  macroRow: { flexDirection: 'row', gap: 8 },
+  macroChip: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 10, padding: 8, alignItems: 'center', gap: 2 },
+  macroVal: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  macroLbl: { color: '#888', fontSize: 9, marginBottom: 4 },
+  macroBar: { height: 3, borderRadius: 2, alignSelf: 'flex-start' as const, minWidth: 4 },
   warningBanner: { backgroundColor: '#7f1d1d', borderRadius: 8, padding: 10, marginTop: 10 },
   warningText: { color: '#fca5a5', fontSize: 12, textAlign: 'center' },
   emptySection: { alignItems: 'center', paddingVertical: 60 },

@@ -42,7 +42,7 @@ export default function App() {
     getCurrentWeather(postalCode || undefined).then((w) => {
       if (w) {
         setWeather({ temperature: w.temperature, icon: w.icon });
-        setWeatherData({ temperature: w.temperature, weatherCode: w.weatherCode, icon: w.icon, description: w.description });
+        setWeatherData({ temperature: w.temperature, weatherCode: w.weatherCode, icon: w.icon, description: w.description, city: w.city || '' });
       }
     });
   }, [isLoggedIn, postalCode]);

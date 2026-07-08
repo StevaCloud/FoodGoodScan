@@ -6,6 +6,7 @@ import { getProductByBarcode } from '../services/openfoodfacts';
 import { analyzeAdditives } from '../services/additives';
 import { getWaterInfo, getWaterInfoByName, isWaterProduct, getPhRating } from '../services/water';
 import { detectCategory } from '../services/categories';
+import { addPoints, POINTS } from './coupons';
 
 const router = Router();
 
@@ -25,7 +26,8 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     const userId = req.userId!;
 
     const sub = await prisma.subscription.findUnique({ where: { userId } });
-    const isPremium = sub?.plan === 'PREMIUM';
+    const isExpired = sub?.expiresAt != null && sub.expiresAt < new Date();
+    const isPremium = sub?.plan === 'PREMIUM' && !isExpired;
 
     if (!isPremium) {
       const today = new Date();
@@ -48,14 +50,12 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
       return;
     }
 
-    await prisma.scanHistory.create({
-      data: {
-        userId,
-        barcode,
-        productName: product.name,
-        healthScore: product.healthScore,
-      },
-    });
+    await Promise.all([
+      prisma.scanHistory.create({
+        data: { userId, barcode, productName: product.name, healthScore: product.healthScore },
+      }),
+      addPoints(userId, POINTS.scan),
+    ]);
 
     if (!isPremium) {
       res.json({

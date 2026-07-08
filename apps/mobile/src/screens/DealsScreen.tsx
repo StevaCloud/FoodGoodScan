@@ -11,6 +11,7 @@ import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
 import { openCheckout } from '../services/checkout';
 import { usePostalCode } from '../hooks/usePostalCode';
+import { fetchNutritionByName } from '../utils/fetchNutrition';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -62,6 +63,7 @@ export function DealsScreen() {
   const postalCode = usePostalCode();
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
   const addGroceryItem = useStore((s) => s.addGroceryItem);
+  const updateGroceryItemNutrition = useStore((s) => s.updateGroceryItemNutrition);
   const [scanningDeal, setScanningDeal] = useState<number | null>(null);
 
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
@@ -97,9 +99,10 @@ export function DealsScreen() {
   };
 
   const handleAddToList = (deal: Deal) => {
-    addGroceryItem(deal.name, deal.merchant, deal.price, undefined, deal.imageUrl);
+    const id = addGroceryItem(deal.name, deal.merchant, deal.price, undefined, deal.imageUrl);
     setSelectedDeal(null);
     showToast(`${deal.name} ajouté à ta liste`);
+    fetchNutritionByName(deal.name).then((n) => { if (n) updateGroceryItemNutrition(id, n); });
   };
 
   useEffect(() => {
@@ -185,10 +188,48 @@ export function DealsScreen() {
     searchDeals(term, selectedStore || undefined);
   };
 
-  const handleStoreFilter = (store: string | null) => {
+  const handleStoreFilter = async (store: string | null) => {
     setSelectedStore(store);
-    if (search.length >= 2) {
-      searchDeals(search, store || undefined);
+    if (!store) {
+      if (search.length >= 2) searchDeals(search, undefined);
+      else setDeals([]);
+      return;
+    }
+    // Cherche la circulaire du magasin sélectionné
+    const flyer = flyers.find(f =>
+      f.merchant.toLowerCase().includes(store.toLowerCase()) ||
+      store.toLowerCase().includes(f.merchant.toLowerCase())
+    );
+    if (flyer) {
+      setLoading(true);
+      setSearch('');
+      try {
+        const { data } = await axios.get(`${API_URL}/deals/flyer/${flyer.id}`, {
+          params: { postal_code: postalCode },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDeals(Array.isArray(data) ? data : []);
+      } catch { setDeals([]); }
+      finally { setLoading(false); }
+    } else if (search.length >= 2) {
+      searchDeals(search, store);
+    } else {
+      // Pas de circulaire trouvée : recherche large pour ce magasin
+      setLoading(true);
+      const terms = ['lait', 'poulet', 'fruits', 'fromage', 'légumes', 'pain', 'yogourt', 'chips'];
+      const all: Deal[] = [];
+      for (const t of terms) {
+        try {
+          const { data } = await axios.get(`${API_URL}/deals`, {
+            params: { search: t, postal_code: postalCode, store },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          all.push(...(Array.isArray(data) ? data : []));
+        } catch {}
+      }
+      const seen = new Set<number>();
+      setDeals(all.filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; }));
+      setLoading(false);
     }
   };
 
@@ -391,8 +432,9 @@ export function DealsScreen() {
                     <TouchableOpacity
                       style={styles.miniAddBtn}
                       onPress={() => {
-                        addGroceryItem(store.name, store.merchant, store.price, undefined, storeImg);
+                        const sid = addGroceryItem(store.name, store.merchant, store.price, undefined, storeImg);
                         showToast(`${store.name} ajouté à ta liste`);
+                        fetchNutritionByName(store.name).then((n) => { if (n) updateGroceryItemNutrition(sid, n); });
                       }}
                     >
                       <Text style={styles.miniAddBtnText}>+ Liste</Text>
@@ -450,13 +492,18 @@ export function DealsScreen() {
     <WeatherScreen><View style={styles.container}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
       {canGoBack && (
-        <TouchableOpacity
-          onPress={() => goBackToOrigin()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => goBackToOrigin()} style={styles.backButton}>
           <Text style={styles.backText}>{'<'} Retour</Text>
         </TouchableOpacity>
       )}
+
+      {/* Bandeau livraison bientôt disponible */}
+      <View style={styles.deliveryBanner}>
+        <Text style={styles.deliveryBannerIcon}>🚚</Text>
+        <Text style={styles.deliveryBannerText}>Commande bientôt disponible à votre domicile</Text>
+        <View style={styles.deliveryBannerBadge}><Text style={styles.deliveryBannerBadgeText}>Bientôt</Text></View>
+      </View>
+
       <View style={styles.modeToggle}>
         <TouchableOpacity
           style={[styles.modeButton, viewMode === 'flyers' && styles.modeActive]}
@@ -534,10 +581,19 @@ export function DealsScreen() {
         ))}
       </View>
 
+      {selectedStore && deals.length > 0 && (
+        <View style={styles.storeHeaderBanner}>
+          <Text style={styles.storeHeaderText}>📦 Articles de {selectedStore}</Text>
+          <Text style={styles.storeHeaderCount}>{deals.length} article{deals.length > 1 ? 's' : ''} en spécial</Text>
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#22c55e" />
-          <Text style={styles.loadingText}>Recherche dans les circulaires...</Text>
+          <Text style={styles.loadingText}>
+            {selectedStore ? `Chargement des articles de ${selectedStore}...` : 'Recherche dans les circulaires...'}
+          </Text>
         </View>
       ) : (
         <FlatList style={{ backgroundColor: 'transparent' }}
@@ -545,10 +601,12 @@ export function DealsScreen() {
           renderItem={renderDeal}
           keyExtractor={(item) => String(item.id)}
           ListEmptyComponent={
-            search.length >= 2 ? (
+            selectedStore ? (
+              <Text style={styles.emptyText}>Aucun article trouvé pour {selectedStore}</Text>
+            ) : search.length >= 2 ? (
               <Text style={styles.emptyText}>Aucun solde trouvé pour "{search}"</Text>
             ) : (
-              <Text style={styles.emptyText}>Tape un produit ou clique sur une recherche rapide</Text>
+              <Text style={styles.emptyText}>Clique sur un magasin pour voir ses articles, ou tape un produit</Text>
             )
           }
         />
@@ -560,27 +618,36 @@ export function DealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10, backgroundColor: 'transparent' },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, zIndex: 100 },
+  container: { flex: 1, padding: 8, backgroundColor: 'transparent' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2, marginBottom: 4, zIndex: 100 },
+  deliveryBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#0a1f0a', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: '#166534', marginBottom: 6,
+  },
+  deliveryBannerIcon: { fontSize: 16 },
+  deliveryBannerText: { flex: 1, color: '#86efac', fontSize: 12, fontWeight: '600' },
+  deliveryBannerBadge: { backgroundColor: '#166534', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  deliveryBannerBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   title: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 2 },
   subtitle: { color: '#22c55e', fontSize: 11, marginBottom: 6, marginTop: 1 },
   searchInput: {
     backgroundColor: '#222',
     color: '#fff',
     borderRadius: 10,
-    padding: 9,
-    fontSize: 14,
-    marginBottom: 7,
+    padding: 7,
+    fontSize: 13,
+    marginBottom: 5,
     borderWidth: 1,
     borderColor: '#333',
   },
-  quickSearches: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 6 },
-  quickChip: { backgroundColor: '#1a2a1a', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14, borderWidth: 1, borderColor: '#2a3a2a' },
+  quickSearches: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginBottom: 5 },
+  quickChip: { backgroundColor: '#1a2a1a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1, borderColor: '#2a3a2a' },
   quickChipActive: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
-  quickChipText: { color: '#22c55e', fontSize: 12, fontWeight: '600' },
+  quickChipText: { color: '#22c55e', fontSize: 11, fontWeight: '600' },
   quickChipTextActive: { color: '#fff', fontWeight: '800' },
-  storeFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 },
-  storeChip: { backgroundColor: '#222', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  storeFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginBottom: 6 },
+  storeChip: { backgroundColor: '#222', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 9 },
   storeChipActive: { backgroundColor: '#3b82f6' },
   storeChipText: { color: '#ccc', fontSize: 13, fontWeight: '600' },
   storeChipTextActive: { color: '#fff', fontWeight: '800' },
@@ -654,6 +721,9 @@ const styles = StyleSheet.create({
   flyerCount: { color: '#22c55e', fontSize: 15, fontWeight: '700', marginTop: 8, marginBottom: 12 },
   backButton: { backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, marginTop: 14, alignSelf: 'flex-start' },
   backText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  storeHeaderBanner: { backgroundColor: '#0f2d1f', borderRadius: 10, padding: 12, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#22c55e' },
+  storeHeaderText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  storeHeaderCount: { color: '#22c55e', fontSize: 13, fontWeight: '600', marginTop: 2 },
 
   // === PREUVE CIRCULAIRE ===
   flyerProof: {

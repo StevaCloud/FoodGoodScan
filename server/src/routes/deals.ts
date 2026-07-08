@@ -92,4 +92,38 @@ router.get('/stores', authenticateToken, requireGroceryAddon, async (_req: AuthR
   res.json(['IGA', 'Metro', 'Super C', 'Maxi', 'Walmart', 'Provigo', 'Adonis', 'Marché Richelieu', 'Jean Coutu', 'Pharmaprix']);
 });
 
+// Offres locales géolocalisées — accessible à tous (free + premium)
+router.get('/local', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const postalCode = (req.query.postal_code as string) || 'J1H1A1';
+    const categories = [
+      { query: 'poulet', label: 'Viande & Poisson' },
+      { query: 'fruits légumes', label: 'Fruits & Légumes' },
+      { query: 'fromage lait', label: 'Produits laitiers' },
+      { query: 'pain céréales', label: 'Boulangerie' },
+      { query: 'jus boisson', label: 'Boissons' },
+      { query: 'shampooing savon', label: 'Beauté & Santé' },
+      { query: 'vitamines médicament', label: 'Pharmacie' },
+      { query: 'chips biscuit', label: 'Collations' },
+    ];
+
+    const results = await Promise.all(
+      categories.map(async (cat) => {
+        const deals = await searchFlippDeals(cat.query, postalCode);
+        const valid = deals.filter(d => d.imageUrl && d.price && d.merchant).slice(0, 4);
+        return valid.map(d => ({ ...d, categoryLabel: cat.label }));
+      })
+    );
+
+    const allDeals = results.flat().filter(d => d.imageUrl && d.price);
+    // Mélange pour varier
+    allDeals.sort(() => Math.random() - 0.5);
+
+    res.json(allDeals.slice(0, 40));
+  } catch (error) {
+    console.error('Local deals error:', error);
+    res.json([]);
+  }
+});
+
 export { router as dealRouter };

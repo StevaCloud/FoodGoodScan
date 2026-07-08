@@ -598,6 +598,9 @@ function WeatherInfo() {
       <View>
         <Text style={[styles.infoTemp, { color: theme.accent }]}>{weatherData.temperature}°C</Text>
         <Text style={styles.infoDesc}>{weatherData.description}</Text>
+        {!!weatherData.city && (
+          <Text style={styles.infoCity}>📍 {weatherData.city}</Text>
+        )}
       </View>
     </View>
   );
@@ -666,4 +669,5 @@ const styles = StyleSheet.create({
   infoIcon: { fontSize: 38 },
   infoTemp: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
   infoDesc: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginTop: 1 },
+  infoCity: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
 });
