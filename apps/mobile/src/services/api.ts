@@ -151,6 +151,10 @@ export async function useCoupon(userCouponId: string) {
   return data;
 }
 
+export async function deleteAccount() {
+  await api.delete('/auth/account');
+}
+
 export async function getEuropeanDeals(country: string) {
   const { data } = await api.get('/deals/eu', { params: { country } });
   return data;

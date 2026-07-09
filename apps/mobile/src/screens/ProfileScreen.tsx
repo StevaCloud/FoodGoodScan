@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform, 
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
-import { createCheckoutSession, createPortalSession, updatePhone, logout as apiLogout } from '../services/api';
+import { createCheckoutSession, createPortalSession, updatePhone, logout as apiLogout, deleteAccount as apiDeleteAccount } from '../services/api';
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
 import { useUserCountry } from '../hooks/useUserCountry';
@@ -260,6 +260,34 @@ export function ProfileScreen() {
       }}>
         <Text style={styles.logoutText}>{t('profile.logout')}</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => {
+          Alert.alert(
+            'Supprimer mon compte',
+            'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
+            [
+              { text: 'Annuler', style: 'cancel' },
+              {
+                text: 'Supprimer',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await apiDeleteAccount();
+                    logout();
+                  } catch {
+                    Alert.alert('Erreur', 'Impossible de supprimer le compte. Réessayez.');
+                  }
+                },
+              },
+            ]
+          );
+        }}
+      >
+        <Text style={styles.deleteText}>Supprimer mon compte</Text>
+      </TouchableOpacity>
+      <View style={{ height: 40 }} />
     </ScrollView></WeatherScreen>
   );
 }
@@ -355,6 +383,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   logoutText: { color: '#ef4444', fontSize: 16 },
+  deleteButton: {
+    borderWidth: 1,
+    borderColor: '#7f1d1d',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  deleteText: { color: '#7f1d1d', fontSize: 14 },
   languageCard: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16, marginBottom: 16 },
   languageTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
   languageOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
