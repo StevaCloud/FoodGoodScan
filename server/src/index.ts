@@ -154,7 +154,7 @@ app.get('/privacy', (_req, res) => {
 <p>Conformément à la Loi 25 (Québec) et au RGPD (Europe), vous avez le droit d'accéder, de corriger ou de supprimer vos données.</p>
 
 <h2>7. Contact</h2>
-<p>Pour toute question : <a href="mailto:support@foodgoodscan.app">support@foodgoodscan.app</a></p>
+<p>Pour toute question : <a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
 </body>
 </html>`);
 });
