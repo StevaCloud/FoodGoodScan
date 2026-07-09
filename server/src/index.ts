@@ -160,6 +160,50 @@ app.get('/privacy', (_req, res) => {
 </html>`);
 });
 
+app.get('/delete-account', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supprimer mon compte — FoodGoodScan</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 680px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
+  h1 { color: #dc2626; } h2 { color: #111; margin-top: 28px; }
+  .warn { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin: 16px 0; color: #991b1b; }
+  .step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .num { background: #dc2626; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+  a { color: #16a34a; } ul { padding-left: 20px; }
+  .btn { display: inline-block; background: #dc2626; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>Supprimer mon compte FoodGoodScan</h1>
+<div class="warn">⚠️ <strong>Attention :</strong> La suppression est irréversible. Toutes vos données seront effacées définitivement.</div>
+
+<h2>Données supprimées</h2>
+<ul>
+  <li>Adresse courriel et mot de passe</li>
+  <li>Numéro de téléphone</li>
+  <li>Historique de scans</li>
+  <li>Liste d'épicerie</li>
+  <li>Points et coupons</li>
+  <li>Profil de santé et préférences</li>
+</ul>
+
+<h2>Comment supprimer votre compte</h2>
+<div class="step"><div class="num">1</div><div>Envoyez un courriel à <strong>foodgoodscan.app@gmail.com</strong> avec le sujet <strong>"Suppression de compte"</strong> et votre adresse courriel associée au compte.</div></div>
+<div class="step"><div class="num">2</div><div>Vous recevrez une confirmation dans les <strong>48 heures</strong>.</div></div>
+<div class="step"><div class="num">3</div><div>Votre compte sera supprimé dans un délai maximum de <strong>30 jours</strong>.</div></div>
+<a href="mailto:foodgoodscan.app@gmail.com?subject=Suppression%20de%20compte" class="btn">📧 Demander la suppression</a>
+
+<h2>Contact</h2>
+<p><a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
+</body>
+</html>`);
+});
+
 app.listen(PORT, () => {
   console.log(`FoodGoodScan server running on port ${PORT}`);
 });
