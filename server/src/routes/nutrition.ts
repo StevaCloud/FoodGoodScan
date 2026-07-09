@@ -20,7 +20,7 @@ router.get('/search', async (req: Request, res: Response) => {
     const v2 = await tryFetch(
       `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(name)}&page_size=3&fields=nutriments&json=1`
     );
-    const products = v2?.products ?? [];
+    const products = (v2 as any)?.products ?? [];
 
     // Cherche le premier produit avec des données nutritionnelles
     for (const p of products) {
