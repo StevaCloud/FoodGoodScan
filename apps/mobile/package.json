@@ -13,7 +13,6 @@
     "barcode-detector": "^3.2.0",
     "expo": "~56.0.12",
     "expo-av": "^16.0.8",
-    "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "~56.0.8",
     "expo-haptics": "~56.0.3",
     "expo-location": "^56.0.18",
