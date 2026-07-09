@@ -6,6 +6,8 @@ import { WeatherScreen } from '../components/WeatherBackground';
 import { createCheckoutSession, createPortalSession, updatePhone, logout as apiLogout } from '../services/api';
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
+import { useUserCountry } from '../hooks/useUserCountry';
+import { getCountryFlag, getCountryLabel } from '../utils/countryDetection';
 
 const LANGUAGES: Language[] = ['fr', 'en', 'es', 'ar'];
 
@@ -25,6 +27,7 @@ export function ProfileScreen() {
   const language = useStore((s) => s.language);
   const setLanguage = useStore((s) => s.setLanguage);
   const { t } = useTranslation();
+  const { country, currency } = useUserCountry();
   const [loading, setLoading] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneLoading, setPhoneLoading] = useState(false);
@@ -135,6 +138,13 @@ export function ProfileScreen() {
         ) : (
           <Text style={styles.phoneWarning}>Aucun telephone — requis pour s'abonner</Text>
         )}
+        <View style={styles.countryRow}>
+          <Text style={styles.countryFlag}>{getCountryFlag(country)}</Text>
+          <Text style={styles.countryText}>{getCountryLabel(country)}</Text>
+          <View style={styles.currencyBadge}>
+            <Text style={styles.currencyText}>{currency.symbol} {currency.code}</Text>
+          </View>
+        </View>
       </View>
 
       {user?.plan !== 'PREMIUM' && (
@@ -310,6 +320,11 @@ const styles = StyleSheet.create({
   manageButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   phoneInfo: { color: '#86efac', fontSize: 13, marginTop: 6 },
   phoneWarning: { color: '#f59e0b', fontSize: 13, marginTop: 6 },
+  countryRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6 },
+  countryFlag: { fontSize: 20 },
+  countryText: { color: '#ccc', fontSize: 13, fontWeight: '600' },
+  currencyBadge: { backgroundColor: '#1e3a5f', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 4 },
+  currencyText: { color: '#60a5fa', fontSize: 12, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalBox: { backgroundColor: '#1a1a1a', borderRadius: 16, padding: 24, width: '100%', maxWidth: 380 },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 10 },

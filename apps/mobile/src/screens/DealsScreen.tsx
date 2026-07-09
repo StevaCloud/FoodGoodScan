@@ -12,6 +12,9 @@ import { WeatherScreen } from '../components/WeatherBackground';
 import { openCheckout } from '../services/checkout';
 import { usePostalCode } from '../hooks/usePostalCode';
 import { fetchNutritionByName } from '../utils/fetchNutrition';
+import { useUserCountry } from '../hooks/useUserCountry';
+import { formatPrice, isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/countryDetection';
+import { getEuropeanDeals } from '../services/api';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -38,7 +41,51 @@ interface Flyer {
   validUntil: string;
 }
 
-const STORES = ['IGA', 'Metro', 'Super C', 'Maxi', 'Walmart', 'Provigo', 'Adonis'];
+const CA_STORES = ['IGA', 'Metro', 'Super C', 'Maxi', 'Walmart', 'Provigo', 'Adonis'];
+const US_STORES = ['Walmart', 'Kroger', 'Safeway', 'Costco', 'Target', 'Aldi', 'Whole Foods'];
+const EU_ONLINE_DEALS: Record<string, { store: string; emoji: string; title: string; url: string }[]> = {
+  FR: [
+    { store: 'Lidl France',    emoji: '🏷️', title: 'Promos Lidl',       url: 'https://www.lidl.fr/promotions' },
+    { store: 'Carrefour',      emoji: '🛒', title: 'Promo de la semaine', url: 'https://www.carrefour.fr/service/promotions' },
+    { store: 'Aldi France',    emoji: '💰', title: 'Offres Aldi',         url: 'https://www.aldi.fr/offres-de-la-semaine.html' },
+    { store: 'Leclerc',        emoji: '🏬', title: 'Promo E.Leclerc',     url: 'https://www.e.leclerc/catalogue' },
+    { store: 'Intermarché',    emoji: '🌿', title: 'Catalogue Intermarché',url: 'https://www.intermarche.com/offres-promotionnelles' },
+  ],
+  DE: [
+    { store: 'Lidl Deutschland', emoji: '🏷️', title: 'Aktuelle Angebote',   url: 'https://www.lidl.de/aktuelle-angebote' },
+    { store: 'Aldi Süd',         emoji: '💰', title: 'Angebote der Woche',   url: 'https://www.aldi-sued.de/de/angebote.html' },
+    { store: 'Rewe',             emoji: '🛒', title: 'Rewe Angebote',        url: 'https://www.rewe.de/angebote/' },
+    { store: 'Edeka',            emoji: '🏬', title: 'Edeka Prospekte',      url: 'https://www.edeka.de/angebote/' },
+  ],
+  UK: [
+    { store: 'Lidl UK',    emoji: '🏷️', title: 'Weekly Offers',        url: 'https://www.lidl.co.uk/offers' },
+    { store: 'Aldi UK',    emoji: '💰', title: 'Super 6 & Specials',    url: 'https://www.aldi.co.uk/offers' },
+    { store: 'Tesco',      emoji: '🛒', title: 'Clubcard Prices',       url: 'https://www.tesco.com/groceries/en-GB/promotions' },
+    { store: 'Sainsbury',  emoji: '🏬', title: 'Nectar Prices',         url: 'https://www.sainsburys.co.uk/gol-ui/promotions' },
+  ],
+  BE: [
+    { store: 'Lidl Belgique', emoji: '🏷️', title: 'Promotions',     url: 'https://www.lidl.be/promotions' },
+    { store: 'Delhaize',      emoji: '🛒', title: 'Promos Delhaize', url: 'https://www.delhaize.be/fr-be/folder' },
+    { store: 'Colruyt',       emoji: '💰', title: 'Promos Colruyt',  url: 'https://www.colruyt.be/fr/folder-semaine' },
+    { store: 'Albert Heijn',  emoji: '🏬', title: 'Aanbiedingen',    url: 'https://www.ah.be/promoties' },
+  ],
+  ES: [
+    { store: 'Lidl España',  emoji: '🏷️', title: 'Ofertas',               url: 'https://www.lidl.es/ofertas' },
+    { store: 'Mercadona',    emoji: '🛒', title: 'Novedades y Ofertas',    url: 'https://www.mercadona.es' },
+    { store: 'Carrefour ES', emoji: '🏬', title: 'Ofertas de la Semana',   url: 'https://www.carrefour.es/supermercado/ofertas' },
+    { store: 'Aldi España',  emoji: '💰', title: 'Ofertas Semanales',      url: 'https://www.aldi.es/nuestras-ofertas.html' },
+  ],
+  IT: [
+    { store: 'Lidl Italia',  emoji: '🏷️', title: 'Offerte',              url: 'https://www.lidl.it/offerte' },
+    { store: 'Esselunga',    emoji: '🛒', title: 'Offerte della settimana',url: 'https://www.esselunga.it/cms/esselunga/it/offerte' },
+    { store: 'Eurospin',     emoji: '💰', title: 'Volantino Eurospin',     url: 'https://www.eurospin.it/volantino/' },
+    { store: 'Conad',        emoji: '🏬', title: 'Offerte Conad',          url: 'https://www.conad.it/offerte' },
+  ],
+};
+
+function getDefaultEuDeals(country: string) {
+  return EU_ONLINE_DEALS[country] || EU_ONLINE_DEALS.FR;
+}
 
 export function DealsScreen() {
   const weatherBg = useWeatherBg();
@@ -46,6 +93,7 @@ export function DealsScreen() {
   const token = useStore((s) => s.token);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { country, currency } = useUserCountry();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [search, setSearch] = useState('');
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
@@ -57,6 +105,10 @@ export function DealsScreen() {
   const [viewMode, setViewMode] = useState<'search' | 'flyers'>('flyers');
   const [canGoBack, setCanGoBack] = useState(false);
   const [returnToTab, setReturnToTab] = useState<string | null>(null);
+  const [euDeals, setEuDeals] = useState<Deal[]>([]);
+  const [loadingEu, setLoadingEu] = useState(false);
+
+  const STORES = isUS(country) ? US_STORES : CA_STORES;
 
   const hasAccess = user?.plan === 'PREMIUM' && user?.groceryAddon;
   const { t } = useTranslation();
@@ -106,8 +158,20 @@ export function DealsScreen() {
   };
 
   useEffect(() => {
-    if (hasAccess && token) loadFlyers();
-  }, [hasAccess, token]);
+    if (hasAccess && token && !isEuropean(country)) loadFlyers();
+  }, [hasAccess, token, country]);
+
+  useEffect(() => {
+    if (hasAccess && token && isEuropean(country)) loadEuDeals();
+  }, [hasAccess, token, country]);
+
+  const loadEuDeals = async () => {
+    setLoadingEu(true);
+    try {
+      const data = await getEuropeanDeals(country);
+      setEuDeals(Array.isArray(data) ? data : []);
+    } catch { setEuDeals([]); } finally { setLoadingEu(false); }
+  };
 
   // Ouvre directement la fiche produit passée en paramètre (depuis DietScreen ou Liste)
   useEffect(() => {
@@ -269,7 +333,7 @@ export function DealsScreen() {
         <Text style={styles.dealName} numberOfLines={2}>{item.name}</Text>
         <View style={styles.priceRow}>
           {item.price ? (
-            <Text style={styles.salePrice}>${item.price.toFixed(2)}</Text>
+            <Text style={styles.salePrice}>{formatPrice(item.price, country)}</Text>
           ) : (
             <Text style={styles.salePrice}>Voir circulaire</Text>
           )}
@@ -335,9 +399,14 @@ export function DealsScreen() {
             <View style={styles.flyerProofPriceBox}>
               {selectedDeal.price ? (
                 <>
-                  <Text style={styles.flyerProofPriceDollar}>$</Text>
+                  {!currency.symbolAfter && (
+                    <Text style={styles.flyerProofPriceDollar}>{currency.symbol}</Text>
+                  )}
                   <Text style={styles.flyerProofPrice}>{Math.floor(selectedDeal.price)}</Text>
                   <Text style={styles.flyerProofPriceCents}>{(selectedDeal.price % 1).toFixed(2).substring(1)}</Text>
+                  {currency.symbolAfter && (
+                    <Text style={[styles.flyerProofPriceDollar, { marginTop: 6, fontSize: 22 }]}> {currency.symbol}</Text>
+                  )}
                 </>
               ) : (
                 <Text style={styles.flyerProofPriceAlt}>Voir prix en magasin</Text>
@@ -428,7 +497,7 @@ export function DealsScreen() {
                   </TouchableOpacity>
 
                   <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <Text style={[styles.storePriceText, i === 0 && { color: '#22c55e' }]}>${store.price?.toFixed(2)}</Text>
+                    <Text style={[styles.storePriceText, i === 0 && { color: '#22c55e' }]}>{store.price ? formatPrice(store.price, country) : '—'}</Text>
                     <TouchableOpacity
                       style={styles.miniAddBtn}
                       onPress={() => {
@@ -519,8 +588,73 @@ export function DealsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Bandeau pays détecté */}
+      <View style={styles.countryBanner}>
+        <Text style={styles.countryBannerText}>
+          {getCountryFlag(country)} {getCountryLabel(country)} · {currency.symbol} {currency.code}
+        </Text>
+      </View>
+
       {viewMode === 'flyers' ? (
-        loadingFlyers ? (
+        isEuropean(country) ? (
+          /* Vue Europe */
+          <ScrollView style={{ backgroundColor: 'transparent' }}>
+            {/* Deals Lidl depuis l'API */}
+            {loadingEu ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#22c55e" />
+                <Text style={styles.loadingText}>Chargement des circulaires Lidl...</Text>
+              </View>
+            ) : euDeals.length > 0 ? (
+              <>
+                <Text style={[styles.flyerTitle, { fontSize: 16, marginTop: 8, marginBottom: 6 }]}>
+                  Lidl — {getCountryLabel(country)}
+                </Text>
+                <FlatList
+                  style={{ backgroundColor: 'transparent' }}
+                  data={euDeals}
+                  renderItem={renderDeal}
+                  keyExtractor={(item) => String(item.id)}
+                  scrollEnabled={false}
+                />
+              </>
+            ) : (
+              /* Liens vers sites officiels européens */
+              <>
+                <Text style={[styles.flyerTitle, { fontSize: 16, marginTop: 8 }]}>
+                  Circulaires {getCountryLabel(country)}
+                </Text>
+                <Text style={[styles.flyerSubtitle, { marginBottom: 12 }]}>
+                  Accédez aux offres officielles de vos supermarchés
+                </Text>
+                {getDefaultEuDeals(country).map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.flyerCard}
+                    onPress={() => {
+                      if (typeof window !== 'undefined') {
+                        (window as any).open(d.url, '_blank');
+                      } else {
+                        import('react-native').then(({ Linking }) => Linking.openURL(d.url));
+                      }
+                    }}
+                  >
+                    <Text style={styles.flyerMerchant}>{d.emoji} {d.store}</Text>
+                    <Text style={styles.flyerName}>{d.title}</Text>
+                    <Text style={[styles.flyerDate, { color: '#60a5fa' }]}>Voir le site officiel →</Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={styles.euComingSoonBox}>
+                  <Text style={styles.euComingSoonTitle}>Circulaires intégrées bientôt</Text>
+                  <Text style={styles.euComingSoonText}>
+                    Lidl, Aldi, Carrefour et autres seront intégrés directement dans l'app prochainement.
+                  </Text>
+                </View>
+              </>
+            )}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        ) : loadingFlyers ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#22c55e" />
             <Text style={styles.loadingText}>Chargement des circulaires...</Text>
@@ -820,4 +954,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   flyerProofBadgeText: { color: '#15803d', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+
+  countryBanner: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 8,
+    paddingVertical: 5, paddingHorizontal: 12, marginBottom: 6,
+    alignSelf: 'flex-start',
+  },
+  countryBannerText: { color: '#86efac', fontSize: 12, fontWeight: '700' },
+
+  euComingSoonBox: {
+    backgroundColor: '#1a1a2e', borderRadius: 12, padding: 16, margin: 4, marginTop: 8,
+    borderWidth: 1, borderColor: '#3b4f8a',
+  },
+  euComingSoonTitle: { color: '#93c5fd', fontSize: 14, fontWeight: '800', marginBottom: 6 },
+  euComingSoonText: { color: '#94a3b8', fontSize: 13, lineHeight: 20 },
 });

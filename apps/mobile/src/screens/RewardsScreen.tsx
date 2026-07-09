@@ -7,14 +7,16 @@ import {
 } from 'react-native';
 import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals } from '../services/api';
 import { useStore } from '../store/useStore';
+import { useUserCountry } from '../hooks/useUserCountry';
+import { isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/countryDetection';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 type Tab = 'local' | 'saved' | 'online' | 'points';
 
-// ── Deals en ligne curatés (URLs officielles canadiennes) ─────────────────────
-const ONLINE_DEALS = [
+// ── Deals en ligne curatés — Canada ───────────────────────────────────────────
+const ONLINE_DEALS_CA = [
   {
     id: 'amazon',
     store: 'Amazon.ca',
@@ -117,6 +119,50 @@ const ONLINE_DEALS = [
   },
 ];
 
+const ONLINE_DEALS_US = [
+  { id: 'amazon-us', store: 'Amazon.com', emoji: '📦', title: "Today's Deals", description: 'Lightning deals and daily offers up to -70%', badge: 'Updated hourly', url: 'https://www.amazon.com/deals', badgeColor: '#FF9900' },
+  { id: 'walmart-us', store: 'Walmart US', emoji: '🏪', title: 'Rollbacks & Clearance', description: 'Everyday low prices on grocery, electronics, home', badge: 'Rollback', url: 'https://www.walmart.com/store/507/weekly-ad', badgeColor: '#0071CE' },
+  { id: 'kroger', store: 'Kroger', emoji: '🛒', title: 'Weekly Ad', description: "This week's deals on food, pharmacy and more", badge: 'Grocery', url: 'https://www.kroger.com/weeklyad', badgeColor: '#E41B2D' },
+  { id: 'target', store: 'Target', emoji: '🎯', title: 'Weekly Ad', description: 'Food, household, electronics — Circle deals', badge: 'Circle Deals', url: 'https://www.target.com/store-locator/find-stores', badgeColor: '#CC0000' },
+  { id: 'costco', store: 'Costco', emoji: '🏭', title: 'Online-Only Offers', description: 'Bulk savings on grocery, home, electronics', badge: 'Members', url: 'https://www.costco.com/online-only-offers.html', badgeColor: '#0B559C' },
+];
+
+const ONLINE_DEALS_EU: Record<string, typeof ONLINE_DEALS_CA> = {
+  FR: [
+    { id: 'lidl-fr',   store: 'Lidl France',    emoji: '🏷️', title: 'Promos Lidl',          description: 'Offres alimentaires et non-alimentaires de la semaine', badge: 'Alimentaire', url: 'https://www.lidl.fr/promotions', badgeColor: '#F7D000' },
+    { id: 'carref-fr', store: 'Carrefour',       emoji: '🛒', title: 'Promo de la semaine',  description: 'Prospectus Carrefour : épicerie, frais, surgélés', badge: 'Supermarché', url: 'https://www.carrefour.fr/service/promotions', badgeColor: '#004C97' },
+    { id: 'aldi-fr',   store: 'Aldi France',     emoji: '💰', title: 'Offres Aldi',           description: "Découvertes de la semaine et produits du moment", badge: 'Discount', url: 'https://www.aldi.fr/offres-de-la-semaine.html', badgeColor: '#003FA0' },
+    { id: 'leclerc',   store: 'E.Leclerc',       emoji: '🏬', title: 'Catalogue Leclerc',    description: 'Prix bas en drive, épicerie, frais, hygiène', badge: 'Drive', url: 'https://www.e.leclerc/catalogue', badgeColor: '#005BB1' },
+    { id: 'inter',     store: 'Intermarché',     emoji: '🌿', title: 'Promotions',            description: 'Viandes, fruits & légumes, épicerie en promo', badge: 'Épicerie', url: 'https://www.intermarche.com/offres-promotionnelles', badgeColor: '#E60012' },
+  ],
+  DE: [
+    { id: 'lidl-de',  store: 'Lidl Deutschland', emoji: '🏷️', title: 'Aktuelle Angebote',  description: 'Wochenangebote für Lebensmittel und Haushalt', badge: 'Lebensmittel', url: 'https://www.lidl.de/aktuelle-angebote', badgeColor: '#F7D000' },
+    { id: 'aldi-de',  store: 'Aldi Süd',         emoji: '💰', title: 'Angebote der Woche',  description: 'Sonderangebote auf Lebensmittel und Aktionsware', badge: 'Discount', url: 'https://www.aldi-sued.de/de/angebote.html', badgeColor: '#003FA0' },
+    { id: 'rewe',     store: 'Rewe',              emoji: '🛒', title: 'Wochenangebote',      description: 'Frisches, Tiefkühl, Getränke und mehr im Angebot', badge: 'Supermarkt', url: 'https://www.rewe.de/angebote/', badgeColor: '#CC0000' },
+    { id: 'edeka',    store: 'Edeka',             emoji: '🏬', title: 'Prospekte & Angebote',description: 'Regionale Angebote bei Edeka und Netto', badge: 'Regional', url: 'https://www.edeka.de/angebote/', badgeColor: '#FFD700' },
+  ],
+  UK: [
+    { id: 'lidl-uk',  store: 'Lidl UK',    emoji: '🏷️', title: 'Weekly Offers',       description: 'Fresh food and household deals this week', badge: 'Grocery', url: 'https://www.lidl.co.uk/offers', badgeColor: '#F7D000' },
+    { id: 'aldi-uk',  store: 'Aldi UK',    emoji: '💰', title: 'Super 6 & Specialbuys',description: 'Incredible prices every week at Aldi', badge: 'Discount', url: 'https://www.aldi.co.uk/offers', badgeColor: '#003FA0' },
+    { id: 'tesco',    store: 'Tesco',      emoji: '🛒', title: 'Clubcard Prices',      description: 'Extra savings with Clubcard — food and drinks', badge: 'Clubcard', url: 'https://www.tesco.com/groceries/en-GB/promotions', badgeColor: '#E71B2D' },
+    { id: 'sainsb',   store: "Sainsbury's",emoji: '🏬', title: 'Nectar Prices',        description: 'Better prices with Nectar at Sainsbury\'s', badge: 'Nectar', url: 'https://www.sainsburys.co.uk/gol-ui/promotions', badgeColor: '#FF7B00' },
+  ],
+  BE: [
+    { id: 'lidl-be',  store: 'Lidl Belgique', emoji: '🏷️', title: 'Promotions',         description: 'Promoties op voeding, dranken en meer', badge: 'Alimentaire', url: 'https://www.lidl.be/promotions', badgeColor: '#F7D000' },
+    { id: 'delhaize', store: 'Delhaize',      emoji: '🛒', title: 'Promos Delhaize',     description: 'Folder de la semaine, épicerie et frais', badge: 'Supermarché', url: 'https://www.delhaize.be/fr-be/folder', badgeColor: '#E4002B' },
+    { id: 'colruyt',  store: 'Colruyt',       emoji: '💰', title: 'Prix et promotions',  description: 'Prijzen van de week bij Colruyt', badge: 'Prix bas', url: 'https://www.colruyt.be/fr/folder-semaine', badgeColor: '#E30613' },
+    { id: 'albert',   store: 'Albert Heijn',  emoji: '🏬', title: 'Aanbiedingen',        description: 'Bonus kaart prijzen op groenten, vlees, etc.', badge: 'Bonuskaart', url: 'https://www.ah.be/promoties', badgeColor: '#009AC7' },
+  ],
+};
+
+function getOnlineDeals(country: string, isEu: boolean, isAmerica: boolean) {
+  if (!isEu && !isAmerica) return ONLINE_DEALS_CA;
+  if (isAmerica) return ONLINE_DEALS_US;
+  return ONLINE_DEALS_EU[country] || ONLINE_DEALS_EU.FR;
+}
+
+const ONLINE_DEALS = ONLINE_DEALS_CA;
+
 const STORE_EMOJIS: Record<string, string> = {
   iga: '🛒', metro: '🛒', maxi: '🛒', walmart: '🛒', 'super c': '🛒',
   provigo: '🛒', 'jean coutu': '💊', pharmaprix: '💊', adonis: '🌿',
@@ -161,6 +207,10 @@ export function RewardsScreen() {
   const savedDeals  = useStore((s) => s.savedDeals);
   const saveDeal    = useStore((s) => s.saveDeal);
   const removeSaved = useStore((s) => s.removeSavedDeal);
+  const { country } = useUserCountry();
+  const userIsEu = isEuropean(country);
+  const userIsUS = isUS(country);
+  const activeOnlineDeals = getOnlineDeals(country, userIsEu, userIsUS);
 
   const [localDeals,    setLocalDeals]    = useState<any[]>([]);
   const [pointCoupons,  setPointCoupons]  = useState<any[]>([]);
@@ -543,9 +593,11 @@ export function RewardsScreen() {
         {/* ══ En ligne ════════════════════════════════════════════════════════ */}
         {tab === 'online' && (
           <>
-            <Text style={s.sectionTitle}>Vrais rabais en ligne</Text>
+            <Text style={s.sectionTitle}>
+              {userIsEu ? `Rabais en ligne — ${getCountryFlag(country)} ${getCountryLabel(country)}` : 'Vrais rabais en ligne'}
+            </Text>
             <Text style={s.sectionSub}>Pages officielles des commerçants — mis à jour par les magasins eux-mêmes</Text>
-            {ONLINE_DEALS.map(deal => (
+            {activeOnlineDeals.map(deal => (
               <TouchableOpacity key={deal.id} style={s.onlineCard} onPress={() => openUrl(deal.url)} activeOpacity={0.8}>
                 <Text style={s.onlineEmoji}>{deal.emoji}</Text>
                 <View style={s.onlineInfoBox}>

@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { requireGroceryAddon } from '../middleware/subscription';
 import { searchFlippDeals, getGroceryFlyers, getFlyerItems } from '../services/flipp';
+import { getEuropeanDeals } from '../services/europeanDeals';
 
 const router = Router();
 
@@ -122,6 +123,17 @@ router.get('/local', authenticateToken, async (req: AuthRequest, res: Response) 
     res.json(allDeals.slice(0, 40));
   } catch (error) {
     console.error('Local deals error:', error);
+    res.json([]);
+  }
+});
+
+// Circulaires européennes — Lidl par pays
+router.get('/eu', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const country = (req.query.country as string || 'FR').toUpperCase();
+    const deals = await getEuropeanDeals(country);
+    res.json(deals);
+  } catch {
     res.json([]);
   }
 });
