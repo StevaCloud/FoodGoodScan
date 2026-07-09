@@ -7,7 +7,12 @@ import { createCheckoutSession, createPortalSession, updatePhone, logout as apiL
 import { LANGUAGE_NAMES, Language } from '../i18n/translations';
 import { useTranslation } from '../i18n/useTranslation';
 import { useUserCountry } from '../hooks/useUserCountry';
-import { getCountryFlag, getCountryLabel } from '../utils/countryDetection';
+import { getCountryFlag, getCountryLabel, CurrencyInfo } from '../utils/countryDetection';
+
+function fmtPrice(amount: string, currency: CurrencyInfo): string {
+  if (currency.symbolAfter) return `${amount} ${currency.symbol}`;
+  return `${currency.symbol}${amount}`;
+}
 
 const LANGUAGES: Language[] = ['fr', 'en', 'es', 'ar'];
 
@@ -162,7 +167,7 @@ export function ProfileScreen() {
               {loading === 'premium' ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.upgradeButtonText}>Premium — $3.99/mois</Text>
+                <Text style={styles.upgradeButtonText}>Premium — {fmtPrice('3.99', currency)}/mois</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -181,7 +186,7 @@ export function ProfileScreen() {
               {loading === 'premium_grocery' ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.upgradeButtonText}>Premium + Épicerie — $5.99/mois</Text>
+                <Text style={styles.upgradeButtonText}>Premium + Épicerie — {fmtPrice('5.99', currency)}/mois</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -194,7 +199,7 @@ export function ProfileScreen() {
             {user?.groceryAddon ? 'Premium + Épicerie actifs' : 'Premium actif'}
           </Text>
           <Text style={styles.activePrice}>
-            {user?.groceryAddon ? '$5.99/mois' : '$3.99/mois'}
+            {user?.groceryAddon ? fmtPrice('5.99', currency) : fmtPrice('3.99', currency)}/mois
           </Text>
           <TouchableOpacity
             style={styles.manageButton}
