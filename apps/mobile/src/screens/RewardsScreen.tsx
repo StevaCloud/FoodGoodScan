@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Alert, Modal, RefreshControl, Image,
   Platform, Linking, Dimensions,
 } from 'react-native';
-import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals } from '../services/api';
+import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals, getEuropeanDeals } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useUserCountry } from '../hooks/useUserCountry';
 import { isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/countryDetection';
@@ -228,8 +228,9 @@ export function RewardsScreen() {
   const load = useCallback(async () => {
     try {
       const pc = postalCode || 'J1H1A1';
+      const localPromise = userIsEu ? getEuropeanDeals(country) : getLocalDeals(pc);
       const [local, all, my] = await Promise.all([
-        getLocalDeals(pc),
+        localPromise,
         getCoupons(),
         getMyCoupons(),
       ]);
@@ -240,7 +241,7 @@ export function RewardsScreen() {
     } catch {}
     setLoading(false);
     setRefreshing(false);
-  }, [postalCode]);
+  }, [postalCode, country, userIsEu]);
 
   useEffect(() => { load(); }, [load]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -506,8 +507,12 @@ export function RewardsScreen() {
         {/* ══ En magasin ══════════════════════════════════════════════════════ */}
         {tab === 'local' && (
           <>
-            <Text style={s.sectionTitle}>Circulaires de votre région</Text>
-            <Text style={s.sectionSub}>IGA · Maxi · Metro · Walmart · Pharmaprix · Canadian Tire</Text>
+            <Text style={s.sectionTitle}>
+              {userIsEu ? `Circulaires — ${getCountryFlag(country)} ${getCountryLabel(country)}` : userIsUS ? 'Weekly Flyers — 🇺🇸' : 'Circulaires de votre région'}
+            </Text>
+            <Text style={s.sectionSub}>
+              {userIsEu ? 'Lidl · et autres grandes enseignes' : userIsUS ? 'Kroger · Walmart · Target · Costco' : 'IGA · Maxi · Metro · Walmart · Pharmaprix · Canadian Tire'}
+            </Text>
             {localDeals.length === 0 ? (
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>📭</Text>
