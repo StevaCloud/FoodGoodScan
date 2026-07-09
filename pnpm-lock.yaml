@@ -75,9 +75,6 @@ importers:
       react-native:
         specifier: 0.85.3
         version: 0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3)
-      react-native-applovin-max:
-        specifier: ^9.6.0
-        version: 9.6.0(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       react-native-confetti-cannon:
         specifier: ^1.5.2
         version: 1.5.2
@@ -3192,12 +3189,6 @@ packages:
 
   react-is@19.2.7:
     resolution: {integrity: sha512-kZFnouyVv7eP/Phmrlo9FK+zcAdriZJvzxXHF1Sl1P377WSGe2G/JxVolhTrB/jeV47lKImhNUsijjHAAbcl/A==}
-
-  react-native-applovin-max@9.6.0:
-    resolution: {integrity: sha512-CUg81eeuQ7wAIi7AzTS1EOX6Z/9XUY74dZfQ3MB/l+xe7Am4RLqKEdeGCgjW3faSaRXnm+M/7Yp6lSl/q6Eyaw==}
-    peerDependencies:
-      react: '*'
-      react-native: '*'
 
   react-native-confetti-cannon@1.5.2:
     resolution: {integrity: sha512-IZuWjlW7QsdxEGNnvpD6W+7iKCCQhnd5BvuNvMtirU7Nxm8WS2N6LPGMBz1ZYDuusG+GRZkoXXTNCdoAAGpCTg==}
@@ -7166,11 +7157,6 @@ snapshots:
   react-is@18.3.1: {}
 
   react-is@19.2.7: {}
-
-  react-native-applovin-max@9.6.0(react-native@0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3))(react@19.2.3):
-    dependencies:
-      react: 19.2.3
-      react-native: 0.85.3(@babel/core@7.29.7)(@types/react@19.2.17)(react@19.2.3)
 
   react-native-confetti-cannon@1.5.2: {}
 
