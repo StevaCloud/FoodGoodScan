@@ -35,12 +35,6 @@
         {
           "cameraPermission": "FoodGoodScan utilise la caméra pour scanner les codes-barres des produits."
         }
-      ],
-      [
-        "react-native-applovin-max",
-        {
-          "sdkKey": "VOTRE_SDK_KEY_APPLOVIN_ICI"
-        }
       ]
     ],
     "extra": {
