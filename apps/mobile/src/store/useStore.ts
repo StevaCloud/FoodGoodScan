@@ -86,6 +86,7 @@ interface AppState {
   quizBestScore: number;
   quizTotal: number;
   quizCorrect: number;
+  lastQuizAt: number | null;
   updateQuizStats: (score: number, correct: number) => void;
 
   savedDeals: any[];
@@ -122,6 +123,7 @@ export const useStore = create<AppState>()(
       quizBestScore: 0,
       quizTotal: 0,
       quizCorrect: 0,
+      lastQuizAt: null,
       savedDeals: [],
 
       setUser: (user) => set({ user, isLoggedIn: !!user }),
@@ -180,6 +182,7 @@ export const useStore = create<AppState>()(
         quizBestScore: Math.max(state.quizBestScore, score),
         quizTotal: state.quizTotal + 1,
         quizCorrect: state.quizCorrect + correct,
+        lastQuizAt: Date.now(),
       })),
 
       saveDeal: (deal) => set((state) => {

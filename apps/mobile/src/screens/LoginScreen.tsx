@@ -35,7 +35,7 @@ export function LoginScreen() {
     try {
       const data = mode === 'login'
         ? await login(email, password)
-        : await register(email, password, name, phone || undefined);
+        : await register(email, password);
       setToken(data.token);
       setAuthToken(data.token);
       setUser(data.user);
@@ -222,33 +222,6 @@ export function LoginScreen() {
         <ErrorBox />
         <SuccessBox />
 
-        {mode === 'register' && (
-          <TextInput
-            style={styles.input}
-            placeholder={t('login.name')}
-            placeholderTextColor="#666"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-        )}
-
-        {mode === 'register' && (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Téléphone (optionnel)"
-              placeholderTextColor="#666"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-            />
-            <Text style={styles.phoneHint}>
-              Requis pour souscrire un abonnement. Peut être ajouté plus tard dans votre profil.
-            </Text>
-          </>
-        )}
 
         <TextInput
           style={styles.input}

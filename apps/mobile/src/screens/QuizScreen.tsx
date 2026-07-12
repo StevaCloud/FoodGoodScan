@@ -311,6 +311,31 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+const QUIZ_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+
+function useCooldown(lastQuizAt: number | null, isPremium: boolean) {
+  const [remaining, setRemaining] = useState(0);
+  useEffect(() => {
+    if (isPremium || !lastQuizAt) { setRemaining(0); return; }
+    const tick = () => {
+      const diff = QUIZ_COOLDOWN_MS - (Date.now() - lastQuizAt);
+      setRemaining(Math.max(0, diff));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastQuizAt, isPremium]);
+  return remaining;
+}
+
+function formatCountdown(ms: number) {
+  const totalSec = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+}
+
 export function QuizScreen() {
   const user = useStore(s => s.user);
   const isPremium = user?.plan === 'PREMIUM';
@@ -318,8 +343,10 @@ export function QuizScreen() {
   const bestScore = useStore(s => s.quizBestScore);
   const quizTotal = useStore(s => s.quizTotal);
   const quizCorrect = useStore(s => s.quizCorrect);
+  const lastQuizAt = useStore(s => s.lastQuizAt);
   const token = useStore(s => s.token);
   const navigation = useNavigation<any>();
+  const cooldownMs = useCooldown(lastQuizAt, isPremium);
 
   const [phase,      setPhase]      = useState<QuizPhase>('home');
   const [category,   setCategory]   = useState<Category | null>(null);
@@ -437,8 +464,16 @@ export function QuizScreen() {
           <Text style={s.screenTitle}>🧠 Quiz</Text>
           <Text style={s.screenSub}>Choisis une catégorie pour commencer</Text>
 
+          {cooldownMs > 0 && (
+            <View style={s.cooldownBanner}>
+              <Text style={s.cooldownTitle}>⏳ Prochain quiz disponible dans</Text>
+              <Text style={s.cooldownTimer}>{formatCountdown(cooldownMs)}</Text>
+              <Text style={s.cooldownSub}>Premium supprime l'attente</Text>
+            </View>
+          )}
+
           {CATEGORIES.map(cat => (
-            <TouchableOpacity key={cat.id} style={[s.catCard, { borderColor: cat.color + '55' }]} onPress={() => startQuiz(cat)} activeOpacity={0.8}>
+            <TouchableOpacity key={cat.id} style={[s.catCard, { borderColor: cat.color + '55' }, cooldownMs > 0 && s.catCardDisabled]} onPress={() => cooldownMs > 0 ? null : startQuiz(cat)} activeOpacity={cooldownMs > 0 ? 1 : 0.8}>
               <View style={[s.catIconWrap, { backgroundColor: cat.color + '22' }]}>
                 <Text style={s.catIcon}>{cat.emoji}</Text>
               </View>
@@ -499,38 +534,51 @@ export function QuizScreen() {
             <View style={s.dealsSection}>
               <Text style={s.dealsSectionTitle}>Rabais débloqués</Text>
               <Text style={s.dealsSectionSub}>Vrais circulaires de votre région</Text>
-              {dealRewards.map((deal, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={s.dealCard}
-                  onPress={() => isPremium
-                    ? navigation.navigate('Soldes', { dealItem: deal, returnTo: 'Quiz' })
-                    : openCheckout()
-                  }
-                >
-                  {deal.imageUrl
-                    ? <Image source={{ uri: deal.imageUrl }} style={s.dealImg} resizeMode="contain" />
-                    : <View style={[s.dealImg, s.dealImgFallback]}><Text>🛒</Text></View>
-                  }
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.dealName} numberOfLines={2}>{deal.name}</Text>
-                    <Text style={s.dealMerchant}>{isPremium ? deal.merchant : '🔒 Premium'}</Text>
-                    {deal.saleStory && <View style={s.salePill}><Text style={s.salePillTxt}>{deal.saleStory}</Text></View>}
-                  </View>
-                  <Text style={[s.dealPrice, { color: col }]}>{isPremium && deal.price ? `$${deal.price.toFixed(2)}` : '$ ?.??'}</Text>
-                </TouchableOpacity>
-              ))}
+              {dealRewards.map((deal, i) => {
+                const isFreeUnlock = !isPremium && i === 0;
+                const canSee = isPremium || isFreeUnlock;
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={s.dealCard}
+                    onPress={() => canSee
+                      ? navigation.navigate('Soldes', { dealItem: deal, returnTo: 'Quiz' })
+                      : openCheckout()
+                    }
+                  >
+                    {isFreeUnlock && (
+                      <View style={s.freeBadge}><Text style={s.freeBadgeTxt}>🎁 Débloqué</Text></View>
+                    )}
+                    {deal.imageUrl
+                      ? <Image source={{ uri: deal.imageUrl }} style={s.dealImg} resizeMode="contain" />
+                      : <View style={[s.dealImg, s.dealImgFallback]}><Text>🛒</Text></View>
+                    }
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.dealName} numberOfLines={2}>{deal.name}</Text>
+                      <Text style={s.dealMerchant}>{canSee ? deal.merchant : '🔒 Premium'}</Text>
+                      {deal.saleStory && <View style={s.salePill}><Text style={s.salePillTxt}>{deal.saleStory}</Text></View>}
+                    </View>
+                    <Text style={[s.dealPrice, { color: col }]}>{canSee && deal.price ? `$${deal.price.toFixed(2)}` : '$ ?.??'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
               {!isPremium && (
                 <TouchableOpacity style={s.upgradeBtn} onPress={() => openCheckout()}>
-                  <Text style={s.upgradeTxt}>Premium — Voir prix & magasins</Text>
+                  <Text style={s.upgradeTxt}>Premium — Voir tous les prix & magasins</Text>
                   <Text style={s.upgradeSub}>$3.99/mois</Text>
                 </TouchableOpacity>
               )}
             </View>
           )}
 
-          <TouchableOpacity style={[s.startBtn, { backgroundColor: col }]} onPress={() => startQuiz(category!)}>
-            <Text style={s.startBtnTxt}>Rejouer — {category?.emoji} {category?.label}</Text>
+          <TouchableOpacity
+            style={[s.startBtn, { backgroundColor: cooldownMs > 0 ? '#333' : col }]}
+            onPress={() => cooldownMs > 0 ? null : startQuiz(category!)}
+            activeOpacity={cooldownMs > 0 ? 1 : 0.8}
+          >
+            <Text style={s.startBtnTxt}>
+              {cooldownMs > 0 ? `⏳ ${formatCountdown(cooldownMs)}` : `Rejouer — ${category?.emoji} ${category?.label}`}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.secondaryBtn} onPress={() => setPhase('home')}>
             <Text style={s.secondaryBtnTxt}>Changer de catégorie</Text>
@@ -621,6 +669,11 @@ const s = StyleSheet.create({
   screenSub:   { color: '#666', fontSize: 14, marginBottom: 24 },
 
   catCard:    { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1 },
+  catCardDisabled: { opacity: 0.4 },
+  cooldownBanner: { backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#f59e0b55' },
+  cooldownTitle:  { color: '#f59e0b', fontWeight: '700', fontSize: 14, marginBottom: 6 },
+  cooldownTimer:  { color: 'white', fontWeight: '800', fontSize: 28, fontVariant: ['tabular-nums'] },
+  cooldownSub:    { color: '#666', fontSize: 12, marginTop: 6 },
   catIconWrap:{ width: 56, height: 56, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   catIcon:    { fontSize: 28 },
   catTextWrap:{ flex: 1 },
@@ -654,7 +707,9 @@ const s = StyleSheet.create({
   dealsSection:      { width: '100%', marginTop: 16, marginBottom: 8 },
   dealsSectionTitle: { color: '#22c55e', fontSize: 17, fontWeight: '800', marginBottom: 2 },
   dealsSectionSub:   { color: '#aaa', fontSize: 12, marginBottom: 12 },
-  dealCard:          { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, marginBottom: 8, gap: 10 },
+  dealCard:          { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, marginBottom: 8, gap: 10, position: 'relative' },
+  freeBadge:         { position: 'absolute', top: -8, right: 8, backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, zIndex: 1 },
+  freeBadgeTxt:      { color: '#fff', fontSize: 11, fontWeight: '800' },
   dealImg:           { width: 60, height: 60, borderRadius: 10, backgroundColor: '#222' },
   dealImgFallback:   { justifyContent: 'center', alignItems: 'center' },
   dealName:          { color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 17 },
