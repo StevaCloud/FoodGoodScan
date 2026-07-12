@@ -20,6 +20,111 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+app.get('/privacy', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Politique de confidentialité — FoodGoodScan</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
+  h1 { color: #16a34a; } h2 { color: #15803d; margin-top: 32px; }
+  a { color: #16a34a; }
+</style>
+</head>
+<body>
+<h1>Politique de confidentialité — FoodGoodScan</h1>
+<p><strong>Dernière mise à jour :</strong> 9 juillet 2026</p>
+
+<h2>1. Informations collectées</h2>
+<p>FoodGoodScan collecte les informations suivantes :</p>
+<ul>
+  <li><strong>Adresse courriel</strong> : utilisée pour la création de compte et la connexion.</li>
+  <li><strong>Numéro de téléphone</strong> : utilisé pour la prévention des abus d'abonnement.</li>
+  <li><strong>Code postal</strong> : utilisé pour afficher les circulaires et offres de votre région.</li>
+  <li><strong>Données de scan</strong> : codes-barres des produits scannés, conservés dans votre historique.</li>
+  <li><strong>Localisation approximative</strong> : utilisée pour les données météo et les offres locales (non stockée de manière permanente).</li>
+  <li><strong>Données biométriques (empreinte digitale / Face ID)</strong> : utilisées uniquement pour déverrouiller l'accès à l'application. Ces données ne quittent jamais votre appareil et ne sont jamais transmises à nos serveurs.</li>
+</ul>
+
+<h2>2. Utilisation des données</h2>
+<p>Vos données sont utilisées exclusivement pour :</p>
+<ul>
+  <li>Fournir les fonctionnalités de l'application (scan, circulaires, listes d'épicerie, quiz)</li>
+  <li>Gérer votre abonnement via Stripe</li>
+  <li>Afficher des publicités personnalisées via AppLovin MAX (avec votre consentement)</li>
+  <li>Améliorer les recommandations nutritionnelles</li>
+</ul>
+
+<h2>3. Partage des données</h2>
+<p>Nous ne vendons jamais vos données personnelles. Elles peuvent être partagées avec :</p>
+<ul>
+  <li><strong>Stripe</strong> : traitement des paiements</li>
+  <li><strong>AppLovin</strong> : publicités dans l'application</li>
+  <li><strong>Open Food Facts</strong> : données nutritionnelles publiques</li>
+</ul>
+
+<h2>4. Conservation des données</h2>
+<p>Vos données sont conservées tant que votre compte est actif. Vous pouvez demander la suppression à tout moment.</p>
+
+<h2>5. Sécurité</h2>
+<p>Vos données sont protégées par chiffrement (HTTPS, bcrypt, JWT sécurisés).</p>
+
+<h2>6. Vos droits</h2>
+<p>Conformément à la Loi 25 (Québec) et au RGPD, vous avez le droit d'accéder, de corriger ou de supprimer vos données.</p>
+
+<h2>7. Contact</h2>
+<p><a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
+</body>
+</html>`);
+});
+
+app.get('/delete-account', (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supprimer mon compte — FoodGoodScan</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 680px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
+  h1 { color: #dc2626; } h2 { color: #111; margin-top: 28px; }
+  .warn { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin: 16px 0; color: #991b1b; }
+  .step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .num { background: #dc2626; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+  a { color: #16a34a; } ul { padding-left: 20px; }
+  .btn { display: inline-block; background: #dc2626; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>Supprimer mon compte FoodGoodScan</h1>
+<div class="warn">⚠️ <strong>Attention :</strong> La suppression est irréversible. Toutes vos données seront effacées définitivement.</div>
+
+<h2>Données supprimées</h2>
+<ul>
+  <li>Adresse courriel et mot de passe</li>
+  <li>Numéro de téléphone</li>
+  <li>Historique de scans</li>
+  <li>Liste d'épicerie</li>
+  <li>Points et coupons</li>
+  <li>Profil de santé et préférences</li>
+</ul>
+
+<h2>Comment supprimer votre compte</h2>
+<div class="step"><div class="num">1</div><div>Envoyez un courriel à <strong>foodgoodscan.app@gmail.com</strong> avec le sujet <strong>"Suppression de compte"</strong>.</div></div>
+<div class="step"><div class="num">2</div><div>Vous recevrez une confirmation dans les <strong>48 heures</strong>.</div></div>
+<div class="step"><div class="num">3</div><div>Votre compte sera supprimé dans un délai maximum de <strong>30 jours</strong>.</div></div>
+<a href="mailto:foodgoodscan.app@gmail.com?subject=Suppression%20de%20compte" class="btn">📧 Demander la suppression</a>
+
+<h2>Contact</h2>
+<p><a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
+</body>
+</html>`);
+});
+
 app.use(helmet());
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
@@ -97,111 +202,6 @@ app.get('/api/image-proxy', async (req, res) => {
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-app.get('/privacy', (_req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(`<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Politique de confidentialité — FoodGoodScan</title>
-<style>
-  body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
-  h1 { color: #16a34a; } h2 { color: #15803d; margin-top: 32px; }
-  a { color: #16a34a; }
-</style>
-</head>
-<body>
-<h1>Politique de confidentialité — FoodGoodScan</h1>
-<p><strong>Dernière mise à jour :</strong> 9 juillet 2026</p>
-
-<h2>1. Informations collectées</h2>
-<p>FoodGoodScan collecte les informations suivantes :</p>
-<ul>
-  <li><strong>Adresse courriel</strong> : utilisée pour la création de compte et la connexion.</li>
-  <li><strong>Numéro de téléphone</strong> : utilisé pour la prévention des abus d'abonnement.</li>
-  <li><strong>Code postal</strong> : utilisé pour afficher les circulaires et offres de votre région.</li>
-  <li><strong>Données de scan</strong> : codes-barres des produits scannés, conservés dans votre historique.</li>
-  <li><strong>Localisation approximative</strong> : utilisée pour les données météo et les offres locales (non stockée de manière permanente).</li>
-  <li><strong>Données biométriques (empreinte digitale / Face ID)</strong> : utilisées uniquement pour déverrouiller l'accès à l'application. Ces données ne quittent jamais votre appareil et ne sont jamais transmises à nos serveurs. Le traitement est effectué localement par le système sécurisé de votre téléphone.</li>
-</ul>
-
-<h2>2. Utilisation des données</h2>
-<p>Vos données sont utilisées exclusivement pour :</p>
-<ul>
-  <li>Fournir les fonctionnalités de l'application (scan, circulaires, listes d'épicerie, quiz)</li>
-  <li>Gérer votre abonnement via Stripe</li>
-  <li>Afficher des publicités personnalisées via AppLovin MAX (avec votre consentement)</li>
-  <li>Améliorer les recommandations nutritionnelles</li>
-</ul>
-
-<h2>3. Partage des données</h2>
-<p>Nous ne vendons jamais vos données personnelles. Elles peuvent être partagées avec :</p>
-<ul>
-  <li><strong>Stripe</strong> : traitement des paiements (stripe.com/privacy)</li>
-  <li><strong>AppLovin</strong> : publicités dans l'application (applovin.com/privacy)</li>
-  <li><strong>Open Food Facts</strong> : données nutritionnelles publiques</li>
-</ul>
-
-<h2>4. Conservation des données</h2>
-<p>Vos données sont conservées tant que votre compte est actif. Vous pouvez demander la suppression de votre compte et de toutes vos données à tout moment.</p>
-
-<h2>5. Sécurité</h2>
-<p>Vos données sont protégées par chiffrement (HTTPS, bcrypt pour les mots de passe, JWT sécurisés).</p>
-
-<h2>6. Vos droits</h2>
-<p>Conformément à la Loi 25 (Québec) et au RGPD (Europe), vous avez le droit d'accéder, de corriger ou de supprimer vos données.</p>
-
-<h2>7. Contact</h2>
-<p>Pour toute question : <a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
-</body>
-</html>`);
-});
-
-app.get('/delete-account', (_req, res) => {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(`<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Supprimer mon compte — FoodGoodScan</title>
-<style>
-  body { font-family: -apple-system, sans-serif; max-width: 680px; margin: 0 auto; padding: 24px; color: #222; line-height: 1.7; }
-  h1 { color: #dc2626; } h2 { color: #111; margin-top: 28px; }
-  .warn { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; margin: 16px 0; color: #991b1b; }
-  .step { display: flex; gap: 12px; margin-bottom: 14px; }
-  .num { background: #dc2626; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
-  a { color: #16a34a; } ul { padding-left: 20px; }
-  .btn { display: inline-block; background: #dc2626; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; margin-top: 8px; }
-</style>
-</head>
-<body>
-<h1>Supprimer mon compte FoodGoodScan</h1>
-<div class="warn">⚠️ <strong>Attention :</strong> La suppression est irréversible. Toutes vos données seront effacées définitivement.</div>
-
-<h2>Données supprimées</h2>
-<ul>
-  <li>Adresse courriel et mot de passe</li>
-  <li>Numéro de téléphone</li>
-  <li>Historique de scans</li>
-  <li>Liste d'épicerie</li>
-  <li>Points et coupons</li>
-  <li>Profil de santé et préférences</li>
-</ul>
-
-<h2>Comment supprimer votre compte</h2>
-<div class="step"><div class="num">1</div><div>Envoyez un courriel à <strong>foodgoodscan.app@gmail.com</strong> avec le sujet <strong>"Suppression de compte"</strong> et votre adresse courriel associée au compte.</div></div>
-<div class="step"><div class="num">2</div><div>Vous recevrez une confirmation dans les <strong>48 heures</strong>.</div></div>
-<div class="step"><div class="num">3</div><div>Votre compte sera supprimé dans un délai maximum de <strong>30 jours</strong>.</div></div>
-<a href="mailto:foodgoodscan.app@gmail.com?subject=Suppression%20de%20compte" class="btn">📧 Demander la suppression</a>
-
-<h2>Contact</h2>
-<p><a href="mailto:foodgoodscan.app@gmail.com">foodgoodscan.app@gmail.com</a></p>
-</body>
-</html>`);
 });
 
 app.listen(PORT, () => {
