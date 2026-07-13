@@ -11,6 +11,7 @@ import { categoryRouter } from './routes/categories';
 import { webhookRouter } from './routes/webhooks';
 import { couponsRouter } from './routes/coupons';
 import { nutritionRouter } from './routes/nutrition';
+import { prisma } from './lib/prisma';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   console.error('FATAL: JWT_SECRET manquant en production');
@@ -19,6 +20,99 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+app.get('/admin', async (req, res) => {
+  // Basic Auth
+  const adminPass = process.env.ADMIN_PASSWORD || 'fgs-admin-2026';
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="FoodGoodScan Admin"');
+    res.status(401).send('Accès refusé');
+    return;
+  }
+  const [user, pass] = Buffer.from(auth.slice(6), 'base64').toString().split(':');
+  if (user !== 'admin' || pass !== adminPass) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="FoodGoodScan Admin"');
+    res.status(401).send('Mot de passe incorrect');
+    return;
+  }
+
+  try {
+    const [totalUsers, premiumUsers, trialUsers, totalScans, recentUsers] = await Promise.all([
+      prisma.user.count(),
+      prisma.subscription.count({ where: { plan: 'PREMIUM' } }),
+      prisma.subscription.count({ where: { plan: 'TRIAL' } }),
+      prisma.scanHistory.count(),
+      prisma.user.findMany({
+        take: 50,
+        orderBy: { createdAt: 'desc' },
+        include: { subscription: true },
+      }),
+    ]);
+
+    const freeUsers = totalUsers - premiumUsers - trialUsers;
+
+    const rows = recentUsers.map(u => {
+      const plan = u.subscription?.plan || 'FREE';
+      const planColor = plan === 'PREMIUM' ? '#22c55e' : plan === 'TRIAL' ? '#f59e0b' : '#888';
+      const date = new Date(u.createdAt).toLocaleDateString('fr-CA');
+      return `<tr>
+        <td>${u.email}</td>
+        <td><span style="color:${planColor};font-weight:700">${plan}</span></td>
+        <td>${u.points}</td>
+        <td>${date}</td>
+      </tr>`;
+    }).join('');
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — FoodGoodScan</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: #0a0a0a; color: #e5e5e5; padding: 24px; }
+  h1 { color: #22c55e; font-size: 28px; margin-bottom: 8px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 32px; }
+  .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+  .card { background: #1a1a1a; border: 1px solid #222; border-radius: 12px; padding: 20px 28px; min-width: 140px; }
+  .card-num { font-size: 36px; font-weight: 800; color: #22c55e; }
+  .card-label { font-size: 13px; color: #888; margin-top: 4px; }
+  .card.orange .card-num { color: #f59e0b; }
+  .card.blue .card-num { color: #60a5fa; }
+  .card.gray .card-num { color: #aaa; }
+  h2 { font-size: 18px; color: #ccc; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #111; border-radius: 12px; overflow: hidden; }
+  th { background: #1a1a1a; color: #888; font-size: 12px; text-transform: uppercase; padding: 12px 16px; text-align: left; }
+  td { padding: 12px 16px; border-top: 1px solid #1a1a1a; font-size: 14px; }
+  tr:hover td { background: #161616; }
+</style>
+</head>
+<body>
+<h1>FoodGoodScan Admin</h1>
+<p class="sub">Dernière mise à jour : ${new Date().toLocaleString('fr-CA')}</p>
+
+<div class="stats">
+  <div class="card"><div class="card-num">${totalUsers}</div><div class="card-label">Utilisateurs total</div></div>
+  <div class="card"><div class="card-num">${premiumUsers}</div><div class="card-label">Premium</div></div>
+  <div class="card orange"><div class="card-num">${trialUsers}</div><div class="card-label">En essai</div></div>
+  <div class="card gray"><div class="card-num">${freeUsers}</div><div class="card-label">Free</div></div>
+  <div class="card blue"><div class="card-num">${totalScans}</div><div class="card-label">Scans total</div></div>
+</div>
+
+<h2>Utilisateurs récents (50 derniers)</h2>
+<table>
+  <thead><tr><th>Email</th><th>Plan</th><th>Points</th><th>Inscrit le</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+</body>
+</html>`);
+  } catch (err) {
+    res.status(500).send('Erreur serveur');
+  }
+});
 
 app.get('/privacy', (_req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
