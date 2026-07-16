@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { Platform } from 'react-native';
 import { Language } from '../i18n/translations';
 
 interface User {
@@ -101,9 +102,44 @@ interface AppState {
   tickPet: () => void;
 }
 
-const webStorage = createJSONStorage(() =>
-  typeof window !== 'undefined' ? window.localStorage : ({} as Storage)
-);
+// Stockage universel : localStorage sur web, AsyncStorage sur mobile avec fallback mémoire
+const memCache = new Map<string, string>();
+const safeStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    try {
+      if (Platform.OS === 'web') {
+        return typeof window !== 'undefined' ? window.localStorage.getItem(name) : null;
+      }
+      const AS = require('@react-native-async-storage/async-storage').default;
+      return await AS.getItem(name);
+    } catch {
+      return memCache.get(name) ?? null;
+    }
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    memCache.set(name, value);
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') window.localStorage.setItem(name, value);
+        return;
+      }
+      const AS = require('@react-native-async-storage/async-storage').default;
+      await AS.setItem(name, value);
+    } catch {}
+  },
+  removeItem: async (name: string): Promise<void> => {
+    memCache.delete(name);
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') window.localStorage.removeItem(name);
+        return;
+      }
+      const AS = require('@react-native-async-storage/async-storage').default;
+      await AS.removeItem(name);
+    } catch {}
+  },
+};
+const webStorage = createJSONStorage(() => safeStorage);
 
 export const useStore = create<AppState>()(
   persist(

@@ -13,6 +13,7 @@ import { openCheckout } from '../services/checkout';
 import { usePostalCode } from '../hooks/usePostalCode';
 import { fetchNutritionByName } from '../utils/fetchNutrition';
 import { useUserCountry } from '../hooks/useUserCountry';
+import { AdBanner, AdBannerSmall } from '../components/AdBanner';
 import { formatPrice, isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/countryDetection';
 import { getEuropeanDeals } from '../services/api';
 
@@ -333,16 +334,12 @@ export function DealsScreen() {
         <Text style={styles.dealStore}>{item.merchant}</Text>
         <Text style={styles.dealName} numberOfLines={2}>{item.name}</Text>
         <View style={styles.priceRow}>
-          {isPremium ? (
-            item.price ? (
-              <Text style={styles.salePrice}>{formatPrice(item.price, country)}</Text>
-            ) : (
-              <Text style={styles.salePrice}>Voir circulaire</Text>
-            )
+          {item.price ? (
+            <Text style={styles.salePrice}>{formatPrice(item.price, country)}</Text>
           ) : (
-            <Text style={[styles.salePrice, { color: '#555' }]}>$ ?.??  🔒</Text>
+            <Text style={styles.salePrice}>Voir circulaire</Text>
           )}
-          {isPremium && item.priceText ? (
+          {item.priceText ? (
             <Text style={styles.priceText}>{item.priceText}</Text>
           ) : null}
         </View>
@@ -402,9 +399,7 @@ export function DealsScreen() {
           {/* Prix encadré + bouton ajouter */}
           <View style={styles.flyerProofPriceRow}>
             <View style={styles.flyerProofPriceBox}>
-              {!isPremium ? (
-                <Text style={styles.flyerProofPriceAlt}>🔒 Premium</Text>
-              ) : selectedDeal.price ? (
+              {selectedDeal.price ? (
                 <>
                   {!currency.symbolAfter && (
                     <Text style={styles.flyerProofPriceDollar}>{currency.symbol}</Text>
@@ -419,23 +414,13 @@ export function DealsScreen() {
                 <Text style={styles.flyerProofPriceAlt}>Voir prix en magasin</Text>
               )}
             </View>
-            {isPremium ? (
-              <TouchableOpacity
-                style={styles.flyerProofAddBtn}
-                onPress={() => handleAddToList(selectedDeal)}
-              >
-                <Text style={styles.flyerProofAddIcon}>+</Text>
-                <Text style={styles.flyerProofAddText}>Ajouter à ma liste</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.flyerProofAddBtn, { backgroundColor: '#f59e0b' }]}
-                onPress={() => openCheckout()}
-              >
-                <Text style={styles.flyerProofAddIcon}>⭐</Text>
-                <Text style={styles.flyerProofAddText}>Voir le prix</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.flyerProofAddBtn}
+              onPress={() => isPremium ? handleAddToList(selectedDeal) : openCheckout()}
+            >
+              <Text style={styles.flyerProofAddIcon}>{isPremium ? '+' : '⭐'}</Text>
+              <Text style={styles.flyerProofAddText}>{isPremium ? 'Ajouter à ma liste' : 'Premium'}</Text>
+            </TouchableOpacity>
           </View>
           {selectedDeal.priceText ? (
             <Text style={styles.flyerProofPriceDetail}>{selectedDeal.priceText}</Text>
@@ -459,6 +444,8 @@ export function DealsScreen() {
             <Text style={styles.flyerProofBadgeText}>Prix tiré de la circulaire officielle de {selectedDeal.merchant}</Text>
           </View>
         </View>
+
+        {!isPremium && <AdBannerSmall />}
 
         {/* Comparateur de prix */}
         <View style={styles.otherStoresCard}>
@@ -590,11 +577,7 @@ export function DealsScreen() {
         <View style={styles.deliveryBannerBadge}><Text style={styles.deliveryBannerBadgeText}>Bientôt</Text></View>
       </View>
 
-      {!isPremium && (
-        <TouchableOpacity style={styles.premiumBanner} onPress={() => openCheckout()}>
-          <Text style={styles.premiumBannerText}>🔒 Premium — Voir les prix des circulaires · $3.99/mois</Text>
-        </TouchableOpacity>
-      )}
+      {!isPremium && <AdBanner />}
 
       <View style={styles.modeToggle}>
         <TouchableOpacity

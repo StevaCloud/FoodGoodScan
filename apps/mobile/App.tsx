@@ -16,6 +16,8 @@ interface ActiveReminder {
   weatherIcon?: string;
 }
 
+const shownWaterNotifs = new Set<string>();
+
 export default function App() {
   const setPostalCode = useStore((s) => s.setPostalCode);
   const postalCode = useStore((s) => s.postalCode);
@@ -74,11 +76,9 @@ export default function App() {
       );
 
       if (match) {
-        const lastShown = localStorage.getItem(`water_notif_${h}`);
-        const today = now.toDateString();
-        if (lastShown === today) return; // Déjà montré aujourd'hui à cette heure
-
-        localStorage.setItem(`water_notif_${h}`, today);
+        const key = `${now.toDateString()}_${h}`;
+        if (shownWaterNotifs.has(key)) return;
+        shownWaterNotifs.add(key);
         setActiveReminder({
           message: match.message,
           ml: match.ml,
