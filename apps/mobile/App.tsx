@@ -1,7 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Component } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { View, Text, ScrollView } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useStore } from './src/store/useStore';
+
+class ErrorBoundary extends Component<{ children: any }, { error: any }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: any) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#000', padding: 20, paddingTop: 60 }}>
+          <Text style={{ color: '#ff4444', fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>CRASH DÉTECTÉ</Text>
+          <ScrollView>
+            <Text style={{ color: '#fff', fontSize: 12 }}>{String((this.state.error as any)?.message)}</Text>
+            <Text style={{ color: '#aaa', fontSize: 10, marginTop: 10 }}>{String((this.state.error as any)?.stack)}</Text>
+          </ScrollView>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { detectPostalCode } from './src/services/location';
 import { setAuthToken } from './src/services/api';
 import { getCurrentWeather } from './src/services/weatherService';
@@ -27,6 +48,21 @@ export default function App() {
   const setWeatherData = useStore((s) => s.setWeatherData);
   const [activeReminder, setActiveReminder] = useState<ActiveReminder | null>(null);
   const [weather, setWeather] = useState<{ temperature: number; icon: string } | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Cacher le splash screen une fois que le store AsyncStorage est hydraté
+  useEffect(() => {
+    if (useStore.persist.hasHydrated()) {
+      setHydrated(true);
+      SplashScreen.hideAsync();
+      return;
+    }
+    const unsub = useStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+      SplashScreen.hideAsync();
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (token) setAuthToken(token);
@@ -93,19 +129,23 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isLoggedIn, healthProfile, weather]);
 
+  if (!hydrated) return null;
+
   return (
-    <ToastProvider>
-      <StatusBar style="light" />
-      <AppNavigator />
-      {activeReminder && (
-        <WaterDropNotification
-          message={activeReminder.message}
-          ml={activeReminder.ml}
-          temperature={activeReminder.temperature}
-          weatherIcon={activeReminder.weatherIcon}
-          onDismiss={() => setActiveReminder(null)}
-        />
-      )}
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <StatusBar style="light" />
+        <AppNavigator />
+        {activeReminder && (
+          <WaterDropNotification
+            message={activeReminder.message}
+            ml={activeReminder.ml}
+            temperature={activeReminder.temperature}
+            weatherIcon={activeReminder.weatherIcon}
+            onDismiss={() => setActiveReminder(null)}
+          />
+        )}
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
