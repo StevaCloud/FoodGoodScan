@@ -115,6 +115,11 @@ router.post('/login', async (req: Request, res: Response) => {
         groceryAddon: isExpired ? false : (sub?.groceryAddon || false),
         trialEndsAt: sub?.expiresAt || null,
       },
+      profile: {
+        onboarded: user.onboarded,
+        healthProfile: user.healthProfile ? JSON.parse(user.healthProfile) : null,
+        foodPreferences: user.foodPreferences ? JSON.parse(user.foodPreferences) : [],
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -153,7 +158,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     resetCodes.set(email, { code, expiresAt: Date.now() + 15 * 60 * 1000, attempts: 0 });
 
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (process.env.RESEND_API_KEY) {
       try {
         await sendResetCode(email, code);
         res.json({ message: 'Un code a été envoyé à ton adresse email.' });
@@ -244,6 +249,23 @@ router.put('/phone', authenticateToken, async (req: AuthRequest, res: Response) 
       data: { phone: normalized },
     });
     res.json({ phone: updated.phone });
+  } catch {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const { healthProfile, foodPreferences } = req.body;
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        onboarded: true,
+        healthProfile: healthProfile ? JSON.stringify(healthProfile) : '',
+        foodPreferences: Array.isArray(foodPreferences) ? JSON.stringify(foodPreferences) : '[]',
+      },
+    });
+    res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur serveur' });
   }
