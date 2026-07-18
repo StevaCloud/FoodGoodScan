@@ -8,30 +8,33 @@ import { WeatherScreen } from '../components/WeatherBackground';
 import { triggerInterstitial } from '../components/Interstitial';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export function ScannerScreen() {
   const weatherBg = useWeatherBg();
   const [loading, setLoading] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [webcamActive, setWebcamActive] = useState(false);
+  const [nativeScanActive, setNativeScanActive] = useState(false);
+  const [scanned, setScanned] = useState(false);
   const [scanStatus, setScanStatus] = useState('');
   const navigation = useNavigation<any>();
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
   const { t } = useTranslation();
+  const [permission, requestPermission] = useCameraPermissions();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scanIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    return () => {
-      stopWebcam();
-    };
+    return () => { stopWebcam(); };
   }, []);
 
   const handleScan = async (barcode: string) => {
     if (loading || !barcode) return;
     if (!/^\d{8,14}$/.test(barcode)) {
       Alert.alert('Code invalide', 'Le code-barres doit contenir entre 8 et 14 chiffres.');
+      setScanned(false);
       return;
     }
     setLoading(true);
@@ -41,9 +44,11 @@ export function ScannerScreen() {
       const product = await scanProduct(barcode);
       setLastScannedProduct(product);
       stopWebcam();
+      setNativeScanActive(false);
       triggerInterstitial();
       navigation.navigate('Product');
     } catch (error: any) {
+      setScanned(false);
       if (error.response?.data?.upgrade) {
         Alert.alert('Limite atteinte', 'Tu as atteint la limite de 3 scans gratuits par jour. Passe au Premium!', [
           { text: 'Plus tard', style: 'cancel' },
@@ -62,29 +67,22 @@ export function ScannerScreen() {
 
   const startWebcam = async () => {
     if (Platform.OS !== 'web') return;
-
     try {
       setWebcamActive(true);
       setScanStatus('Activation de la caméra...');
-
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: { ideal: 'environment' } },
       });
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-
       setScanStatus('Caméra active — montre un code-barres...');
-
-      setTimeout(() => {
-        startBarcodeDetection();
-      }, 1000);
+      setTimeout(() => { startBarcodeDetection(); }, 1000);
     } catch (err: any) {
       setWebcamActive(false);
       setScanStatus('');
-      Alert.alert('Erreur caméra', `Impossible d'accéder à la caméra.\n\n${err?.message || 'Vérifie les permissions dans les paramètres Chrome.'}`);
+      Alert.alert('Erreur caméra', `Impossible d'accéder à la caméra.\n\n${err?.message || 'Vérifie les permissions dans les paramètres.'}`);
     }
   };
 
@@ -104,7 +102,6 @@ export function ScannerScreen() {
 
   const startBarcodeDetection = async () => {
     let detector: any = null;
-
     try {
       // @ts-ignore
       if ('BarcodeDetector' in window) {
@@ -118,12 +115,9 @@ export function ScannerScreen() {
       setScanStatus('Erreur de chargement du scanner. Entre le code manuellement.');
       return;
     }
-
     setScanStatus('Scanner prêt — montre un code-barres...');
-
     scanIntervalRef.current = setInterval(async () => {
       if (!videoRef.current || videoRef.current.readyState !== 4) return;
-
       try {
         const barcodes = await detector.detect(videoRef.current);
         if (barcodes.length > 0) {
@@ -136,17 +130,30 @@ export function ScannerScreen() {
     }, 300);
   };
 
+  const openNativeCamera = async () => {
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert('Permission refusée', 'L\'accès à la caméra est nécessaire pour scanner les codes-barres. Active-le dans les paramètres de l\'app.');
+        return;
+      }
+    }
+    setScanned(false);
+    setNativeScanActive(true);
+  };
+
+  // ─── Web ────────────────────────────────────────────────────────────────────
   if (Platform.OS === 'web') {
     return (
       <WeatherScreen><View style={styles.container}>
         <View style={styles.topBar}><View /><LanguageSelector /></View>
-        <Text style={styles.title}>{ t('scanner.title') }</Text>
-        <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
+        <Text style={styles.title}>{t('scanner.title')}</Text>
+        <Text style={styles.subtitle}>{t('scanner.subtitle')}</Text>
 
         {!webcamActive ? (
           <TouchableOpacity style={styles.cameraButton} onPress={startWebcam}>
             <Text style={styles.cameraIcon}>[ ]</Text>
-            <Text style={styles.cameraText}>{ t('scanner.open.camera') }</Text>
+            <Text style={styles.cameraText}>{t('scanner.open.camera')}</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.webcamContainer}>
@@ -155,9 +162,7 @@ export function ScannerScreen() {
               <video
                 ref={videoRef as any}
                 style={{ width: '100%', height: 300, borderRadius: 12, objectFit: 'cover', background: '#000' }}
-                autoPlay
-                playsInline
-                muted
+                autoPlay playsInline muted
               />
               <View style={styles.scanOverlay}>
                 <View style={[styles.corner, styles.topLeft]} />
@@ -171,13 +176,13 @@ export function ScannerScreen() {
             {scanStatus ? <Text style={styles.scanStatus}>{scanStatus}</Text> : null}
             {loading && <ActivityIndicator size="large" color="#22c55e" style={{ marginTop: 10 }} />}
             <TouchableOpacity style={styles.stopButton} onPress={stopWebcam}>
-              <Text style={styles.stopButtonText}>{ t('scanner.close.camera') }</Text>
+              <Text style={styles.stopButtonText}>{t('scanner.close.camera')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <View style={styles.manualSection}>
-          <Text style={styles.sectionTitle}>{ t('scanner.manual') }</Text>
+          <Text style={styles.sectionTitle}>{t('scanner.manual')}</Text>
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
@@ -193,7 +198,7 @@ export function ScannerScreen() {
               onPress={() => handleScan(manualBarcode)}
               disabled={loading}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{ t('scanner.analyze') }</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{t('scanner.analyze')}</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -201,19 +206,62 @@ export function ScannerScreen() {
     );
   }
 
+  // ─── Native (Android / iOS) ─────────────────────────────────────────────────
+  if (nativeScanActive) {
+    return (
+      <View style={styles.cameraFullScreen}>
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
+          onBarcodeScanned={scanned ? undefined : (result) => {
+            setScanned(true);
+            handleScan(result.data);
+          }}
+        />
+        {/* Viewfinder overlay */}
+        <View style={styles.cameraOverlay} pointerEvents="none">
+          <View style={styles.cameraOverlayTop} />
+          <View style={styles.cameraOverlayMiddle}>
+            <View style={styles.cameraOverlaySide} />
+            <View style={styles.viewfinder}>
+              <View style={[styles.corner, styles.topLeft]} />
+              <View style={[styles.corner, styles.topRight]} />
+              <View style={[styles.corner, styles.bottomLeft]} />
+              <View style={[styles.corner, styles.bottomRight]} />
+            </View>
+            <View style={styles.cameraOverlaySide} />
+          </View>
+          <View style={styles.cameraOverlayBottom}>
+            <Text style={styles.viewfinderHint}>Cadre le code-barres dans le rectangle</Text>
+          </View>
+        </View>
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#22c55e" />
+            <Text style={styles.loadingText}>Recherche du produit...</Text>
+          </View>
+        )}
+        <TouchableOpacity style={styles.closeCameraBtn} onPress={() => setNativeScanActive(false)}>
+          <Text style={styles.closeCameraBtnText}>✕ Fermer</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <WeatherScreen><View style={styles.container}>
       <View style={styles.topBar}><View /><LanguageSelector /></View>
-      <Text style={styles.title}>{ t('scanner.title') }</Text>
-      <Text style={styles.subtitle}>{ t('scanner.subtitle') }</Text>
+      <Text style={styles.title}>{t('scanner.title')}</Text>
+      <Text style={styles.subtitle}>{t('scanner.subtitle')}</Text>
 
-      <TouchableOpacity style={styles.cameraButton}>
+      <TouchableOpacity style={styles.cameraButton} onPress={openNativeCamera}>
         <Text style={styles.cameraIcon}>[ ]</Text>
-        <Text style={styles.cameraText}>{ t('scanner.open.camera') }</Text>
+        <Text style={styles.cameraText}>{t('scanner.open.camera')}</Text>
       </TouchableOpacity>
 
       <View style={styles.manualSection}>
-        <Text style={styles.sectionTitle}>{ t('scanner.manual') }</Text>
+        <Text style={styles.sectionTitle}>{t('scanner.manual')}</Text>
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -229,7 +277,7 @@ export function ScannerScreen() {
             onPress={() => handleScan(manualBarcode)}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{ t('scanner.analyze') }</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{t('scanner.analyze')}</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -255,12 +303,9 @@ const styles = StyleSheet.create({
   webcamWrapper: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
   scanOverlay: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 220,
-    height: 140,
-    marginTop: -70,
-    marginLeft: -110,
+    top: '50%', left: '50%',
+    width: 220, height: 140,
+    marginTop: -70, marginLeft: -110,
   },
   corner: { position: 'absolute', width: 30, height: 30, borderColor: '#22c55e' },
   topLeft: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
@@ -292,4 +337,17 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.5 },
   scanButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  // Native camera full-screen
+  cameraFullScreen: { flex: 1, backgroundColor: '#000' },
+  cameraOverlay: { ...StyleSheet.absoluteFillObject },
+  cameraOverlayTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  cameraOverlayMiddle: { flexDirection: 'row', height: 200 },
+  cameraOverlaySide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  viewfinder: { width: 280, height: 200, position: 'relative' },
+  cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 20 },
+  viewfinderHint: { color: '#fff', fontSize: 14, opacity: 0.85 },
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.65)' },
+  loadingText: { color: '#fff', marginTop: 12, fontSize: 15 },
+  closeCameraBtn: { position: 'absolute', top: 50, right: 20, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  closeCameraBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

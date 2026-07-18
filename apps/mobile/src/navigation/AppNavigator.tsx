@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Text, View, Animated, Easing } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { InterstitialProvider, triggerInterstitial } from '../components/Interstitial';
 import { SubscriptionSuccessScreen } from '../screens/SubscriptionSuccessScreen';
@@ -360,6 +361,7 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 
 function MainTabs() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   return (
     <InterstitialProvider>
     <View style={{ flex: 1, backgroundColor: '#111' }}>
@@ -367,7 +369,7 @@ function MainTabs() {
         screenListeners={{ tabPress: () => triggerInterstitial() }}
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 48, paddingBottom: 4 },
+          tabBarStyle: { backgroundColor: 'rgba(12,12,12,0.96)', borderTopColor: '#1f1f1f', height: 48 + insets.bottom, paddingBottom: 4 + insets.bottom },
           tabBarActiveTintColor: '#22c55e',
           tabBarInactiveTintColor: '#555',
           tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,

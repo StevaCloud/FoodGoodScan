@@ -12,9 +12,9 @@
     },
     "android": {
       "package": "com.foodgoodscan.app",
-      "versionCode": 8,
+      "versionCode": 13,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1a7a1a",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -31,7 +31,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#E6F4FE"
+      "backgroundColor": "#1a7a1a"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,7 +42,9 @@
         {
           "cameraPermission": "FoodGoodScan utilise la caméra pour scanner les codes-barres des produits."
         }
-      ]
+      ],
+      "expo-splash-screen",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

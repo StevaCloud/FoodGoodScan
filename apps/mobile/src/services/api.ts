@@ -85,6 +85,11 @@ export async function verifyCheckoutSession(sessionId: string) {
   return data;
 }
 
+export async function saveProfile(healthProfile: any, foodPreferences: string[]) {
+  const { data } = await api.put('/auth/profile', { healthProfile, foodPreferences });
+  return data;
+}
+
 export async function logout() {
   try {
     await api.post('/auth/logout');

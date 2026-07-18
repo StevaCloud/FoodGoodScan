@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Language } from '../i18n/translations';
 
 interface User {
@@ -110,8 +111,7 @@ const safeStorage = {
       if (Platform.OS === 'web') {
         return typeof window !== 'undefined' ? window.localStorage.getItem(name) : null;
       }
-      const AS = require('@react-native-async-storage/async-storage').default;
-      return await AS.getItem(name);
+      return await AsyncStorage.getItem(name);
     } catch {
       return memCache.get(name) ?? null;
     }
@@ -123,8 +123,7 @@ const safeStorage = {
         if (typeof window !== 'undefined') window.localStorage.setItem(name, value);
         return;
       }
-      const AS = require('@react-native-async-storage/async-storage').default;
-      await AS.setItem(name, value);
+      await AsyncStorage.setItem(name, value);
     } catch {}
   },
   removeItem: async (name: string): Promise<void> => {
@@ -134,8 +133,7 @@ const safeStorage = {
         if (typeof window !== 'undefined') window.localStorage.removeItem(name);
         return;
       }
-      const AS = require('@react-native-async-storage/async-storage').default;
-      await AS.removeItem(name);
+      await AsyncStorage.removeItem(name);
     } catch {}
   },
 };
@@ -165,7 +163,7 @@ export const useStore = create<AppState>()(
       setUser: (user) => set({ user, isLoggedIn: !!user }),
       setToken: (token) => set({ token }),
       setLastScannedProduct: (product) => set({ lastScannedProduct: product }),
-      logout: () => set({ user: null, token: null, isLoggedIn: false }),
+      logout: () => set({ user: null, token: null, isLoggedIn: false, onboarded: false, healthProfile: null, foodPreferences: [] }),
       setWeatherData: (weatherData) => set({ weatherData }),
 
       addGroceryItem: (name, store, price, nutrition, imageUrl) => {

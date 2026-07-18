@@ -23,6 +23,9 @@ export function LoginScreen() {
 
   const setUser = useStore((s) => s.setUser);
   const setToken = useStore((s) => s.setToken);
+  const setOnboarded = useStore((s) => s.setOnboarded);
+  const setHealthProfile = useStore((s) => s.setHealthProfile);
+  const setFoodPreferences = useStore((s) => s.setFoodPreferences);
   const { t } = useTranslation();
 
   const showError = (msg: string) => { setErrorMsg(msg); setSuccessMsg(''); };
@@ -39,6 +42,11 @@ export function LoginScreen() {
       setToken(data.token);
       setAuthToken(data.token);
       setUser(data.user);
+      if (data.profile?.onboarded) {
+        setOnboarded(true);
+        if (data.profile.healthProfile) setHealthProfile(data.profile.healthProfile);
+        if (data.profile.foodPreferences?.length) setFoodPreferences(data.profile.foodPreferences);
+      }
       if (mode === 'register' && data.trial) {
         showSuccess(`Bienvenue ! Tu bénéficies de ${data.trial.days} jours d'essai Premium GRATUIT.`);
       }

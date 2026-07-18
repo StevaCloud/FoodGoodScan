@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { useTranslation } from '../i18n/useTranslation';
 import { LanguageSelector } from '../components/LanguageSelector';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { saveProfile } from '../services/api';
 
 const GOALS = [
   { id: 'lose', label: 'Perdre du poids', labelEn: 'Lose weight', icon: '↓' },
@@ -224,6 +225,7 @@ export function OnboardingScreen() {
   const setHealthProfile = useStore((s) => s.setHealthProfile);
   const setStoreFoodPrefs = useStore((s) => s.setFoodPreferences);
   const language = useStore((s) => s.language);
+  const token = useStore((s) => s.token);
   const { t } = useTranslation();
 
   const [profile, setProfile] = useState<HealthProfile>({
@@ -258,9 +260,12 @@ export function OnboardingScreen() {
     }));
   };
 
-  const finish = () => {
+  const finish = async () => {
     setHealthProfile(profile);
     setStoreFoodPrefs(profile.foodPreferences);
+    try {
+      await saveProfile(profile, profile.foodPreferences);
+    } catch {}
     setStep(totalStepsCount);
   };
 

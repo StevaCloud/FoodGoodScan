@@ -7,21 +7,24 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String?
-  phone         String?        @unique
-  allergies     String         @default("")
-  points        Int            @default(0)
-  tokenVersion  Int            @default(0)
-  lastLoginDate String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  subscription  Subscription?
-  scanHistory   ScanHistory[]
-  favorites     Favorite[]
-  userCoupons   UserCoupon[]
+  id              String         @id @default(cuid())
+  email           String         @unique
+  password        String
+  name            String?
+  phone           String?        @unique
+  allergies       String         @default("")
+  points          Int            @default(0)
+  tokenVersion    Int            @default(0)
+  lastLoginDate   String?
+  onboarded       Boolean        @default(false)
+  healthProfile   String         @default("")
+  foodPreferences String         @default("")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  subscription    Subscription?
+  scanHistory     ScanHistory[]
+  favorites       Favorite[]
+  userCoupons     UserCoupon[]
 }
 
 model Coupon {

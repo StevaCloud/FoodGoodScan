@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, memo } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useRef, memo, useMemo } from 'react';
+import { View, Text, StyleSheet, Dimensions, Platform, Animated } from 'react-native';
 import { useStore } from '../store/useStore';
 
-const { width: W } = Dimensions.get('window');
+const { width: W, height: NATIVE_H } = Dimensions.get('window');
 export const WEATHER_HEADER_H = 900;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -606,6 +606,264 @@ function WeatherInfo() {
   );
 }
 
+// ─── Native Weather Animation ─────────────────────────────────────────────────
+function NativeRainDrop({ x, delay, duration, length, opacity, heavy }: {
+  x: number; delay: number; duration: number; length: number; opacity: number; heavy: boolean;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.loop(Animated.timing(anim, { toValue: 1, duration, useNativeDriver: true })),
+    ]).start();
+    return () => anim.stopAnimation();
+  }, []);
+  const ty = anim.interpolate({ inputRange: [0, 1], outputRange: [-length, NATIVE_H + length] });
+  const tx = anim.interpolate({ inputRange: [0, 1], outputRange: [0, heavy ? -18 : -7] });
+  return (
+    <Animated.View pointerEvents="none" style={{
+      position: 'absolute', left: x, top: 0,
+      width: heavy ? 1.8 : 1.2, height: length,
+      backgroundColor: `rgba(147,197,253,${opacity})`,
+      borderRadius: 1,
+      transform: [{ translateY: ty }, { translateX: tx }],
+    }} />
+  );
+}
+
+function NativeSnowFlake({ x, delay, duration, size, opacity }: {
+  x: number; delay: number; duration: number; size: number; opacity: number;
+}) {
+  const fall = useRef(new Animated.Value(0)).current;
+  const sway = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.loop(Animated.timing(fall, { toValue: 1, duration, useNativeDriver: true })),
+    ]).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(sway, { toValue: 1, duration: 1800, useNativeDriver: true }),
+      Animated.timing(sway, { toValue: -1, duration: 1800, useNativeDriver: true }),
+    ])).start();
+    return () => { fall.stopAnimation(); sway.stopAnimation(); };
+  }, []);
+  const ty = fall.interpolate({ inputRange: [0, 1], outputRange: [-size * 3, NATIVE_H + size * 3] });
+  const tx = sway.interpolate({ inputRange: [-1, 1], outputRange: [-10, 10] });
+  return (
+    <Animated.View pointerEvents="none" style={{
+      position: 'absolute', left: x, top: 0,
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: `rgba(226,232,240,${opacity})`,
+      transform: [{ translateY: ty }, { translateX: tx }],
+    }} />
+  );
+}
+
+function NativeCloud({ initialX, y, w, h, speed, opacity, tinted }: {
+  initialX: number; y: number; w: number; h: number; speed: number; opacity: number; tinted?: boolean;
+}) {
+  const x = useRef(new Animated.Value(initialX)).current;
+  useEffect(() => {
+    const totalDist = W + w * 2;
+    const firstDist = W + w - initialX;
+    const firstDur = Math.max(800, speed * firstDist / totalDist);
+    Animated.timing(x, { toValue: W + w, duration: firstDur, useNativeDriver: true }).start(() => {
+      x.setValue(-w);
+      Animated.loop(Animated.timing(x, { toValue: W + w, duration: speed, useNativeDriver: true })).start();
+    });
+    return () => x.stopAnimation();
+  }, []);
+  const col = tinted ? `rgba(255,150,80,${opacity})` : `rgba(240,244,255,${opacity})`;
+  return (
+    <Animated.View pointerEvents="none" style={{ position: 'absolute', top: y, width: w, height: h, transform: [{ translateX: x }] }}>
+      <View style={{ position: 'absolute', left: w*0.15, top: h*0.42, width: w*0.70, height: h*0.55, backgroundColor: col, borderRadius: h*0.28 }} />
+      <View style={{ position: 'absolute', left: 0,      top: h*0.55, width: w*0.48, height: h*0.40, backgroundColor: col, borderRadius: h*0.22 }} />
+      <View style={{ position: 'absolute', left: w*0.47, top: h*0.50, width: w*0.52, height: h*0.45, backgroundColor: col, borderRadius: h*0.24 }} />
+      <View style={{ position: 'absolute', left: w*0.28, top: h*0.08, width: w*0.44, height: h*0.52, backgroundColor: col, borderRadius: h*0.30 }} />
+    </Animated.View>
+  );
+}
+
+function NativeSun() {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 2200, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 2200, useNativeDriver: true }),
+    ])).start();
+    return () => pulse.stopAnimation();
+  }, []);
+  const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1.4, 2.0] });
+  const glowOp    = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.22] });
+  const discScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const cx = W * 0.3;
+  const cy = NATIVE_H * 0.14;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 40, top: cy - 40, width: 80, height: 80 }}>
+      <Animated.View style={{
+        position: 'absolute', left: -30, top: -30, width: 140, height: 140,
+        borderRadius: 70, backgroundColor: 'rgba(255,255,180,1)',
+        opacity: glowOp, transform: [{ scale: glowScale }],
+      }} />
+      <Animated.View style={{
+        position: 'absolute', left: 10, top: 10, width: 60, height: 60,
+        borderRadius: 30, backgroundColor: '#fffde8',
+        shadowColor: '#fef3c7', shadowRadius: 20, shadowOpacity: 0.9,
+        transform: [{ scale: discScale }],
+      }} />
+    </View>
+  );
+}
+
+function NativeMoon() {
+  const glow = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(glow, { toValue: 1, duration: 3000, useNativeDriver: true }),
+      Animated.timing(glow, { toValue: 0, duration: 3000, useNativeDriver: true }),
+    ])).start();
+    return () => glow.stopAnimation();
+  }, []);
+  const op = glow.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.85] });
+  const cx = W * 0.78;
+  const cy = NATIVE_H * 0.13;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 40, top: cy - 40, width: 80, height: 80 }}>
+      <Animated.View style={{ position: 'absolute', left: -15, top: -15, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(200,220,255,0.1)', opacity: op }} />
+      <View style={{ position: 'absolute', left: 10, top: 10, width: 60, height: 60, borderRadius: 30, backgroundColor: '#e0ddd0' }} />
+      <View style={{ position: 'absolute', left: 22, top: 6, width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(8,12,28,0.65)' }} />
+    </View>
+  );
+}
+
+function NativeStar({ x, y, delay, size }: { x: number; y: number; delay: number; size: number }) {
+  const op = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.loop(Animated.sequence([
+        Animated.timing(op, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 0.3, duration: 1500, useNativeDriver: true }),
+      ])),
+    ]).start();
+    return () => op.stopAnimation();
+  }, []);
+  return (
+    <Animated.View pointerEvents="none" style={{
+      position: 'absolute', left: x - size / 2, top: y - size / 2,
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: '#fff', opacity: op,
+    }} />
+  );
+}
+
+function NativeLightning() {
+  const op = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.delay(4200),
+      Animated.timing(op, { toValue: 0.65, duration: 80,  useNativeDriver: true }),
+      Animated.timing(op, { toValue: 0,    duration: 250, useNativeDriver: true }),
+      Animated.delay(180),
+      Animated.timing(op, { toValue: 0.35, duration: 60,  useNativeDriver: true }),
+      Animated.timing(op, { toValue: 0,    duration: 180, useNativeDriver: true }),
+    ])).start();
+    return () => op.stopAnimation();
+  }, []);
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(180,210,255,1)', opacity: op }]} />
+  );
+}
+
+function NativeWeatherCanvas({ code }: { code: number }) {
+  const night   = isNightTime();
+  const sunset  = isSunsetTime();
+  const isRain  = code >= 50 && code <= 69;
+  const isHeavy = code >= 63 && code <= 69;
+  const isStorm = code >= 80;
+  const isSnow  = code >= 70 && code <= 79;
+  const isSun   = code <= 3;
+  const isPartly = code >= 1 && code <= 3;
+  const isFog   = code >= 4 && code <= 49;
+
+  const rainDrops = useMemo(() => {
+    if (!isRain && !isStorm) return [];
+    const n = isStorm ? 38 : isHeavy ? 45 : 20;
+    return Array.from({ length: n }, (_, i) => ({
+      i, x: Math.random() * (W + 40),
+      delay: Math.random() * 1200,
+      dur: (isHeavy || isStorm) ? 350 + Math.random() * 250 : 700 + Math.random() * 500,
+      len: (isHeavy || isStorm) ? 28 + Math.random() * 18 : 14 + Math.random() * 10,
+      op: 0.3 + Math.random() * ((isHeavy || isStorm) ? 0.45 : 0.2),
+    }));
+  }, [code]);
+
+  const snowFlakes = useMemo(() => {
+    if (!isSnow) return [];
+    const heavy = code >= 75;
+    return Array.from({ length: heavy ? 50 : 22 }, (_, i) => ({
+      i, x: Math.random() * W,
+      delay: Math.random() * 2000,
+      dur: heavy ? 1400 + Math.random() * 900 : 2400 + Math.random() * 1800,
+      size: heavy ? 3 + Math.random() * 4 : 2 + Math.random() * 3,
+      op: 0.5 + Math.random() * 0.4,
+    }));
+  }, [code]);
+
+  const cloudConf = useMemo(() => {
+    const t = sunset && isSun;
+    const baseOp = (isFog || isRain || isStorm) ? 0.13 : 0.88;
+    const sunList = [
+      { ix: W * 0.1,  y: NATIVE_H * 0.16, w: 175, h: 65,  sp: 22000 },
+      { ix: W * 0.55, y: NATIVE_H * 0.21, w: 210, h: 80,  sp: 30000 },
+      { ix: -120,      y: NATIVE_H * 0.26, w: 150, h: 55,  sp: 25000 },
+      { ix: W * 0.75, y: NATIVE_H * 0.13, w: 138, h: 50,  sp: 18000 },
+    ];
+    const partlyList = [
+      { ix: W * 0.2,  y: NATIVE_H * 0.17, w: 185, h: 70,  sp: 24000 },
+      { ix: W * 0.62, y: NATIVE_H * 0.22, w: 230, h: 86,  sp: 32000 },
+      { ix: -145,      y: NATIVE_H * 0.13, w: 162, h: 60,  sp: 27000 },
+    ];
+    const stormList = [
+      { ix: -200,      y: NATIVE_H * 0.06, w: 280, h: 105, sp: 48000 },
+      { ix: W * 0.35, y: NATIVE_H * 0.14, w: 320, h: 122, sp: 55000 },
+      { ix: W * 0.68, y: NATIVE_H * 0.04, w: 245, h: 92,  sp: 42000 },
+    ];
+    const list = (code === 0 && !night) ? sunList : isPartly ? partlyList : (isRain || isStorm || isFog) ? stormList : [];
+    return list.map((c, k) => ({ key: k, ...c, op: baseOp, tinted: t }));
+  }, [code, night, sunset]);
+
+  const starConf = useMemo(() => {
+    if (!night || !isSun) return [];
+    return [
+      [0.08,0.08],[0.20,0.05],[0.35,0.13],[0.50,0.06],[0.62,0.17],
+      [0.15,0.32],[0.40,0.28],[0.55,0.26],[0.88,0.10],[0.92,0.30],
+      [0.25,0.22],[0.70,0.07],[0.05,0.24],[0.45,0.38],[0.72,0.33],
+    ].map(([sx, sy], i) => ({
+      key: i, x: sx! * W, y: sy! * NATIVE_H * 0.5,
+      delay: i * 190, size: 1.5 + Math.random() * 1.8,
+    }));
+  }, [code, night]);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {isSun && !sunset && !night && <NativeSun />}
+      {isSun && night && <NativeMoon />}
+      {starConf.map(s => <NativeStar key={s.key} x={s.x} y={s.y} delay={s.delay} size={s.size} />)}
+      {cloudConf.map(c => (
+        <NativeCloud key={c.key} initialX={c.ix} y={c.y} w={c.w} h={c.h} speed={c.sp} opacity={c.op} tinted={c.tinted} />
+      ))}
+      {rainDrops.map(d => (
+        <NativeRainDrop key={d.i} x={d.x} delay={d.delay} duration={d.dur} length={d.len} opacity={d.op} heavy={isHeavy || isStorm} />
+      ))}
+      {snowFlakes.map(f => (
+        <NativeSnowFlake key={f.i} x={f.x} delay={f.delay} duration={f.dur} size={f.size} opacity={f.op} />
+      ))}
+      {isStorm && <NativeLightning />}
+    </View>
+  );
+}
+
 // ─── Composant final ──────────────────────────────────────────────────────────
 function WeatherBackgroundInner() {
   const weatherData = useStore((s) => s.weatherData);
@@ -620,10 +878,13 @@ function WeatherBackgroundInner() {
     );
   }
 
-  // Fallback natif : fond coloré simple
-  const theme = getTheme(code);
+  const theme  = getTheme(code);
+  const night  = isNightTime();
+  const sunset = isSunsetTime();
+  const bg = night && code <= 3 ? '#020818' : code <= 3 && sunset ? '#7b1f5a' : theme.bg[0];
   return (
-    <View style={[styles.wrapper, { backgroundColor: theme.bg[0] }]}>
+    <View style={[styles.wrapper, { backgroundColor: bg }]}>
+      <NativeWeatherCanvas code={code} />
       <WeatherInfo />
     </View>
   );
