@@ -50,12 +50,20 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
       return;
     }
 
-    await Promise.all([
-      prisma.scanHistory.create({
-        data: { userId, barcode, productName: product.name, healthScore: product.healthScore },
-      }),
-      addPoints(userId, POINTS.scan),
-    ]);
+    await prisma.scanHistory.create({
+      data: { userId, barcode, productName: product.name, healthScore: product.healthScore },
+    });
+    // Garder seulement les 5 derniers scans par utilisateur
+    const scans = await prisma.scanHistory.findMany({
+      where: { userId },
+      orderBy: { scannedAt: 'desc' },
+      skip: 5,
+      select: { id: true },
+    });
+    if (scans.length > 0) {
+      await prisma.scanHistory.deleteMany({ where: { id: { in: scans.map((s) => s.id) } } });
+    }
+    await addPoints(userId, POINTS.scan);
 
     if (!isPremium) {
       res.json({
