@@ -65,7 +65,7 @@ function makeFlakes(n: number, w: number, h: number): Flake[] {
 function makeClouds(n: number, w: number, h: number): Cloud[] {
   return Array.from({ length: n }, (_, i) => ({
     x: rand(-200, w + 200),
-    y: rand(h * 0.05, h * 0.6),
+    y: rand(h * 0.02, h * 0.12),
     w: rand(120, 280),
     h: rand(50, 110),
     speed: rand(0.15, 0.55),
@@ -198,13 +198,13 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
 }
 
 function drawSunClouds(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  // Gros nuages blancs réalistes en bas
+  // Nuages en haut de l'écran uniquement (ne pas gêner le contenu)
   const cloudData = [
-    { x: w * 0.15, y: h * 0.58, s: 1.2 },
-    { x: w * 0.45, y: h * 0.62, s: 1.5 },
-    { x: w * 0.75, y: h * 0.55, s: 1.0 },
-    { x: w * -0.05, y: h * 0.68, s: 0.9 },
-    { x: w * 0.9, y: h * 0.65, s: 1.1 },
+    { x: w * 0.10, y: h * 0.04, s: 1.2 },
+    { x: w * 0.45, y: h * 0.08, s: 1.5 },
+    { x: w * 0.75, y: h * 0.03, s: 1.0 },
+    { x: w * -0.05, y: h * 0.10, s: 0.9 },
+    { x: w * 0.9, y: h * 0.06, s: 1.1 },
   ];
   cloudData.forEach((c) => {
     const drift = Math.sin(t * 0.0003 + c.x) * 8;
@@ -281,10 +281,10 @@ function drawSunset(ctx: CanvasRenderingContext2D, w: number, h: number, t: numb
 
   // Nuages roses/oranges en silhouette
   const sunsetClouds = [
-    { x: w * 0.08, y: h * 0.52, s: 1.1, tint: 'rgba(255,120,60,0.55)' },
-    { x: w * 0.38, y: h * 0.46, s: 1.4, tint: 'rgba(255,80,40,0.45)'  },
-    { x: w * 0.68, y: h * 0.50, s: 1.0, tint: 'rgba(255,140,80,0.5)'  },
-    { x: w * 0.82, y: h * 0.56, s: 0.9, tint: 'rgba(220,80,60,0.4)'   },
+    { x: w * 0.08, y: h * 0.10, s: 1.1, tint: 'rgba(255,120,60,0.55)' },
+    { x: w * 0.38, y: h * 0.06, s: 1.4, tint: 'rgba(255,80,40,0.45)'  },
+    { x: w * 0.68, y: h * 0.08, s: 1.0, tint: 'rgba(255,140,80,0.5)'  },
+    { x: w * 0.82, y: h * 0.12, s: 0.9, tint: 'rgba(220,80,60,0.4)'   },
   ];
   sunsetClouds.forEach((c, i) => {
     const drift = Math.sin(t * 0.0002 + i * 1.3) * 10;
@@ -814,19 +814,19 @@ function NativeWeatherCanvas({ code }: { code: number }) {
     const t = sunset && isSun;
     const baseOp = (isFog || isRain || isStorm) ? 0.13 : 0.88;
     const sunList = [
-      { ix: W * 0.1,  y: NATIVE_H * 0.16, w: 175, h: 65,  sp: 22000 },
-      { ix: W * 0.55, y: NATIVE_H * 0.21, w: 210, h: 80,  sp: 30000 },
-      { ix: -120,      y: NATIVE_H * 0.26, w: 150, h: 55,  sp: 25000 },
-      { ix: W * 0.75, y: NATIVE_H * 0.13, w: 138, h: 50,  sp: 18000 },
+      { ix: W * 0.1,  y: NATIVE_H * 0.04, w: 175, h: 65,  sp: 22000 },
+      { ix: W * 0.55, y: NATIVE_H * 0.08, w: 210, h: 80,  sp: 30000 },
+      { ix: -120,      y: NATIVE_H * 0.02, w: 150, h: 55,  sp: 25000 },
+      { ix: W * 0.75, y: NATIVE_H * 0.06, w: 138, h: 50,  sp: 18000 },
     ];
     const partlyList = [
-      { ix: W * 0.2,  y: NATIVE_H * 0.17, w: 185, h: 70,  sp: 24000 },
-      { ix: W * 0.62, y: NATIVE_H * 0.22, w: 230, h: 86,  sp: 32000 },
-      { ix: -145,      y: NATIVE_H * 0.13, w: 162, h: 60,  sp: 27000 },
+      { ix: W * 0.2,  y: NATIVE_H * 0.05, w: 185, h: 70,  sp: 24000 },
+      { ix: W * 0.62, y: NATIVE_H * 0.09, w: 230, h: 86,  sp: 32000 },
+      { ix: -145,      y: NATIVE_H * 0.03, w: 162, h: 60,  sp: 27000 },
     ];
     const stormList = [
-      { ix: -200,      y: NATIVE_H * 0.06, w: 280, h: 105, sp: 48000 },
-      { ix: W * 0.35, y: NATIVE_H * 0.14, w: 320, h: 122, sp: 55000 },
+      { ix: -200,      y: NATIVE_H * 0.02, w: 280, h: 105, sp: 48000 },
+      { ix: W * 0.35, y: NATIVE_H * 0.07, w: 320, h: 122, sp: 55000 },
       { ix: W * 0.68, y: NATIVE_H * 0.04, w: 245, h: 92,  sp: 42000 },
     ];
     const list = (code === 0 && !night) ? sunList : isPartly ? partlyList : (isRain || isStorm || isFog) ? stormList : [];

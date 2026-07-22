@@ -5,7 +5,9 @@ import {
   ActivityIndicator, Alert, Modal, RefreshControl, Image,
   Platform, Linking, Dimensions,
 } from 'react-native';
-import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals, getEuropeanDeals } from '../services/api';
+import QRCode from 'react-native-qrcode-svg';
+import * as Clipboard from 'expo-clipboard';
+import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals, getEuropeanDeals, getRealCoupons, unlockRssCoupon } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useUserCountry } from '../hooks/useUserCountry';
 import { isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/countryDetection';
@@ -13,7 +15,7 @@ import { isEuropean, isUS, getCountryFlag, getCountryLabel } from '../utils/coun
 const { width: SW, height: SH } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-type Tab = 'local' | 'saved' | 'online' | 'points';
+type Tab = 'local' | 'saved' | 'promos' | 'online' | 'points';
 
 // ── Deals en ligne curatés — Canada ───────────────────────────────────────────
 const ONLINE_DEALS_CA = [
@@ -216,6 +218,11 @@ export function RewardsScreen() {
   const [pointCoupons,  setPointCoupons]  = useState<any[]>([]);
   const [myCoupons,     setMyCoupons]     = useState<any[]>([]);
   const [points,        setPoints]        = useState(0);
+  const [realCoupons,   setRealCoupons]   = useState<any[]>([]);
+  const [promoSelected, setPromoSelected] = useState<any | null>(null);
+  const [unlocking,     setUnlocking]     = useState<string | null>(null);
+
+  const RSS_COST = 30;
 
   const [tab,       setTab]       = useState<Tab>('local');
   const [loading,   setLoading]   = useState(true);
@@ -229,15 +236,17 @@ export function RewardsScreen() {
     try {
       const pc = postalCode || 'J1H1A1';
       const localPromise = userIsEu ? getEuropeanDeals(country) : getLocalDeals(pc);
-      const [local, all, my] = await Promise.all([
+      const [local, all, my, real] = await Promise.all([
         localPromise,
         getCoupons(),
         getMyCoupons(),
+        getRealCoupons().catch(() => []),
       ]);
       setLocalDeals(local);
       setPointCoupons(all);
       setMyCoupons(my.coupons);
       setPoints(my.points);
+      setRealCoupons(Array.isArray(real) ? real : []);
     } catch {}
     setLoading(false);
     setRefreshing(false);
@@ -326,12 +335,6 @@ export function RewardsScreen() {
           const isUsed = !!uc.usedAt;
           const expiresAt = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
           const claimedAt = uc.claimedAt ? new Date(uc.claimedAt).toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
-          // Barcode unique généré depuis le code
-          const seed = uc.code || 'AAAAAAAA';
-          const bars = Array.from({ length: 34 }, (_, i) => {
-            const c = seed.charCodeAt(i % seed.length) + i * 7;
-            return (c % 4) + 1;
-          });
           return (
             <View style={s.voucherRoot}>
               {/* Bouton fermer */}
@@ -367,15 +370,18 @@ export function RewardsScreen() {
                   {/* Ligne pointillée */}
                   <View style={s.voucherDivider} />
 
-                  {/* Code-barres unique */}
+                  {/* QR Code unique scannable */}
                   <View style={s.voucherBarcodeWrap}>
-                    <View style={s.voucherBarcode}>
-                      {bars.map((w, i) => (
-                        <View key={i} style={{ width: w, flex: 0, backgroundColor: isUsed ? '#bbb' : '#111', height: i % 5 === 0 ? 52 : 42, alignSelf: 'flex-end', borderRadius: 0.5 }} />
-                      ))}
+                    <View style={[s.voucherQRWrap, isUsed && { opacity: 0.4 }]}>
+                      <QRCode
+                        value={`FGS:${uc.code}:${coupon.partner || ''}:${coupon.discount || ''}`}
+                        size={160}
+                        color="#111"
+                        backgroundColor="#fff"
+                      />
                     </View>
                     <Text style={s.voucherCode}>{uc.code}</Text>
-                    <Text style={s.voucherCodeSub}>Code unique lié à votre compte</Text>
+                    <Text style={s.voucherCodeSub}>Présentez ce QR code au caissier</Text>
                   </View>
 
                   {/* Ligne pointillée */}
@@ -495,6 +501,7 @@ export function RewardsScreen() {
           {([
             { key: 'local',  label: '📍 En magasin' },
             { key: 'saved',  label: `💾 Sauvegardés${savedDeals.length > 0 ? ` (${savedDeals.length})` : ''}` },
+            { key: 'promos', label: `🏷️ Promos${realCoupons.length > 0 ? ` (${realCoupons.length})` : ''}` },
             { key: 'online', label: '🛒 En ligne' },
             { key: 'points', label: `⭐ Points${myCoupons.length > 0 ? ` · ${myCoupons.length}` : ''}` },
           ] as const).map(t => (
@@ -593,6 +600,192 @@ export function RewardsScreen() {
               ))}
             </>
           )
+        )}
+
+        {/* ══ Vrais Promos (RSS) ══════════════════════════════════════════════ */}
+        {tab === 'promos' && (
+          <>
+            {/* Bandeau solde points */}
+            <View style={s.promoPointsBanner}>
+              <Text style={s.promoPointsBannerTxt}>Votre solde : </Text>
+              <Text style={s.promoPointsBannerVal}>{points} pts</Text>
+              <Text style={s.promoPointsBannerSub}> — Faites des quiz pour en gagner !</Text>
+            </View>
+
+            <Text style={s.sectionTitle}>Vrais codes promo</Text>
+            <Text style={s.sectionSub}>Débloque chaque code avec {RSS_COST} pts · RedFlagDeals · Smartcanucks · Reducteur</Text>
+
+            {/* Modal coupon débloqué */}
+            <Modal visible={!!promoSelected} transparent={false} animationType="slide" onRequestClose={() => setPromoSelected(null)}>
+              {promoSelected && (() => {
+                const isUnlocked = !!myCoupons.find((uc: any) => uc.coupon?.promoCode === promoSelected.code);
+                return (
+                  <View style={s.promoModalRoot}>
+                    <TouchableOpacity style={s.promoModalClose} onPress={() => setPromoSelected(null)}>
+                      <Text style={s.promoModalCloseTxt}>✕  Fermer</Text>
+                    </TouchableOpacity>
+                    <ScrollView contentContainerStyle={s.promoModalScroll}>
+                      <View style={s.promoDetailCard}>
+                        <View style={s.promoDetailHeader}>
+                          <Text style={s.promoDetailEmoji}>{promoSelected.imageEmoji || '🏷️'}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.promoDetailStore}>{promoSelected.store}</Text>
+                            <Text style={s.promoDetailTitle}>{promoSelected.title}</Text>
+                          </View>
+                          <View style={s.promoDetailBadge}>
+                            <Text style={s.promoDetailDiscount}>{promoSelected.discount}</Text>
+                          </View>
+                        </View>
+                        {promoSelected.description ? (
+                          <Text style={s.promoDetailDesc}>{promoSelected.description}</Text>
+                        ) : null}
+
+                        {promoSelected.code ? (
+                          isUnlocked ? (
+                            <View style={s.promoCodeSection}>
+                              <Text style={s.promoCodeLabel}>✓ Code débloqué</Text>
+                              <View style={s.promoCodeBox}>
+                                <Text style={s.promoCodeText}>{promoSelected.code}</Text>
+                                <TouchableOpacity
+                                  style={s.promoCopyBtn}
+                                  onPress={async () => {
+                                    await Clipboard.setStringAsync(promoSelected.code);
+                                    Alert.alert('Copié !', `Code "${promoSelected.code}" copié.`);
+                                  }}
+                                >
+                                  <Text style={s.promoCopyBtnTxt}>📋 Copier</Text>
+                                </TouchableOpacity>
+                              </View>
+                              <View style={s.promoQRWrap}>
+                                <QRCode value={promoSelected.code} size={180} color="#111" backgroundColor="#fff" />
+                                <Text style={s.promoQRSub}>Scannez ce QR code à la caisse ou collez le code au paiement</Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={s.promoLockSection}>
+                              <Text style={s.promoLockEmoji}>🔒</Text>
+                              <Text style={s.promoLockTitle}>Code verrouillé</Text>
+                              <Text style={s.promoLockSub}>Débloquez ce code promo avec vos points gagnés lors des quiz</Text>
+                              <TouchableOpacity
+                                style={[s.promoUnlockBtn, (points < RSS_COST || unlocking === promoSelected.id) && s.promoUnlockBtnOff]}
+                                disabled={points < RSS_COST || !!unlocking}
+                                onPress={async () => {
+                                  if (points < RSS_COST) {
+                                    Alert.alert('Points insuffisants', `Il vous faut ${RSS_COST} pts. Faites des quiz pour en gagner !`);
+                                    return;
+                                  }
+                                  setUnlocking(promoSelected.id);
+                                  try {
+                                    await unlockRssCoupon({
+                                      rssId: promoSelected.id,
+                                      title: promoSelected.title,
+                                      store: promoSelected.store,
+                                      code: promoSelected.code,
+                                      discount: promoSelected.discount,
+                                      url: promoSelected.url,
+                                      source: promoSelected.source,
+                                      imageEmoji: promoSelected.imageEmoji,
+                                      description: promoSelected.description,
+                                      category: promoSelected.category,
+                                    });
+                                    await load();
+                                    Alert.alert('Code débloqué !', `Votre code "${promoSelected.code}" est maintenant disponible.`);
+                                  } catch (e: any) {
+                                    Alert.alert('Erreur', e.response?.data?.error || 'Impossible de débloquer');
+                                  }
+                                  setUnlocking(null);
+                                }}
+                              >
+                                {unlocking === promoSelected.id
+                                  ? <ActivityIndicator color="#fff" size="small" />
+                                  : <Text style={s.promoUnlockBtnTxt}>
+                                      {points >= RSS_COST ? `🔓 Débloquer — ${RSS_COST} pts` : `Manque ${RSS_COST - points} pts`}
+                                    </Text>
+                                }
+                              </TouchableOpacity>
+                            </View>
+                          )
+                        ) : (
+                          <View style={s.promoNoCodBox}>
+                            <Text style={s.promoNoCodTxt}>Aucun code requis — le rabais s'applique automatiquement</Text>
+                          </View>
+                        )}
+
+                        <View style={s.promoSourceRow}>
+                          <Text style={s.promoSourceTxt}>Source : {promoSelected.source}</Text>
+                          {promoSelected.postedAt ? (
+                            <Text style={s.promoSourceTxt}>
+                              Publié le {new Date(promoSelected.postedAt).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' })}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+
+                      {promoSelected.url ? (
+                        <TouchableOpacity style={s.promoLinkBtn} onPress={() => Linking.openURL(promoSelected.url)}>
+                          <Text style={s.promoLinkBtnTxt}>🔗  Voir le deal complet</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <View style={{ height: 40 }} />
+                    </ScrollView>
+                  </View>
+                );
+              })()}
+            </Modal>
+
+            {realCoupons.length === 0 ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>🏷️</Text>
+                <Text style={s.emptyTxt}>Aucun coupon disponible.{'\n'}Tirez vers le bas pour actualiser.</Text>
+              </View>
+            ) : (
+              realCoupons.map(coupon => {
+                const isUnlocked = !!myCoupons.find((uc: any) => uc.coupon?.promoCode === coupon.code);
+                const hasCode = !!coupon.code;
+                return (
+                  <TouchableOpacity key={coupon.id} style={s.promoCouponCard} onPress={() => setPromoSelected(coupon)} activeOpacity={0.8}>
+                    <View style={s.promoCouponTop}>
+                      <Text style={s.promoCouponEmoji}>{coupon.imageEmoji || '🏷️'}</Text>
+                      <View style={s.promoCouponInfo}>
+                        <Text style={s.promoCouponStore}>{coupon.store}</Text>
+                        <Text style={s.promoCouponTitle} numberOfLines={2}>{coupon.title}</Text>
+                      </View>
+                      <View style={s.promoCouponBadge}>
+                        <Text style={s.promoCouponDiscount}>{coupon.discount}</Text>
+                      </View>
+                    </View>
+                    {hasCode ? (
+                      isUnlocked ? (
+                        <View style={s.promoCouponCodeRow}>
+                          <Text style={s.promoCouponCode}>{coupon.code}</Text>
+                          <TouchableOpacity
+                            style={s.promoCouponCopyBtn}
+                            onPress={async (e) => {
+                              e.stopPropagation?.();
+                              await Clipboard.setStringAsync(coupon.code);
+                              Alert.alert('Copié !', `Code "${coupon.code}" copié.`);
+                            }}
+                          >
+                            <Text style={s.promoCouponCopyTxt}>📋</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={s.promoCouponLockedRow}>
+                          <Text style={s.promoCouponLocked}>🔒 ••••••••</Text>
+                          <View style={s.promoCouponCostBadge}>
+                            <Text style={s.promoCouponCostTxt}>{RSS_COST} pts</Text>
+                          </View>
+                        </View>
+                      )
+                    ) : (
+                      <Text style={s.promoCouponNoCode}>Appuyer pour voir le deal →</Text>
+                    )}
+                    <Text style={s.promoCouponSource}>{coupon.source}</Text>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </>
         )}
 
         {/* ══ En ligne ════════════════════════════════════════════════════════ */}
@@ -830,8 +1023,8 @@ const s = StyleSheet.create({
   voucherDesc:  { color: '#555', fontSize: 13, marginHorizontal: 18, marginTop: 6, marginBottom: 14, lineHeight: 19 },
 
   voucherBarcodeWrap: { alignItems: 'center', paddingVertical: 20, backgroundColor: '#fff' },
-  voucherBarcode: { flexDirection: 'row', alignItems: 'flex-end', gap: 1.5, height: 56, marginBottom: 10 },
-  voucherCode: { fontSize: 20, fontWeight: '900', color: '#111', letterSpacing: 4, fontFamily: 'monospace' },
+  voucherQRWrap: { padding: 12, backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#eee' },
+  voucherCode: { fontSize: 18, fontWeight: '900', color: '#111', letterSpacing: 4, fontFamily: 'monospace' },
   voucherCodeSub: { fontSize: 11, color: '#aaa', marginTop: 4 },
 
   voucherMeta: { padding: 16, gap: 8, backgroundColor: '#fafafa', borderTopWidth: 1, borderTopColor: '#eee' },
@@ -871,4 +1064,66 @@ const s = StyleSheet.create({
   cashierHint:   { color: '#444', fontSize: 14, textAlign: 'center', marginBottom: 32 },
   removeSavedBtn:{ backgroundColor: '#1a1a1a', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12 },
   removeSavedTxt:{ color: '#555', fontSize: 13 },
+
+  // ── Vrais promos RSS ────────────────────────────────────────────────────────
+  promoCouponCard:    { marginHorizontal: 16, marginBottom: 10, backgroundColor: '#141414', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#1e1e1e' },
+  promoCouponTop:     { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  promoCouponEmoji:   { fontSize: 26, marginRight: 10, width: 32 },
+  promoCouponInfo:    { flex: 1 },
+  promoCouponStore:   { color: '#666', fontSize: 11, fontWeight: '600', marginBottom: 2 },
+  promoCouponTitle:   { color: '#e5e5e5', fontSize: 13, fontWeight: '700', lineHeight: 18 },
+  promoCouponBadge:   { backgroundColor: '#22c55e20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 },
+  promoCouponDiscount:{ color: '#22c55e', fontSize: 12, fontWeight: '800' },
+  promoCouponCodeRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f0f0f', borderRadius: 10, padding: 10, marginBottom: 6 },
+  promoCouponCode:    { flex: 1, color: '#22c55e', fontSize: 16, fontWeight: '900', letterSpacing: 2, fontFamily: 'monospace' },
+  promoCouponCopyBtn: { backgroundColor: '#22c55e', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  promoCouponCopyTxt: { fontSize: 16 },
+  promoCouponNoCode:  { color: '#444', fontSize: 12, marginBottom: 6 },
+  promoCouponSource:  { color: '#333', fontSize: 11 },
+  promoCouponLockedRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f0f0f', borderRadius: 10, padding: 10, marginBottom: 6 },
+  promoCouponLocked:  { flex: 1, color: '#555', fontSize: 16, letterSpacing: 3 },
+  promoCouponCostBadge: { backgroundColor: '#1a1a1a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#333' },
+  promoCouponCostTxt: { color: '#f59e0b', fontSize: 12, fontWeight: '800' },
+
+  promoPointsBanner:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f2d13', borderRadius: 12, marginHorizontal: 16, marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10 },
+  promoPointsBannerTxt: { color: '#888', fontSize: 13 },
+  promoPointsBannerVal: { color: '#22c55e', fontSize: 16, fontWeight: '900' },
+  promoPointsBannerSub: { color: '#555', fontSize: 12 },
+
+  // Lock / Unlock section
+  promoLockSection:   { backgroundColor: '#0f0f0f', borderRadius: 14, padding: 20, alignItems: 'center', marginBottom: 14, borderWidth: 1, borderColor: '#1e1e1e' },
+  promoLockEmoji:     { fontSize: 40, marginBottom: 8 },
+  promoLockTitle:     { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6 },
+  promoLockSub:       { color: '#666', fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 16 },
+  promoUnlockBtn:     { backgroundColor: '#22c55e', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', minWidth: 200 },
+  promoUnlockBtnOff:  { backgroundColor: '#1a1a1a' },
+  promoUnlockBtnTxt:  { color: '#fff', fontSize: 15, fontWeight: '800' },
+
+  // Modal promo
+  promoModalRoot:     { flex: 1, backgroundColor: '#f5f5f5' },
+  promoModalClose:    { backgroundColor: '#111', paddingVertical: 14, paddingHorizontal: 20 },
+  promoModalCloseTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  promoModalScroll:   { padding: 16 },
+  promoDetailCard:    { backgroundColor: '#fff', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 4 },
+  promoDetailHeader:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 10 },
+  promoDetailEmoji:   { fontSize: 36 },
+  promoDetailStore:   { color: '#888', fontSize: 12, fontWeight: '600', marginBottom: 2 },
+  promoDetailTitle:   { color: '#111', fontSize: 16, fontWeight: '800', lineHeight: 22 },
+  promoDetailBadge:   { backgroundColor: '#16a34a', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
+  promoDetailDiscount:{ color: '#fff', fontSize: 15, fontWeight: '900', textAlign: 'center' },
+  promoDetailDesc:    { color: '#555', fontSize: 13, lineHeight: 20, marginBottom: 16 },
+  promoCodeSection:   { backgroundColor: '#f0fdf4', borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' },
+  promoCodeLabel:     { color: '#166534', fontSize: 12, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
+  promoCodeBox:       { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 14, borderWidth: 1, borderColor: '#bbf7d0' },
+  promoCodeText:      { flex: 1, color: '#166534', fontSize: 22, fontWeight: '900', letterSpacing: 3, fontFamily: 'monospace' },
+  promoCopyBtn:       { backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  promoCopyBtnTxt:    { color: '#fff', fontSize: 13, fontWeight: '700' },
+  promoQRWrap:        { alignItems: 'center', paddingVertical: 12 },
+  promoQRSub:         { color: '#888', fontSize: 12, marginTop: 10 },
+  promoNoCodBox:      { backgroundColor: '#fefce8', borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#fde68a' },
+  promoNoCodTxt:      { color: '#92400e', fontSize: 13 },
+  promoSourceRow:     { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  promoSourceTxt:     { color: '#aaa', fontSize: 11 },
+  promoLinkBtn:       { backgroundColor: '#1d4ed8', borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 14 },
+  promoLinkBtnTxt:    { color: '#fff', fontSize: 15, fontWeight: '800' },
 });

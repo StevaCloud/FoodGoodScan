@@ -132,6 +132,70 @@ router.post('/earn', authenticateToken, async (req: AuthRequest, res: Response) 
   res.json({ ok: true, earned: pts, total: updated.points });
 });
 
+// Débloquer un vrai coupon RSS avec des points
+const RSS_UNLOCK_COST = 30; // points pour débloquer un vrai coupon
+
+router.post('/unlock-rss', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
+  const { rssId, title, store, code, discount, url, source, imageEmoji, description, category } = req.body as {
+    rssId: string; title: string; store: string; code: string;
+    discount: string; url?: string; source: string;
+    imageEmoji?: string; description?: string; category?: string;
+  };
+
+  if (!rssId || !title || !code) {
+    res.status(400).json({ error: 'Données du coupon manquantes' });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { points: true } });
+  if (!user || user.points < RSS_UNLOCK_COST) {
+    res.status(400).json({ error: `Il vous faut ${RSS_UNLOCK_COST} points pour débloquer ce coupon` });
+    return;
+  }
+
+  // Vérifie si déjà débloqué
+  const alreadyUnlocked = await prisma.userCoupon.findFirst({
+    where: { userId, coupon: { id: `rss_${rssId}` } },
+  });
+  if (alreadyUnlocked) {
+    res.status(400).json({ error: 'Coupon déjà débloqué' });
+    return;
+  }
+
+  // Crée ou récupère le Coupon RSS en DB
+  const couponId = `rss_${rssId}`.substring(0, 25);
+  const coupon = await prisma.coupon.upsert({
+    where: { id: couponId },
+    update: {},
+    create: {
+      id: couponId,
+      title: title.substring(0, 200),
+      description: (description || '').substring(0, 500),
+      category: category || 'divers',
+      partner: store,
+      discount,
+      imageEmoji: imageEmoji || '🏷️',
+      pointsCost: RSS_UNLOCK_COST,
+      isActive: true,
+      couponType: 'PROMO_CODE',
+      promoCode: code,
+      affiliateUrl: url || null,
+      terms: `Source : ${source}`,
+    },
+  });
+
+  const userCoupon = await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { points: { decrement: RSS_UNLOCK_COST } } });
+    return tx.userCoupon.create({
+      data: { userId, couponId: coupon.id, code },
+      include: { coupon: true },
+    });
+  });
+
+  res.json({ ok: true, userCoupon, cost: RSS_UNLOCK_COST });
+});
+
 // Ajouter des points (appelé en interne par d'autres routes)
 export async function addPoints(userId: string, amount: number) {
   return prisma.user.update({ where: { id: userId }, data: { points: { increment: amount } } });

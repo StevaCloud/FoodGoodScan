@@ -141,6 +141,15 @@ export async function getRealCoupons() {
   return data;
 }
 
+export async function unlockRssCoupon(rssCoupon: {
+  rssId: string; title: string; store: string; code: string;
+  discount: string; url?: string; source: string;
+  imageEmoji?: string; description?: string; category?: string;
+}) {
+  const { data } = await api.post('/coupons/unlock-rss', rssCoupon);
+  return data;
+}
+
 export async function getMyCoupons() {
   const { data } = await api.get('/coupons/my');
   return data;
