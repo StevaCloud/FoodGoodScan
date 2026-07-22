@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.foodgoodscan.app",
-      "versionCode": 13,
+      "versionCode": 17,
       "adaptiveIcon": {
         "backgroundColor": "#1a7a1a",
         "foregroundImage": "./assets/android-icon-foreground.png",

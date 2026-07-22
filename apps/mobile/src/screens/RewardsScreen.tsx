@@ -5,7 +5,6 @@ import {
   ActivityIndicator, Alert, Modal, RefreshControl, Image,
   Platform, Linking, Dimensions,
 } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { getCoupons, getMyCoupons, claimCoupon, getLocalDeals, getEuropeanDeals, getRealCoupons, unlockRssCoupon } from '../services/api';
 import { useStore } from '../store/useStore';
@@ -370,18 +369,15 @@ export function RewardsScreen() {
                   {/* Ligne pointillée */}
                   <View style={s.voucherDivider} />
 
-                  {/* QR Code unique scannable */}
+                  {/* Code promo à montrer au caissier */}
                   <View style={s.voucherBarcodeWrap}>
-                    <View style={[s.voucherQRWrap, isUsed && { opacity: 0.4 }]}>
-                      <QRCode
-                        value={`FGS:${uc.code}:${coupon.partner || ''}:${coupon.discount || ''}`}
-                        size={160}
-                        color="#111"
-                        backgroundColor="#fff"
-                      />
+                    <View style={[s.voucherCodeBox, isUsed && { opacity: 0.4 }]}>
+                      <Text style={s.voucherCodeBig}>{uc.code}</Text>
                     </View>
-                    <Text style={s.voucherCode}>{uc.code}</Text>
-                    <Text style={s.voucherCodeSub}>Présentez ce QR code au caissier</Text>
+                    <TouchableOpacity style={s.voucherCopyBtn} onPress={() => { Clipboard.setStringAsync(uc.code); Alert.alert('Copié !', 'Code copié dans le presse-papiers.'); }}>
+                      <Text style={s.voucherCopyBtnTxt}>📋 Copier le code</Text>
+                    </TouchableOpacity>
+                    <Text style={s.voucherCodeSub}>Montrez ce code au caissier ou entrez-le en ligne</Text>
                   </View>
 
                   {/* Ligne pointillée */}
@@ -657,8 +653,13 @@ export function RewardsScreen() {
                                 </TouchableOpacity>
                               </View>
                               <View style={s.promoQRWrap}>
-                                <QRCode value={promoSelected.code} size={180} color="#111" backgroundColor="#fff" />
-                                <Text style={s.promoQRSub}>Scannez ce QR code à la caisse ou collez le code au paiement</Text>
+                                <View style={s.voucherCodeBox}>
+                                  <Text style={s.voucherCodeBig}>{promoSelected.code}</Text>
+                                </View>
+                                <TouchableOpacity style={s.voucherCopyBtn} onPress={() => { Clipboard.setStringAsync(promoSelected.code); Alert.alert('Copié !', 'Code copié dans le presse-papiers.'); }}>
+                                  <Text style={s.voucherCopyBtnTxt}>📋 Copier le code</Text>
+                                </TouchableOpacity>
+                                <Text style={s.promoQRSub}>Entrez ce code au paiement en ligne ou montrez-le au caissier</Text>
                               </View>
                             </View>
                           ) : (
@@ -1024,6 +1025,10 @@ const s = StyleSheet.create({
 
   voucherBarcodeWrap: { alignItems: 'center', paddingVertical: 20, backgroundColor: '#fff' },
   voucherQRWrap: { padding: 12, backgroundColor: '#fff', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#eee' },
+  voucherCodeBox: { backgroundColor: '#f4f4f4', borderRadius: 16, paddingHorizontal: 28, paddingVertical: 18, marginBottom: 14, borderWidth: 2, borderColor: '#22c55e', borderStyle: 'dashed' },
+  voucherCodeBig: { fontSize: 28, fontWeight: '900', color: '#111', letterSpacing: 6, fontFamily: 'monospace', textAlign: 'center' },
+  voucherCopyBtn: { backgroundColor: '#22c55e', borderRadius: 10, paddingHorizontal: 22, paddingVertical: 10, marginBottom: 10 },
+  voucherCopyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 15 },
   voucherCode: { fontSize: 18, fontWeight: '900', color: '#111', letterSpacing: 4, fontFamily: 'monospace' },
   voucherCodeSub: { fontSize: 11, color: '#aaa', marginTop: 4 },
 
