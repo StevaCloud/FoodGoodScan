@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, memo, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, Platform, Animated } from 'react-native';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, RadialGradient as SvgRadialGradient, Stop, Rect } from 'react-native-svg';
 import { useStore } from '../store/useStore';
 
 const { width: W, height: NATIVE_H } = Dimensions.get('window');
@@ -693,22 +694,22 @@ function NativeSun() {
     ])).start();
     return () => pulse.stopAnimation();
   }, []);
-  const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1.4, 2.0] });
-  const glowOp    = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.22] });
-  const discScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1.3, 2.2] });
+  const glowOp    = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.30] });
+  const discScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.10] });
   const cx = W * 0.3;
-  const cy = NATIVE_H * 0.14;
+  const cy = NATIVE_H * 0.28;
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 40, top: cy - 40, width: 80, height: 80 }}>
+    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 55, top: cy - 55, width: 110, height: 110 }}>
       <Animated.View style={{
-        position: 'absolute', left: -30, top: -30, width: 140, height: 140,
-        borderRadius: 70, backgroundColor: 'rgba(255,255,180,1)',
+        position: 'absolute', left: -45, top: -45, width: 200, height: 200,
+        borderRadius: 100, backgroundColor: 'rgba(255,255,180,1)',
         opacity: glowOp, transform: [{ scale: glowScale }],
       }} />
       <Animated.View style={{
-        position: 'absolute', left: 10, top: 10, width: 60, height: 60,
-        borderRadius: 30, backgroundColor: '#fffde8',
-        shadowColor: '#fef3c7', shadowRadius: 20, shadowOpacity: 0.9,
+        position: 'absolute', left: 10, top: 10, width: 90, height: 90,
+        borderRadius: 45, backgroundColor: '#fffde8',
+        shadowColor: '#fef3c7', shadowRadius: 30, shadowOpacity: 1.0,
         transform: [{ scale: discScale }],
       }} />
     </View>
@@ -724,14 +725,14 @@ function NativeMoon() {
     ])).start();
     return () => glow.stopAnimation();
   }, []);
-  const op = glow.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.85] });
-  const cx = W * 0.78;
-  const cy = NATIVE_H * 0.13;
+  const op = glow.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.9] });
+  const cx = W * 0.72;
+  const cy = NATIVE_H * 0.22;
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 40, top: cy - 40, width: 80, height: 80 }}>
-      <Animated.View style={{ position: 'absolute', left: -15, top: -15, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(200,220,255,0.1)', opacity: op }} />
-      <View style={{ position: 'absolute', left: 10, top: 10, width: 60, height: 60, borderRadius: 30, backgroundColor: '#e0ddd0' }} />
-      <View style={{ position: 'absolute', left: 22, top: 6, width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(8,12,28,0.65)' }} />
+    <View pointerEvents="none" style={{ position: 'absolute', left: cx - 55, top: cy - 55, width: 110, height: 110 }}>
+      <Animated.View style={{ position: 'absolute', left: -25, top: -25, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(200,220,255,0.1)', opacity: op }} />
+      <View style={{ position: 'absolute', left: 10, top: 10, width: 90, height: 90, borderRadius: 45, backgroundColor: '#e0ddd0' }} />
+      <View style={{ position: 'absolute', left: 26, top: 8, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(8,12,28,0.65)' }} />
     </View>
   );
 }
@@ -775,6 +776,63 @@ function NativeLightning() {
   );
 }
 
+function NativeGradientBg({ code }: { code: number }) {
+  const night  = isNightTime();
+  const sunset = isSunsetTime();
+  const isSun  = code <= 3;
+
+  type GS = { offset: string; color: string };
+  let stops: GS[];
+  if (isSun && night) {
+    stops = [{ offset: '0', color: '#010510' }, { offset: '0.5', color: '#030d28' }, { offset: '1', color: '#060e22' }];
+  } else if (isSun && sunset) {
+    stops = [
+      { offset: '0',    color: '#0a0820' }, { offset: '0.25', color: '#1a0d3e' },
+      { offset: '0.48', color: '#7b1f5a' }, { offset: '0.65', color: '#c0392b' },
+      { offset: '0.82', color: '#e67e22' }, { offset: '1',    color: '#f5a623' },
+    ];
+  } else if (isSun) {
+    stops = [{ offset: '0', color: '#0a4a8a' }, { offset: '0.45', color: '#2e82d0' }, { offset: '1', color: '#5ba8e5' }];
+  } else if (code <= 49) {
+    stops = [{ offset: '0', color: '#111520' }, { offset: '1', color: '#1a1f2e' }];
+  } else if (code <= 69) {
+    stops = [{ offset: '0', color: '#060d1c' }, { offset: '1', color: '#0d1a30' }];
+  } else if (code <= 79) {
+    stops = [{ offset: '0', color: '#080f1e' }, { offset: '1', color: '#101929' }];
+  } else {
+    stops = [{ offset: '0', color: '#04060f' }, { offset: '1', color: '#080d1f' }];
+  }
+
+  const sunGlow = isSun && !night && !sunset;
+  const moonGlow = isSun && night;
+
+  return (
+    <Svg style={StyleSheet.absoluteFill} width={W} height={NATIVE_H}>
+      <Defs>
+        <SvgLinearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          {stops.map((s, i) => <Stop key={i} offset={s.offset} stopColor={s.color} stopOpacity="1" />)}
+        </SvgLinearGradient>
+        {sunGlow && (
+          <SvgRadialGradient id="sunGlowGrad" cx={W * 0.3} cy={NATIVE_H * 0.28} r={W * 0.65} gradientUnits="userSpaceOnUse">
+            <Stop offset="0"   stopColor="#ffffc8" stopOpacity="0.28" />
+            <Stop offset="0.4" stopColor="#fff0a0" stopOpacity="0.10" />
+            <Stop offset="1"   stopColor="#fff090" stopOpacity="0"    />
+          </SvgRadialGradient>
+        )}
+        {moonGlow && (
+          <SvgRadialGradient id="moonGlowGrad" cx={W * 0.78} cy={NATIVE_H * 0.22} r={W * 0.5} gradientUnits="userSpaceOnUse">
+            <Stop offset="0"   stopColor="#c8dcff" stopOpacity="0.14" />
+            <Stop offset="1"   stopColor="#c8dcff" stopOpacity="0"    />
+          </SvgRadialGradient>
+        )}
+      </Defs>
+      <Rect x="0" y="0" width={W} height={NATIVE_H} fill="url(#skyGrad)" />
+      {sunGlow  && <Rect x="0" y="0" width={W} height={NATIVE_H} fill="url(#sunGlowGrad)" />}
+      {moonGlow && <Rect x="0" y="0" width={W} height={NATIVE_H} fill="url(#moonGlowGrad)" />}
+    </Svg>
+  );
+}
+
 function NativeWeatherCanvas({ code }: { code: number }) {
   const night   = isNightTime();
   const sunset  = isSunsetTime();
@@ -814,20 +872,20 @@ function NativeWeatherCanvas({ code }: { code: number }) {
     const t = sunset && isSun;
     const baseOp = (isFog || isRain || isStorm) ? 0.13 : 0.88;
     const sunList = [
-      { ix: W * 0.1,  y: NATIVE_H * 0.04, w: 175, h: 65,  sp: 22000 },
-      { ix: W * 0.55, y: NATIVE_H * 0.08, w: 210, h: 80,  sp: 30000 },
-      { ix: -120,      y: NATIVE_H * 0.02, w: 150, h: 55,  sp: 25000 },
-      { ix: W * 0.75, y: NATIVE_H * 0.06, w: 138, h: 50,  sp: 18000 },
+      { ix: W * 0.1,  y: NATIVE_H * 0.12, w: 175, h: 65,  sp: 22000 },
+      { ix: W * 0.55, y: NATIVE_H * 0.18, w: 210, h: 80,  sp: 30000 },
+      { ix: -120,      y: NATIVE_H * 0.10, w: 150, h: 55,  sp: 25000 },
+      { ix: W * 0.75, y: NATIVE_H * 0.15, w: 138, h: 50,  sp: 18000 },
     ];
     const partlyList = [
-      { ix: W * 0.2,  y: NATIVE_H * 0.05, w: 185, h: 70,  sp: 24000 },
-      { ix: W * 0.62, y: NATIVE_H * 0.09, w: 230, h: 86,  sp: 32000 },
-      { ix: -145,      y: NATIVE_H * 0.03, w: 162, h: 60,  sp: 27000 },
+      { ix: W * 0.2,  y: NATIVE_H * 0.14, w: 185, h: 70,  sp: 24000 },
+      { ix: W * 0.62, y: NATIVE_H * 0.22, w: 230, h: 86,  sp: 32000 },
+      { ix: -145,      y: NATIVE_H * 0.11, w: 162, h: 60,  sp: 27000 },
     ];
     const stormList = [
-      { ix: -200,      y: NATIVE_H * 0.02, w: 280, h: 105, sp: 48000 },
-      { ix: W * 0.35, y: NATIVE_H * 0.07, w: 320, h: 122, sp: 55000 },
-      { ix: W * 0.68, y: NATIVE_H * 0.04, w: 245, h: 92,  sp: 42000 },
+      { ix: -200,      y: NATIVE_H * 0.10, w: 280, h: 105, sp: 48000 },
+      { ix: W * 0.35, y: NATIVE_H * 0.18, w: 320, h: 122, sp: 55000 },
+      { ix: W * 0.68, y: NATIVE_H * 0.12, w: 245, h: 92,  sp: 42000 },
     ];
     const list = (code === 0 && !night) ? sunList : isPartly ? partlyList : (isRain || isStorm || isFog) ? stormList : [];
     return list.map((c, k) => ({ key: k, ...c, op: baseOp, tinted: t }));
@@ -837,16 +895,18 @@ function NativeWeatherCanvas({ code }: { code: number }) {
     if (!night || !isSun) return [];
     return [
       [0.08,0.08],[0.20,0.05],[0.35,0.13],[0.50,0.06],[0.62,0.17],
-      [0.15,0.32],[0.40,0.28],[0.55,0.26],[0.88,0.10],[0.92,0.30],
-      [0.25,0.22],[0.70,0.07],[0.05,0.24],[0.45,0.38],[0.72,0.33],
+      [0.15,0.35],[0.40,0.30],[0.55,0.28],[0.88,0.12],[0.92,0.42],
+      [0.25,0.22],[0.70,0.08],[0.05,0.50],[0.45,0.60],[0.72,0.48],
+      [0.30,0.68],[0.80,0.55],[0.10,0.72],[0.60,0.78],[0.85,0.82],
     ].map(([sx, sy], i) => ({
-      key: i, x: sx! * W, y: sy! * NATIVE_H * 0.5,
-      delay: i * 190, size: 1.5 + Math.random() * 1.8,
+      key: i, x: sx! * W, y: sy! * NATIVE_H,
+      delay: i * 190, size: 1.5 + Math.random() * 2.0,
     }));
   }, [code, night]);
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <NativeGradientBg code={code} />
       {isSun && !sunset && !night && <NativeSun />}
       {isSun && night && <NativeMoon />}
       {starConf.map(s => <NativeStar key={s.key} x={s.x} y={s.y} delay={s.delay} size={s.size} />)}
@@ -878,12 +938,8 @@ function WeatherBackgroundInner() {
     );
   }
 
-  const theme  = getTheme(code);
-  const night  = isNightTime();
-  const sunset = isSunsetTime();
-  const bg = night && code <= 3 ? '#020818' : code <= 3 && sunset ? '#7b1f5a' : theme.bg[0];
   return (
-    <View style={[styles.wrapper, { backgroundColor: bg }]}>
+    <View style={styles.wrapperNative}>
       <NativeWeatherCanvas code={code} />
       <WeatherInfo />
     </View>
@@ -895,8 +951,15 @@ export const WeatherBackground = WeatherBackgroundInner;
 export function WeatherScreen({ children }: { children: React.ReactNode }) {
   const weatherData = useStore((s) => s.weatherData);
   const code = weatherData?.weatherCode ?? 0;
+  const night  = isNightTime();
   const sunset = isSunsetTime();
-  const fallbackBg = (code <= 3 && sunset) ? '#7b1f5a' : code <= 3 ? '#3b95ed' : code <= 49 ? '#1a1f2e' : code <= 69 ? '#0d1a30' : code <= 79 ? '#101929' : '#080d1f';
+  const fallbackBg = (code <= 3 && sunset) ? '#0a0820'
+    : (code <= 3 && night) ? '#010510'
+    : code <= 3  ? '#0a4a8a'
+    : code <= 49 ? '#111520'
+    : code <= 69 ? '#060d1c'
+    : code <= 79 ? '#080f1e'
+    : '#04060f';
   return (
     <View style={[wsStyles.root, { backgroundColor: fallbackBg }]}>
       <View style={wsStyles.bg}>
@@ -916,6 +979,11 @@ const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
     height: '100%',
+    overflow: 'hidden',
+  },
+  wrapperNative: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
     overflow: 'hidden',
   },
   infoOverlay: {
