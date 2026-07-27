@@ -11,6 +11,7 @@ import { categoryRouter } from './routes/categories';
 import { webhookRouter } from './routes/webhooks';
 import { couponsRouter } from './routes/coupons';
 import { nutritionRouter } from './routes/nutrition';
+import { quizRouter, pickMonthlyWinner } from './routes/quiz';
 import { prisma } from './lib/prisma';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
@@ -266,6 +267,7 @@ app.use('/api/deals', dealRouter);
 app.use('/api/categories', categoryRouter);
 app.use('/api/coupons', couponsRouter);
 app.use('/api/nutrition', nutritionRouter);
+app.use('/api/quiz', quizRouter);
 
 const ALLOWED_IMAGE_HOSTS = ['backflipp.wishabi.com', 'images.flippenterprise.com', 'assets.flippenterprise.com', 'f.wishabi.net'];
 
@@ -301,3 +303,17 @@ app.get('/api/health', (_req, res) => {
 app.listen(PORT, () => {
   console.log(`FoodGoodScan server running on port ${PORT}`);
 });
+
+// ── Concours mensuel — sélection du gagnant le 1er de chaque mois ─────────────
+let lastWinnerMonth = '';
+
+function checkMonthlyWinner() {
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  if (now.getDate() === 1 && lastWinnerMonth !== monthKey) {
+    lastWinnerMonth = monthKey;
+    pickMonthlyWinner().catch(console.error);
+  }
+}
+
+setInterval(checkMonthlyWinner, 60 * 60 * 1000);

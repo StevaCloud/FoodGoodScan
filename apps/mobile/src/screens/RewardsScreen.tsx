@@ -738,9 +738,20 @@ export function RewardsScreen() {
             </Modal>
 
             {realCoupons.length === 0 ? (
-              <View style={s.empty}>
-                <Text style={s.emptyEmoji}>🏷️</Text>
-                <Text style={s.emptyTxt}>Aucun coupon disponible.{'\n'}Tirez vers le bas pour actualiser.</Text>
+              <View style={s.comingSoonWrap}>
+                <Text style={s.comingSoonEmoji}>🤝</Text>
+                <Text style={s.comingSoonTitle}>Bientôt disponible</Text>
+                <Text style={s.comingSoonSub}>
+                  Nous travaillons à des partenariats d'affiliation avec des marques et épiceries canadiennes pour vous offrir de vrais codes promo exclusifs.
+                </Text>
+                <View style={s.comingSoonBadges}>
+                  {['IGA', 'Metro', 'Maxi', 'Jean Coutu', 'Walmart'].map(p => (
+                    <View key={p} style={s.comingSoonBadge}>
+                      <Text style={s.comingSoonBadgeTxt}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={s.comingSoonNote}>En attendant, gagnez des points via les quiz et échangez-les dans l'onglet ⭐ Points</Text>
               </View>
             ) : (
               realCoupons.map(coupon => {
@@ -1073,6 +1084,16 @@ const s = StyleSheet.create({
   cashierHint:   { color: '#444', fontSize: 14, textAlign: 'center', marginBottom: 32 },
   removeSavedBtn:{ backgroundColor: '#1a1a1a', borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12 },
   removeSavedTxt:{ color: '#555', fontSize: 13 },
+
+  // ── Coming soon ─────────────────────────────────────────────────────────────
+  comingSoonWrap:     { marginHorizontal: 16, marginTop: 8, marginBottom: 24, backgroundColor: '#0f1a0f', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#22c55e33' },
+  comingSoonEmoji:    { fontSize: 48, marginBottom: 12 },
+  comingSoonTitle:    { color: '#22c55e', fontSize: 22, fontWeight: '800', marginBottom: 10, textAlign: 'center' },
+  comingSoonSub:      { color: '#aaa', fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 20 },
+  comingSoonBadges:   { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 },
+  comingSoonBadge:    { backgroundColor: '#1a2a1a', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#22c55e44' },
+  comingSoonBadgeTxt: { color: '#22c55e', fontSize: 13, fontWeight: '700' },
+  comingSoonNote:     { color: '#555', fontSize: 12, textAlign: 'center', lineHeight: 18 },
 
   // ── Vrais promos RSS ────────────────────────────────────────────────────────
   promoCouponCard:    { marginHorizontal: 16, marginBottom: 10, backgroundColor: '#141414', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#1e1e1e' },

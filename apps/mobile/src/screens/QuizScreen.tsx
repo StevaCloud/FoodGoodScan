@@ -774,6 +774,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const QUIZ_COOLDOWN_MS = 4 * 60 * 60 * 1000;
+const QUESTION_TIME = 15;
 
 function useCooldown(lastQuizAt: number | null, isPremium: boolean) {
   const [remaining, setRemaining] = useState(0);
@@ -821,6 +822,11 @@ export function QuizScreen() {
   const [loadingDeals, setLoadingDeals] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showExplosion, setShowExplosion] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [leaderboard, setLeaderboard] = useState<{ rank: number; name: string; points: number; isMe: boolean }[]>([]);
+  const [myRank, setMyRank] = useState<{ rank: number; points: number } | null>(null);
+  const [loadingBoard, setLoadingBoard] = useState(false);
 
   const explosionBalloons = useRef(
     Array.from({ length: 8 }, () => ({
@@ -847,6 +853,36 @@ export function QuizScreen() {
     setTimeout(() => setShowExplosion(false), 700);
   };
 
+  useEffect(() => {
+    if (!token) return;
+    setLoadingBoard(true);
+    axios.get(`${API_URL}/quiz/leaderboard`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => { setLeaderboard(r.data.leaderboard); setMyRank(r.data.me); })
+      .catch(() => {})
+      .finally(() => setLoadingBoard(false));
+  }, [token]);
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    setTimeLeft(QUESTION_TIME);
+    const id = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) { clearInterval(id); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    timerRef.current = id;
+    return () => clearInterval(id);
+  }, [index, phase]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && phase === 'playing' && selected === null) {
+      setSelected(-1);
+      triggerExplosion();
+      playWrongSound();
+    }
+  }, [timeLeft]);
+
   const startQuiz = (cat: Category) => {
     setCategory(cat);
     setQuestions(shuffle(cat.questions).slice(0, QUIZ_SIZE));
@@ -860,6 +896,7 @@ export function QuizScreen() {
 
   const selectAnswer = (i: number) => {
     if (selected !== null) return;
+    if (timerRef.current) clearInterval(timerRef.current);
     setSelected(i);
     if (i === questions[index].answer) {
       setScore(s => s + 1);
@@ -959,6 +996,38 @@ export function QuizScreen() {
             </View>
           </View>
 
+          <View style={s.contestCard}>
+            <View style={s.contestHeader}>
+              <Text style={s.contestTitle}>🏆 Concours du mois</Text>
+              <Text style={s.contestPrize}>Premium + Épicerie gratuit</Text>
+            </View>
+            <Text style={s.contestSub}>
+              Le 1er du mois prochain, l'utilisateur avec le plus de points gagne 1 mois Premium + Épicerie gratuit !
+            </Text>
+            {myRank && (
+              <View style={s.myRankRow}>
+                <Text style={s.myRankTxt}>Ta position : </Text>
+                <Text style={s.myRankVal}>#{myRank.rank}</Text>
+                <Text style={s.myRankPts}> · {myRank.points} pts</Text>
+              </View>
+            )}
+            {loadingBoard ? (
+              <ActivityIndicator color="#f59e0b" style={{ marginTop: 12 }} />
+            ) : leaderboard.length === 0 ? (
+              <Text style={s.boardEmpty}>Aucun joueur encore — sois le premier !</Text>
+            ) : (
+              leaderboard.map((entry) => (
+                <View key={entry.rank} style={[s.boardRow, entry.isMe && s.boardRowMe]}>
+                  <Text style={[s.boardRank, entry.rank === 1 && { color: '#f59e0b' }]}>
+                    {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`}
+                  </Text>
+                  <Text style={[s.boardName, entry.isMe && { color: '#22c55e' }]}>{entry.isMe ? 'Toi' : entry.name}</Text>
+                  <Text style={s.boardPts}>{entry.points} pts</Text>
+                </View>
+              ))
+            )}
+          </View>
+
           <AdBannerSmall />
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -1054,6 +1123,7 @@ export function QuizScreen() {
   // ── Quiz en cours ──────────────────────────────────────────────────────
   const q   = questions[index];
   const col = category?.color || '#22c55e';
+  const timerColor = timeLeft > 10 ? '#22c55e' : timeLeft > 5 ? '#f59e0b' : '#ef4444';
   return (
     <WeatherScreen>
       <ScrollView style={s.root} contentContainerStyle={s.content}>
@@ -1066,6 +1136,13 @@ export function QuizScreen() {
           <View style={[s.progressFill, { width: `${((index + 1) / QUIZ_SIZE) * 100}%` as any, backgroundColor: col }]} />
         </View>
         <Text style={s.progressCounter}>Question {index + 1} / {QUIZ_SIZE}</Text>
+
+        <View style={s.timerRow}>
+          <View style={[s.timerBarFill, { width: `${(timeLeft / QUESTION_TIME) * 100}%` as any, backgroundColor: timerColor }]} />
+        </View>
+        <Text style={[s.timerNum, { color: timerColor }]}>
+          {selected === null ? `⏱ ${timeLeft}s` : ''}
+        </Text>
 
         <View style={s.questionCard}>
           <Text style={s.question}>{q.q}</Text>
@@ -1096,7 +1173,7 @@ export function QuizScreen() {
 
         {selected !== null && (
           <View style={[s.explainBox, selected === q.answer ? s.explainCorrect : s.explainWrong]}>
-            <Text style={s.explainTitle}>{selected === q.answer ? '✓ Correct !' : '✗ Incorrect'}</Text>
+            <Text style={s.explainTitle}>{selected === q.answer ? '✓ Correct !' : selected === -1 ? '⏰ Temps écoulé !' : '✗ Incorrect'}</Text>
             <Text style={s.explainTxt}>{q.explanation}</Text>
           </View>
         )}
@@ -1148,6 +1225,22 @@ const s = StyleSheet.create({
   catArrowTxt:{ color: '#fff', fontSize: 22, fontWeight: '300', lineHeight: 28 },
 
   statsCard:  { backgroundColor: '#141414', borderRadius: 16, padding: 18, marginTop: 16, marginBottom: 16 },
+
+  contestCard:   { backgroundColor: '#1a1200', borderRadius: 18, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#f59e0b44' },
+  contestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  contestTitle:  { color: '#f59e0b', fontSize: 16, fontWeight: '800' },
+  contestPrize:  { backgroundColor: '#f59e0b22', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#f59e0b55' },
+  contestSub:    { color: '#888', fontSize: 12, lineHeight: 18, marginBottom: 12 },
+  myRankRow:     { flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#22c55e11', borderRadius: 10, padding: 10 },
+  myRankTxt:     { color: '#aaa', fontSize: 13 },
+  myRankVal:     { color: '#22c55e', fontSize: 16, fontWeight: '900' },
+  myRankPts:     { color: '#666', fontSize: 13 },
+  boardRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#ffffff08' },
+  boardRowMe:    { backgroundColor: '#22c55e11', borderRadius: 10, paddingHorizontal: 8, marginHorizontal: -8 },
+  boardRank:     { width: 36, color: '#888', fontSize: 14, fontWeight: '700' },
+  boardName:     { flex: 1, color: '#ddd', fontSize: 14 },
+  boardPts:      { color: '#f59e0b', fontSize: 14, fontWeight: '700' },
+  boardEmpty:    { color: '#555', fontSize: 13, textAlign: 'center', marginTop: 8 },
   statsTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 14 },
   statsRow:   { flexDirection: 'row', justifyContent: 'space-around' },
   statItem:   { alignItems: 'center' },
@@ -1189,7 +1282,10 @@ const s = StyleSheet.create({
   scoreTxt:        { fontSize: 14, fontWeight: '800' },
   progressBar:     { width: '100%', height: 6, backgroundColor: '#252525', borderRadius: 3, marginBottom: 6 },
   progressFill:    { height: 6, borderRadius: 3 },
-  progressCounter: { color: '#555', fontSize: 11, marginBottom: 20 },
+  progressCounter: { color: '#555', fontSize: 11, marginBottom: 8 },
+  timerRow:        { width: '100%', height: 6, backgroundColor: '#252525', borderRadius: 3, marginBottom: 4, overflow: 'hidden' },
+  timerBarFill:    { height: 6, borderRadius: 3 },
+  timerNum:        { fontSize: 14, fontWeight: '800', textAlign: 'center', marginBottom: 14, fontVariant: ['tabular-nums'] },
   questionCard:    { backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 16, padding: 16, marginBottom: 24, width: '100%' },
   question:        { color: '#fff', fontSize: 20, fontWeight: '600', textAlign: 'center', lineHeight: 28 },
 
