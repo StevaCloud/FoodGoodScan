@@ -7,6 +7,7 @@ const router = Router();
 
 const POINTS_CORRECTION = 10;
 const TOLERANCE = 0.12; // 12% de tolérance
+const TRUSTED_EMAILS = ['stevuloin39@gmail.com'];
 
 function isClose(a: number | null | undefined, b: number | null | undefined): boolean {
   if (a == null && b == null) return true;
@@ -45,7 +46,27 @@ router.post('/:barcode', authenticateToken, async (req: AuthRequest, res: Respon
       where: { barcode_userId: { barcode, userId } },
     });
     if (existing) {
+      // Mettre à jour la correction existante si c'est un utilisateur de confiance
+      const submitter = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (submitter && TRUSTED_EMAILS.includes(submitter.email)) {
+        await prisma.productCorrection.update({
+          where: { id: existing.id },
+          data: { status: 'CONFIRMED', ...newValues },
+        });
+        res.json({ status: 'CONFIRMED', pointsEarned: 0, message: 'Valeurs mises à jour.' });
+        return;
+      }
       res.status(409).json({ error: 'Tu as déjà soumis une correction pour ce produit.' });
+      return;
+    }
+
+    // Auto-confirmer si l'utilisateur est de confiance
+    const submitter = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (submitter && TRUSTED_EMAILS.includes(submitter.email)) {
+      await prisma.productCorrection.create({
+        data: { barcode, productName, userId, status: 'CONFIRMED', ...newValues },
+      });
+      res.json({ status: 'CONFIRMED', pointsEarned: 0, message: '✅ Valeurs officielles enregistrées.' });
       return;
     }
 
