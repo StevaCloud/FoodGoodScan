@@ -376,7 +376,7 @@ export function ProductScreen() {
       )}
 
       <Modal visible={showCorrectModal} animationType="slide" transparent onRequestClose={() => setShowCorrectModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>✏️ Corriger les valeurs</Text>
             <Text style={styles.modalSub}>Valeurs pour 100g — laisse vide si inconnue</Text>

@@ -22,7 +22,7 @@ Règles importantes :
 
 router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: Response) => {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       res.status(503).json({ error: 'Service IA non configuré. Contacte le support.' });
       return;
@@ -34,36 +34,38 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
       return;
     }
 
-    const contents = [
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
       ...history.slice(-6).map((h: any) => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }],
+        role: h.role === 'assistant' ? 'assistant' : 'user',
+        content: h.content,
       })),
-      { role: 'user', parts: [{ text: message.trim() }] },
+      { role: 'user', content: message.trim() },
     ];
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents,
-          generationConfig: { maxOutputTokens: 512, temperature: 0.7 },
-        }),
-      }
-    );
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages,
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+    });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('Gemini error:', err);
+      console.error('Groq error:', err);
       res.status(502).json({ error: 'Erreur du service IA' });
       return;
     }
 
     const data = await response.json() as any;
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data?.choices?.[0]?.message?.content;
     if (!text) {
       res.status(502).json({ error: 'Réponse vide du service IA' });
       return;

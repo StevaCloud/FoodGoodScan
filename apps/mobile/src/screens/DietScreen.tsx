@@ -1208,7 +1208,7 @@ export function DietScreen() {
 
     {/* ── Modal chat ── */}
     <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.chatModalOverlay}>
+      <KeyboardAvoidingView behavior="padding" style={styles.chatModalOverlay}>
         <View style={styles.chatModalBox}>
           <View style={styles.chatModalHeader}>
             <View>
