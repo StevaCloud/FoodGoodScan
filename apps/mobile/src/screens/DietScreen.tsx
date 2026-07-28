@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { useStore } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { showToast } from '../components/Toast';
 import { useWeatherBg, useWeatherText } from '../hooks/useWeatherBg';
 import { openCheckout } from '../services/checkout';
+import { sendChatMessage } from '../services/api';
 import { WeatherScreen } from '../components/WeatherBackground';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -616,6 +617,11 @@ export function DietScreen() {
   const [loadingDeals, setLoadingDeals] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState('');
 
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<ScrollView>(null);
+
   const [selectedDeal, setSelectedDeal] = useState<DealItem | null>(null);
   const [otherStores, setOtherStores] = useState<DealItem[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
@@ -672,6 +678,25 @@ export function DietScreen() {
     } catch {}
     setWeeklyDeals(deals);
     setLoadingDeals(false);
+  };
+
+  const handleChat = async (msg?: string) => {
+    const message = (msg || chatInput).trim();
+    if (!message || chatLoading) return;
+    setChatInput('');
+    const newHistory = [...chatMessages, { role: 'user' as const, content: message }];
+    setChatMessages(newHistory);
+    setChatLoading(true);
+    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+    try {
+      const reply = await sendChatMessage(message, chatMessages);
+      setChatMessages([...newHistory, { role: 'assistant', content: reply }]);
+      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch {
+      setChatMessages([...newHistory, { role: 'assistant', content: 'Désolé, une erreur est survenue. Réessaie.' }]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   const goal = healthProfile?.goal || 'health';
@@ -1139,6 +1164,61 @@ export function DietScreen() {
         )}
       </View>
 
+      {/* ── Assistant nutritionnel ── */}
+      <View style={styles.chatSection}>
+        <Text style={styles.sectionTitle}>🤖 Assistant nutritionnel</Text>
+        <Text style={styles.chatSubtitle}>Pose une question sur la nourriture ou ton régime</Text>
+
+        <View style={styles.chatQuickWrap}>
+          {[
+            'Combien de calories selon mon poids ?',
+            'Quels aliments pour perdre du poids ?',
+            'Combien de protéines par jour ?',
+            'Qu\'est-ce que le keto ?',
+          ].map(q => (
+            <TouchableOpacity key={q} style={styles.chatChip} onPress={() => handleChat(q)}>
+              <Text style={styles.chatChipText}>{q}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {chatMessages.length > 0 && (
+          <ScrollView
+            ref={chatScrollRef}
+            style={styles.chatHistory}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+          >
+            {chatMessages.map((m, i) => (
+              <View key={i} style={[styles.chatBubble, m.role === 'user' ? styles.chatBubbleUser : styles.chatBubbleBot]}>
+                <Text style={m.role === 'user' ? styles.chatBubbleUserText : styles.chatBubbleBotText}>{m.content}</Text>
+              </View>
+            ))}
+            {chatLoading && (
+              <View style={styles.chatBubbleBot}>
+                <ActivityIndicator size="small" color="#22c55e" />
+              </View>
+            )}
+          </ScrollView>
+        )}
+
+        <View style={styles.chatInputRow}>
+          <TextInput
+            style={styles.chatInput}
+            value={chatInput}
+            onChangeText={setChatInput}
+            placeholder="Ex: combien de calories pour 70kg ?"
+            placeholderTextColor="#555"
+            onSubmitEditing={() => handleChat()}
+            returnKeyType="send"
+            editable={!chatLoading}
+          />
+          <TouchableOpacity style={[styles.chatSendBtn, chatLoading && { opacity: 0.5 }]} onPress={() => handleChat()} disabled={chatLoading}>
+            <Text style={styles.chatSendBtnText}>{'>'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <View style={{ height: 40 }} />
     </ScrollView>
     </WeatherScreen>
@@ -1197,6 +1277,21 @@ const styles = StyleSheet.create({
   mealItemIcon: { fontSize: 22 },
   mealItemText: { color: '#bbb', fontSize: 13, flex: 1, lineHeight: 18 },
   mealItemArrow: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
+  chatSection: { backgroundColor: '#111', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#22c55e30' },
+  chatSubtitle: { color: '#888', fontSize: 12, marginBottom: 12 },
+  chatQuickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chatChip: { backgroundColor: '#1a2a1a', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#22c55e40' },
+  chatChipText: { color: '#22c55e', fontSize: 11 },
+  chatHistory: { maxHeight: 320, marginBottom: 10 },
+  chatBubble: { borderRadius: 12, padding: 10, marginBottom: 8, maxWidth: '85%' },
+  chatBubbleUser: { backgroundColor: '#22c55e20', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#22c55e40' },
+  chatBubbleBot: { backgroundColor: '#1a1a1a', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#333' },
+  chatBubbleUserText: { color: '#86efac', fontSize: 13 },
+  chatBubbleBotText: { color: '#ddd', fontSize: 13, lineHeight: 20 },
+  chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  chatInput: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#fff', fontSize: 13, borderWidth: 1, borderColor: '#333' },
+  chatSendBtn: { backgroundColor: '#22c55e', borderRadius: 10, width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  chatSendBtnText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
   allergyWarning: { backgroundColor: '#7f1d1d', borderRadius: 12, padding: 14, marginTop: 12 },
   allergyWarningTitle: { color: '#fca5a5', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
   allergyWarningText: { color: '#fca5a5', fontSize: 12, lineHeight: 18 },

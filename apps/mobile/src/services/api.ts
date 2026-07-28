@@ -169,6 +169,11 @@ export async function deleteAccount() {
   await api.delete('/auth/account');
 }
 
+export async function sendChatMessage(message: string, history: { role: string; content: string }[]) {
+  const { data } = await api.post('/chat', { message, history });
+  return data.reply as string;
+}
+
 export async function uploadProductImage(barcode: string, imageUri: string): Promise<string> {
   const formData = new FormData();
   formData.append('image', { uri: imageUri, name: 'product.jpg', type: 'image/jpeg' } as any);
