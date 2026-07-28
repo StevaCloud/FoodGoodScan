@@ -27,10 +27,30 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     const isExpired = sub?.expiresAt != null && sub.expiresAt < new Date();
     const isPremium = sub?.plan === 'PREMIUM' && !isExpired;
 
-    const product = await getProductByBarcode(barcode);
+    const [product, confirmedCorrection] = await Promise.all([
+      getProductByBarcode(barcode),
+      prisma.productCorrection.findFirst({
+        where: { barcode, status: 'CONFIRMED' },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
     if (!product) {
       res.status(404).json({ error: 'Produit non trouvé' });
       return;
+    }
+
+    // Appliquer les valeurs nutritives corrigées si disponibles
+    if (confirmedCorrection && product.nutriments) {
+      const n = product.nutriments as any;
+      if (confirmedCorrection.calories != null) n['energy-kcal_100g'] = confirmedCorrection.calories;
+      if (confirmedCorrection.fat != null) n.fat_100g = confirmedCorrection.fat;
+      if (confirmedCorrection.saturatedFat != null) n['saturated-fat_100g'] = confirmedCorrection.saturatedFat;
+      if (confirmedCorrection.carbs != null) n.carbohydrates_100g = confirmedCorrection.carbs;
+      if (confirmedCorrection.sugars != null) n.sugars_100g = confirmedCorrection.sugars;
+      if (confirmedCorrection.fiber != null) n.fiber_100g = confirmedCorrection.fiber;
+      if (confirmedCorrection.proteins != null) n.proteins_100g = confirmedCorrection.proteins;
+      if (confirmedCorrection.salt != null) n.salt_100g = confirmedCorrection.salt;
     }
 
     // Vérifier si c'est un nouveau produit avant d'enregistrer le scan

@@ -12,6 +12,7 @@ import { webhookRouter } from './routes/webhooks';
 import { couponsRouter } from './routes/coupons';
 import { nutritionRouter } from './routes/nutrition';
 import { quizRouter, pickMonthlyWinner } from './routes/quiz';
+import { correctionsRouter } from './routes/corrections';
 import { prisma } from './lib/prisma';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
@@ -268,6 +269,7 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/coupons', couponsRouter);
 app.use('/api/nutrition', nutritionRouter);
 app.use('/api/quiz', quizRouter);
+app.use('/api/corrections', correctionsRouter);
 
 const ALLOWED_IMAGE_HOSTS = ['backflipp.wishabi.com', 'images.flippenterprise.com', 'assets.flippenterprise.com', 'f.wishabi.net'];
 

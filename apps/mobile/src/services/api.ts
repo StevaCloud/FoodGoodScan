@@ -169,6 +169,14 @@ export async function deleteAccount() {
   await api.delete('/auth/account');
 }
 
+export async function submitCorrection(barcode: string, productName: string, values: {
+  calories?: number; fat?: number; saturatedFat?: number;
+  carbs?: number; sugars?: number; fiber?: number; proteins?: number; salt?: number;
+}) {
+  const { data } = await api.post(`/corrections/${barcode}`, { productName, ...values });
+  return data;
+}
+
 export async function getEuropeanDeals(country: string) {
   const { data } = await api.get('/deals/eu', { params: { country } });
   return data;

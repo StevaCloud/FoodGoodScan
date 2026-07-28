@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { HealthScoreBadge } from '../components/HealthScoreBadge';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { NutriScoreBar } from '../components/NutriScoreBar';
-import { addFavorite, getProductPrices } from '../services/api';
+import { addFavorite, getProductPrices, submitCorrection } from '../services/api';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 interface PriceDeal {
@@ -27,6 +27,11 @@ export function ProductScreen() {
   const postalCode = usePostalCode();
   const [prices, setPrices] = useState<PriceDeal[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [showCorrectModal, setShowCorrectModal] = useState(false);
+  const [submittingCorrection, setSubmittingCorrection] = useState(false);
+  const [correctionFields, setCorrectionFields] = useState({
+    calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '',
+  });
   const addGroceryItem = useStore((s) => s.addGroceryItem);
   const isPremium = user?.plan === 'PREMIUM';
   const hasScanPlus = isPremium && (user?.groceryAddon === true);
@@ -69,6 +74,38 @@ export function ProductScreen() {
       Alert.alert('Sauvegardé!', `${product.name} ajouté à tes scans`);
     } catch {
       Alert.alert('Sauvegardé!', `${product.name} ajouté à tes scans`);
+    }
+  };
+
+  const handleSubmitCorrection = async () => {
+    const parse = (v: string) => v.trim() === '' ? undefined : parseFloat(v.replace(',', '.'));
+    const values = {
+      calories: parse(correctionFields.calories),
+      fat: parse(correctionFields.fat),
+      saturatedFat: parse(correctionFields.saturatedFat),
+      carbs: parse(correctionFields.carbs),
+      sugars: parse(correctionFields.sugars),
+      fiber: parse(correctionFields.fiber),
+      proteins: parse(correctionFields.proteins),
+      salt: parse(correctionFields.salt),
+    };
+    if (Object.values(values).every(v => v === undefined)) {
+      showToast('Entre au moins une valeur');
+      return;
+    }
+    setSubmittingCorrection(true);
+    try {
+      const result = await submitCorrection(product.barcode, product.name, values);
+      setShowCorrectModal(false);
+      if (result.status === 'CONFIRMED') {
+        Alert.alert('✅ Confirmé !', `Valeurs validées par la communauté. +${result.pointsEarned} points !`);
+      } else {
+        Alert.alert('📝 Enregistré', 'En attente de confirmation par un autre utilisateur. Tu gagneras 10 points à la confirmation.');
+      }
+    } catch (e: any) {
+      showToast(e?.response?.data?.error || 'Erreur lors de la soumission');
+    } finally {
+      setSubmittingCorrection(false);
     }
   };
 
@@ -286,6 +323,69 @@ export function ProductScreen() {
         </View>
       )}
 
+      {product.nutriments && (
+        <TouchableOpacity style={styles.correctBtn} onPress={() => {
+          const n = product.nutriments as any;
+          setCorrectionFields({
+            calories: String(n['energy-kcal_100g'] || ''),
+            fat: String(n.fat_100g ?? ''),
+            saturatedFat: String(n['saturated-fat_100g'] ?? ''),
+            carbs: String(n.carbohydrates_100g ?? ''),
+            sugars: String(n.sugars_100g ?? ''),
+            fiber: String(n.fiber_100g ?? ''),
+            proteins: String(n.proteins_100g ?? ''),
+            salt: String(n.salt_100g ?? ''),
+          });
+          setShowCorrectModal(true);
+        }}>
+          <Text style={styles.correctBtnText}>✏️ Corriger les valeurs nutritives</Text>
+          <Text style={styles.correctBtnSub}>+10 pts si confirmé par un autre utilisateur</Text>
+        </TouchableOpacity>
+      )}
+
+      <Modal visible={showCorrectModal} animationType="slide" transparent onRequestClose={() => setShowCorrectModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>✏️ Corriger les valeurs</Text>
+            <Text style={styles.modalSub}>Valeurs pour 100g — laisse vide si inconnue</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {([
+                { key: 'calories', label: 'Calories (kcal)' },
+                { key: 'fat', label: 'Gras total (g)' },
+                { key: 'saturatedFat', label: 'Gras saturés (g)' },
+                { key: 'carbs', label: 'Glucides (g)' },
+                { key: 'sugars', label: 'Sucres (g)' },
+                { key: 'fiber', label: 'Fibres (g)' },
+                { key: 'proteins', label: 'Protéines (g)' },
+                { key: 'salt', label: 'Sel (g)' },
+              ] as const).map(({ key, label }) => (
+                <View key={key} style={styles.modalField}>
+                  <Text style={styles.modalLabel}>{label}</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    keyboardType="decimal-pad"
+                    value={correctionFields[key]}
+                    onChangeText={v => setCorrectionFields(prev => ({ ...prev, [key]: v }))}
+                    placeholder="0"
+                    placeholderTextColor="#555"
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowCorrectModal(false)}>
+                <Text style={styles.modalCancelTxt}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSubmit} onPress={handleSubmitCorrection} disabled={submittingCorrection}>
+                {submittingCorrection
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.modalSubmitTxt}>Soumettre</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {!isPremium && (
         <TouchableOpacity style={styles.premiumBanner} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.premiumTitle}>🔒 Analyse complète</Text>
@@ -469,6 +569,21 @@ const styles = StyleSheet.create({
   premiumTitle: { color: '#60a5fa', fontSize: 18, fontWeight: 'bold' },
   premiumText: { color: '#93c5fd', fontSize: 13, textAlign: 'center', marginTop: 8 },
   premiumPrice: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginTop: 12 },
+  correctBtn: { backgroundColor: '#1a2a1a', borderRadius: 10, padding: 12, marginTop: 8, borderWidth: 1, borderColor: '#22c55e40', alignItems: 'center' },
+  correctBtnText: { color: '#22c55e', fontSize: 13, fontWeight: '600' },
+  correctBtnSub: { color: '#555', fontSize: 11, marginTop: 2 },
+  modalOverlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'flex-end' },
+  modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
+  modalSub: { color: '#888', fontSize: 12, marginBottom: 16 },
+  modalField: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  modalLabel: { color: '#ccc', fontSize: 13, flex: 1 },
+  modalInput: { backgroundColor: '#2a2a2a', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, width: 90, textAlign: 'right', fontSize: 14 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  modalCancel: { flex: 1, backgroundColor: '#333', borderRadius: 10, padding: 14, alignItems: 'center' },
+  modalCancelTxt: { color: '#ccc', fontWeight: '600' },
+  modalSubmit: { flex: 1, backgroundColor: '#22c55e', borderRadius: 10, padding: 14, alignItems: 'center' },
+  modalSubmitTxt: { color: '#000', fontWeight: 'bold' },
   actionButtons: { marginTop: 16, gap: 8 },
   saveButton: { backgroundColor: '#22c55e', borderRadius: 12, padding: 14, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },

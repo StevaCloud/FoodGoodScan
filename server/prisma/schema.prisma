@@ -25,6 +25,7 @@ model User {
   scanHistory     ScanHistory[]
   favorites       Favorite[]
   userCoupons     UserCoupon[]
+  corrections     ProductCorrection[]
 }
 
 model Coupon {
@@ -94,6 +95,27 @@ model Favorite {
   addedAt     DateTime @default(now())
 
   @@unique([userId, barcode])
+}
+
+model ProductCorrection {
+  id           String   @id @default(cuid())
+  barcode      String
+  productName  String
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  confirmedBy  String?
+  calories     Float?
+  fat          Float?
+  saturatedFat Float?
+  carbs        Float?
+  sugars       Float?
+  fiber        Float?
+  proteins     Float?
+  salt         Float?
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+
+  @@unique([barcode, userId])
 }
 
 model Deal {
