@@ -1,11 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+
+const navigationRef = createNavigationContainerRef();
 import { Text, View, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { InterstitialProvider, triggerInterstitial } from '../components/Interstitial';
+import { setCheckoutNavigator } from '../services/checkout';
 import { SubscriptionSuccessScreen } from '../screens/SubscriptionSuccessScreen';
 import { SubscriptionCancelScreen } from '../screens/SubscriptionCancelScreen';
 
@@ -407,7 +410,13 @@ export function AppNavigator() {
   };
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking} onReady={() => {
+      setCheckoutNavigator(() => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('Main' as never, { screen: 'Profile' } as never);
+        }
+      });
+    }}>
       <View style={{ flex: 1, backgroundColor: '#111' }}>
         <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#111' } }}>
         {!isLoggedIn ? (
