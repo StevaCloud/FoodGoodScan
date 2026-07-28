@@ -617,6 +617,7 @@ export function DietScreen() {
   const [loadingDeals, setLoadingDeals] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState('');
 
+  const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -1164,64 +1165,74 @@ export function DietScreen() {
         )}
       </View>
 
-      {/* ── Assistant nutritionnel ── */}
-      <View style={styles.chatSection}>
-        <Text style={styles.sectionTitle}>🤖 Assistant nutritionnel</Text>
-        <Text style={styles.chatSubtitle}>Pose une question sur la nourriture ou ton régime</Text>
+      <View style={{ height: 80 }} />
+    </ScrollView>
 
-        <View style={styles.chatQuickWrap}>
-          {[
-            'Combien de calories selon mon poids ?',
-            'Quels aliments pour perdre du poids ?',
-            'Combien de protéines par jour ?',
-            'Qu\'est-ce que le keto ?',
-          ].map(q => (
-            <TouchableOpacity key={q} style={styles.chatChip} onPress={() => handleChat(q)}>
-              <Text style={styles.chatChipText}>{q}</Text>
+    {/* ── Bouton flottant chat ── */}
+    <TouchableOpacity style={styles.fab} onPress={() => setShowChat(true)}>
+      <Text style={styles.fabText}>🤖</Text>
+      {chatMessages.length > 0 && <View style={styles.fabBadge} />}
+    </TouchableOpacity>
+
+    </WeatherScreen>
+
+    {/* ── Modal chat ── */}
+    <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.chatModalOverlay}>
+        <View style={styles.chatModalBox}>
+          <View style={styles.chatModalHeader}>
+            <View>
+              <Text style={styles.chatModalTitle}>🤖 Assistant nutritionnel</Text>
+              <Text style={styles.chatSubtitle}>Questions sur la nourriture uniquement</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowChat(false)} style={styles.chatCloseBtn}>
+              <Text style={styles.chatCloseBtnText}>✕</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
 
-        {chatMessages.length > 0 && (
-          <ScrollView
-            ref={chatScrollRef}
-            style={styles.chatHistory}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.chatQuickWrap}>
+            {['Calories selon mon poids ?', 'Protéines par jour ?', 'Aliments pour maigrir ?', 'C\'est quoi le keto ?'].map(q => (
+              <TouchableOpacity key={q} style={styles.chatChip} onPress={() => handleChat(q)}>
+                <Text style={styles.chatChipText}>{q}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <ScrollView ref={chatScrollRef} style={styles.chatHistory} showsVerticalScrollIndicator={false}>
+            {chatMessages.length === 0 && (
+              <Text style={styles.chatEmpty}>Pose-moi une question sur ta nutrition 👆</Text>
+            )}
             {chatMessages.map((m, i) => (
               <View key={i} style={[styles.chatBubble, m.role === 'user' ? styles.chatBubbleUser : styles.chatBubbleBot]}>
                 <Text style={m.role === 'user' ? styles.chatBubbleUserText : styles.chatBubbleBotText}>{m.content}</Text>
               </View>
             ))}
             {chatLoading && (
-              <View style={styles.chatBubbleBot}>
+              <View style={[styles.chatBubbleBot, { padding: 12 }]}>
                 <ActivityIndicator size="small" color="#22c55e" />
               </View>
             )}
           </ScrollView>
-        )}
 
-        <View style={styles.chatInputRow}>
-          <TextInput
-            style={styles.chatInput}
-            value={chatInput}
-            onChangeText={setChatInput}
-            placeholder="Ex: combien de calories pour 70kg ?"
-            placeholderTextColor="#555"
-            onSubmitEditing={() => handleChat()}
-            returnKeyType="send"
-            editable={!chatLoading}
-          />
-          <TouchableOpacity style={[styles.chatSendBtn, chatLoading && { opacity: 0.5 }]} onPress={() => handleChat()} disabled={chatLoading}>
-            <Text style={styles.chatSendBtnText}>{'>'}</Text>
-          </TouchableOpacity>
+          <View style={styles.chatInputRow}>
+            <TextInput
+              style={styles.chatInput}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="Ex: combien de calories pour 70kg ?"
+              placeholderTextColor="#555"
+              onSubmitEditing={() => handleChat()}
+              returnKeyType="send"
+              editable={!chatLoading}
+              autoFocus
+            />
+            <TouchableOpacity style={[styles.chatSendBtn, (!chatInput.trim() || chatLoading) && { opacity: 0.4 }]} onPress={() => handleChat()} disabled={!chatInput.trim() || chatLoading}>
+              <Text style={styles.chatSendBtnText}>›</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      <View style={{ height: 40 }} />
-    </ScrollView>
-    </WeatherScreen>
+      </KeyboardAvoidingView>
+    </Modal>
     </>
   );
 }
@@ -1277,21 +1288,30 @@ const styles = StyleSheet.create({
   mealItemIcon: { fontSize: 22 },
   mealItemText: { color: '#bbb', fontSize: 13, flex: 1, lineHeight: 18 },
   mealItemArrow: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
-  chatSection: { backgroundColor: '#111', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: '#22c55e30' },
-  chatSubtitle: { color: '#888', fontSize: 12, marginBottom: 12 },
-  chatQuickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chatChip: { backgroundColor: '#1a2a1a', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: '#22c55e40' },
+  fab: { position: 'absolute', bottom: 24, right: 20, width: 58, height: 58, borderRadius: 29, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#22c55e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
+  fabText: { fontSize: 26 },
+  fabBadge: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#000' },
+  chatModalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  chatModalBox: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34, height: '80%' },
+  chatModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  chatModalTitle: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  chatSubtitle: { color: '#666', fontSize: 11, marginTop: 2 },
+  chatCloseBtn: { backgroundColor: '#222', borderRadius: 16, width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
+  chatCloseBtnText: { color: '#aaa', fontSize: 14, fontWeight: 'bold' },
+  chatQuickWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  chatChip: { backgroundColor: '#1a2a1a', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#22c55e40' },
   chatChipText: { color: '#22c55e', fontSize: 11 },
-  chatHistory: { maxHeight: 320, marginBottom: 10 },
-  chatBubble: { borderRadius: 12, padding: 10, marginBottom: 8, maxWidth: '85%' },
+  chatEmpty: { color: '#444', fontSize: 13, textAlign: 'center', marginTop: 24 },
+  chatHistory: { flex: 1, marginBottom: 12 },
+  chatBubble: { borderRadius: 14, padding: 10, marginBottom: 8, maxWidth: '85%' },
   chatBubbleUser: { backgroundColor: '#22c55e20', alignSelf: 'flex-end', borderWidth: 1, borderColor: '#22c55e40' },
-  chatBubbleBot: { backgroundColor: '#1a1a1a', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#333' },
-  chatBubbleUserText: { color: '#86efac', fontSize: 13 },
+  chatBubbleBot: { backgroundColor: '#1a1a1a', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#2a2a2a' },
+  chatBubbleUserText: { color: '#86efac', fontSize: 13, lineHeight: 19 },
   chatBubbleBotText: { color: '#ddd', fontSize: 13, lineHeight: 20 },
   chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  chatInput: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: '#fff', fontSize: 13, borderWidth: 1, borderColor: '#333' },
-  chatSendBtn: { backgroundColor: '#22c55e', borderRadius: 10, width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  chatSendBtnText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
+  chatInput: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 13, borderWidth: 1, borderColor: '#2a2a2a' },
+  chatSendBtn: { backgroundColor: '#22c55e', borderRadius: 12, width: 46, height: 46, justifyContent: 'center', alignItems: 'center' },
+  chatSendBtnText: { color: '#000', fontSize: 28, fontWeight: 'bold', lineHeight: 32 },
   allergyWarning: { backgroundColor: '#7f1d1d', borderRadius: 12, padding: 14, marginTop: 12 },
   allergyWarningTitle: { color: '#fca5a5', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
   allergyWarningText: { color: '#fca5a5', fontSize: 12, lineHeight: 18 },
