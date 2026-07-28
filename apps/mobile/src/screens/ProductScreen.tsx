@@ -6,7 +6,8 @@ import { HealthScoreBadge } from '../components/HealthScoreBadge';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { NutriScoreBar } from '../components/NutriScoreBar';
-import { addFavorite, getProductPrices, submitCorrection } from '../services/api';
+import { addFavorite, getProductPrices, submitCorrection, uploadProductImage } from '../services/api';
+import * as ImagePicker from 'expo-image-picker';
 import { usePostalCode } from '../hooks/usePostalCode';
 
 interface PriceDeal {
@@ -27,6 +28,7 @@ export function ProductScreen() {
   const postalCode = usePostalCode();
   const [prices, setPrices] = useState<PriceDeal[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showCorrectModal, setShowCorrectModal] = useState(false);
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
   const [correctionFields, setCorrectionFields] = useState({
@@ -77,6 +79,30 @@ export function ProductScreen() {
     }
   };
 
+  const handleUploadImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'Autorise l\'accès à ta galerie dans les paramètres.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+    setUploadingImage(true);
+    try {
+      await uploadProductImage(product.barcode, result.assets[0].uri);
+      showToast('📸 Image ajoutée pour ce produit !');
+    } catch {
+      showToast('Erreur lors de l\'upload');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmitCorrection = async () => {
     const parse = (v: string) => v.trim() === '' ? undefined : parseFloat(v.replace(',', '.'));
     const values = {
@@ -114,9 +140,15 @@ export function ProductScreen() {
       {product.imageUrl ? (
         <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="contain" />
       ) : (
-        <View style={[styles.image, styles.noImage]}>
-          <Text style={styles.noImageText}>Pas d'image</Text>
-        </View>
+        <TouchableOpacity style={[styles.image, styles.noImage]} onPress={handleUploadImage} disabled={uploadingImage}>
+          {uploadingImage
+            ? <ActivityIndicator color="#22c55e" size="large" />
+            : <>
+                <Text style={styles.noImageIcon}>📷</Text>
+                <Text style={styles.noImageText}>Pas d'image</Text>
+                <Text style={styles.noImageSub}>Appuie pour en ajouter une</Text>
+              </>}
+        </TouchableOpacity>
       )}
 
       <View style={styles.header}>
@@ -483,8 +515,10 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#bbb', fontSize: 16 },
   image: { width: '100%', height: 250, borderRadius: 12, marginBottom: 16, backgroundColor: '#222' },
-  noImage: { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },
-  noImageText: { color: '#bbb' },
+  noImage: { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  noImageIcon: { fontSize: 36 },
+  noImageText: { color: '#bbb', fontSize: 14 },
+  noImageSub: { color: '#555', fontSize: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   headerInfo: { flex: 1, marginRight: 12 },
   name: { color: '#fff', fontSize: 22, fontWeight: 'bold' },

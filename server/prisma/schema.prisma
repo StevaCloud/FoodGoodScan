@@ -97,6 +97,14 @@ model Favorite {
   @@unique([userId, barcode])
 }
 
+model ProductImage {
+  id        String   @id @default(cuid())
+  barcode   String   @unique
+  imageUrl  String
+  userId    String
+  createdAt DateTime @default(now())
+}
+
 model ProductCorrection {
   id           String   @id @default(cuid())
   barcode      String

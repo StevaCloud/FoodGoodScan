@@ -13,6 +13,9 @@ import { couponsRouter } from './routes/coupons';
 import { nutritionRouter } from './routes/nutrition';
 import { quizRouter, pickMonthlyWinner } from './routes/quiz';
 import { correctionsRouter } from './routes/corrections';
+import { productImagesRouter } from './routes/productImages';
+import path from 'path';
+import fs from 'fs';
 import { prisma } from './lib/prisma';
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
@@ -270,6 +273,12 @@ app.use('/api/coupons', couponsRouter);
 app.use('/api/nutrition', nutritionRouter);
 app.use('/api/quiz', quizRouter);
 app.use('/api/corrections', correctionsRouter);
+app.use('/api/product-images', productImagesRouter);
+
+// Servir les images uploadées
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
 
 const ALLOWED_IMAGE_HOSTS = ['backflipp.wishabi.com', 'images.flippenterprise.com', 'assets.flippenterprise.com', 'f.wishabi.net'];
 

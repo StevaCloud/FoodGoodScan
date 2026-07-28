@@ -27,17 +27,23 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     const isExpired = sub?.expiresAt != null && sub.expiresAt < new Date();
     const isPremium = sub?.plan === 'PREMIUM' && !isExpired;
 
-    const [product, confirmedCorrection] = await Promise.all([
+    const [product, confirmedCorrection, communityImage] = await Promise.all([
       getProductByBarcode(barcode),
       prisma.productCorrection.findFirst({
         where: { barcode, status: 'CONFIRMED' },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.productImage.findUnique({ where: { barcode } }),
     ]);
 
     if (!product) {
       res.status(404).json({ error: 'Produit non trouvé' });
       return;
+    }
+
+    // Utiliser l'image communautaire si le produit n'en a pas
+    if (communityImage && !product.imageUrl) {
+      (product as any).imageUrl = communityImage.imageUrl;
     }
 
     // Appliquer les valeurs nutritives corrigées si disponibles

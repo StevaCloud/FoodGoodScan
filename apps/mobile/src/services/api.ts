@@ -169,6 +169,15 @@ export async function deleteAccount() {
   await api.delete('/auth/account');
 }
 
+export async function uploadProductImage(barcode: string, imageUri: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', { uri: imageUri, name: 'product.jpg', type: 'image/jpeg' } as any);
+  const { data } = await api.post(`/product-images/${barcode}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.imageUrl;
+}
+
 export async function submitCorrection(barcode: string, productName: string, values: {
   calories?: number; fat?: number; saturatedFat?: number;
   carbs?: number; sugars?: number; fiber?: number; proteins?: number; salt?: number;
