@@ -156,7 +156,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {product.cons && product.cons.length > 0 && (
+      {isPremium && product.cons && product.cons.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Points négatifs</Text>
           {product.cons.map((con: string, i: number) => (
@@ -168,7 +168,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {product.premium && product.allergens?.length > 0 && (
+      {isPremium && product.allergens?.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Allergènes</Text>
           <View style={styles.tags}>
@@ -181,7 +181,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {product.premium && product.additivesDetails?.length > 0 && (
+      {isPremium && product.additivesDetails?.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Additifs ({product.additivesDetails.length})</Text>
           {product.additivesDetails.map((a: any, i: number) => {
@@ -213,7 +213,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {product.premium && product.additives?.length > 0 && (!product.additivesDetails || product.additivesDetails.length === 0) && (
+      {isPremium && product.additives?.length > 0 && (!product.additivesDetails || product.additivesDetails.length === 0) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Additifs ({product.additives.length})</Text>
           {product.additives.map((a: string, i: number) => (
@@ -222,7 +222,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {product.premium && product.nutriments && (
+      {product.nutriments && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Valeurs nutritives (pour 100g)</Text>
           {product.nutriments.energy_100g > 0 && (
@@ -286,14 +286,14 @@ export function ProductScreen() {
         </View>
       )}
 
-      {!product.premium && (
-        <View style={styles.premiumBanner}>
-          <Text style={styles.premiumTitle}>Analyse complète</Text>
+      {!isPremium && (
+        <TouchableOpacity style={styles.premiumBanner} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.premiumTitle}>🔒 Analyse complète</Text>
           <Text style={styles.premiumText}>
-            Passe au Premium pour voir les additifs, allergènes, ingrédients détaillés et plus.
+            Passe au Premium pour voir les additifs, allergènes et pourquoi ce produit est mauvais pour la santé.
           </Text>
-          <Text style={styles.premiumPrice}>$3.99/mois</Text>
-        </View>
+          <Text style={styles.premiumPrice}>Premium — $3.99/mois</Text>
+        </TouchableOpacity>
       )}
 
       {/* ── Prix en circulaire ── */}

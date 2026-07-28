@@ -10,8 +10,6 @@ import { addPoints, POINTS } from './coupons';
 
 const router = Router();
 
-const FREE_SCAN_LIMIT = 3;
-
 const BARCODE_REGEX = /^\d{8,14}$/;
 
 router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Response) => {
@@ -29,26 +27,17 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     const isExpired = sub?.expiresAt != null && sub.expiresAt < new Date();
     const isPremium = sub?.plan === 'PREMIUM' && !isExpired;
 
-    if (!isPremium) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const scanCount = await prisma.scanHistory.count({
-        where: { userId, scannedAt: { gte: today } },
-      });
-      if (scanCount >= FREE_SCAN_LIMIT) {
-        res.status(403).json({
-          error: `Limite de ${FREE_SCAN_LIMIT} scans/jour atteinte`,
-          upgrade: true,
-        });
-        return;
-      }
-    }
-
     const product = await getProductByBarcode(barcode);
     if (!product) {
       res.status(404).json({ error: 'Produit non trouvé' });
       return;
     }
+
+    // Vérifier si c'est un nouveau produit avant d'enregistrer le scan
+    const alreadyScanned = await prisma.scanHistory.findFirst({
+      where: { userId, barcode },
+      select: { id: true },
+    });
 
     await prisma.scanHistory.create({
       data: { userId, barcode, productName: product.name, healthScore: product.healthScore },
@@ -63,9 +52,14 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     if (scans.length > 0) {
       await prisma.scanHistory.deleteMany({ where: { id: { in: scans.map((s) => s.id) } } });
     }
-    await addPoints(userId, POINTS.scan);
+
+    // Points uniquement si c'est la première fois que cet article est scanné
+    if (!alreadyScanned) {
+      await addPoints(userId, POINTS.scan);
+    }
 
     if (!isPremium) {
+      const category = detectCategory(product.name);
       res.json({
         barcode: product.barcode,
         name: product.name,
@@ -73,6 +67,9 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
         imageUrl: product.imageUrl,
         healthScore: product.healthScore,
         nutriScore: product.nutriScore,
+        nutriments: product.nutriments,
+        pros: product.pros,
+        category,
         premium: false,
       });
       return;
