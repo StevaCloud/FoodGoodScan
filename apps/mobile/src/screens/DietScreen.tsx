@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { useStore } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
@@ -620,6 +620,26 @@ export function DietScreen() {
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const waveAnim = useRef(new Animated.Value(0)).current;
+  const bubbleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Animation de salut en boucle
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(waveAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(waveAnim, { toValue: -1, duration: 300, useNativeDriver: true }),
+        Animated.timing(waveAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(waveAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(2500),
+      ])
+    ).start();
+    // Bulle disparaît après 4 secondes
+    const t = setTimeout(() => {
+      Animated.timing(bubbleAnim, { toValue: 0, duration: 500, useNativeDriver: true }).start();
+    }, 4000);
+    return () => clearTimeout(t);
+  }, []);
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<ScrollView>(null);
 
@@ -1168,11 +1188,21 @@ export function DietScreen() {
       <View style={{ height: 80 }} />
     </ScrollView>
 
-    {/* ── Bouton flottant chat ── */}
-    <TouchableOpacity style={styles.fab} onPress={() => setShowChat(true)}>
-      <Text style={styles.fabText}>🤖</Text>
-      {chatMessages.length > 0 && <View style={styles.fabBadge} />}
-    </TouchableOpacity>
+    {/* ── Robot flottant ── */}
+    <View style={styles.fabWrap}>
+      <Animated.View style={[styles.fabBubble, { opacity: bubbleAnim, transform: [{ scale: bubbleAnim }] }]}>
+        <Text style={styles.fabBubbleText}>Salut ! 👋</Text>
+        <View style={styles.fabBubbleTail} />
+      </Animated.View>
+      <TouchableOpacity style={styles.fab} onPress={() => setShowChat(true)} activeOpacity={0.85}>
+        <Animated.Text style={[styles.fabRobotArm, {
+          transform: [{ rotate: waveAnim.interpolate({ inputRange: [-1, 1], outputRange: ['-30deg', '30deg'] }) }],
+          position: 'absolute', top: -6, right: -8,
+        }]}>🤚</Animated.Text>
+        <Text style={styles.fabText}>🤖</Text>
+        {chatMessages.length > 0 && <View style={styles.fabBadge} />}
+      </TouchableOpacity>
+    </View>
 
     </WeatherScreen>
 
@@ -1288,9 +1318,14 @@ const styles = StyleSheet.create({
   mealItemIcon: { fontSize: 22 },
   mealItemText: { color: '#bbb', fontSize: 13, flex: 1, lineHeight: 18 },
   mealItemArrow: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 58, height: 58, borderRadius: 29, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#22c55e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
-  fabText: { fontSize: 26 },
-  fabBadge: { position: 'absolute', top: 8, right: 8, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#000' },
+  fabWrap: { position: 'absolute', bottom: 24, right: 16, alignItems: 'center' },
+  fabBubble: { backgroundColor: '#22c55e', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 6, alignSelf: 'center' },
+  fabBubbleText: { color: '#000', fontSize: 12, fontWeight: '700' },
+  fabBubbleTail: { position: 'absolute', bottom: -6, left: '50%', marginLeft: -6, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#22c55e' },
+  fab: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#22c55e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
+  fabText: { fontSize: 30 },
+  fabRobotArm: { fontSize: 16 },
+  fabBadge: { position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#000' },
   chatModalOverlay: { flex: 1, justifyContent: 'flex-end' },
   chatModalBox: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34, height: '80%' },
   chatModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
