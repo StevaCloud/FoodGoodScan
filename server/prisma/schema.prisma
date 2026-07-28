@@ -120,6 +120,7 @@ model ProductCorrection {
   fiber        Float?
   proteins     Float?
   salt         Float?
+  category     String?
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())
 

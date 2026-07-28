@@ -18,13 +18,16 @@ function isClose(a: number | null | undefined, b: number | null | undefined): bo
 }
 
 function correctionsMatch(a: any, b: any): boolean {
-  return (
+  const nutritionMatch =
     isClose(a.calories, b.calories) &&
     isClose(a.fat, b.fat) &&
     isClose(a.carbs, b.carbs) &&
     isClose(a.proteins, b.proteins) &&
-    isClose(a.salt, b.salt)
-  );
+    isClose(a.salt, b.salt);
+  const categoryMatch =
+    (a.category == null && b.category == null) ||
+    a.category === b.category;
+  return nutritionMatch && categoryMatch;
 }
 
 // POST /api/corrections/:barcode — soumettre une correction
@@ -32,14 +35,14 @@ router.post('/:barcode', authenticateToken, async (req: AuthRequest, res: Respon
   try {
     const barcode = String(req.params.barcode);
     const userId = req.userId!;
-    const { productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt } = req.body;
+    const { productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt, category } = req.body;
 
     if (!productName) {
       res.status(400).json({ error: 'productName requis' });
       return;
     }
 
-    const newValues = { calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt };
+    const newValues = { calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt, category: category || null };
 
     // Vérifier si l'utilisateur a déjà soumis pour ce produit
     const existing = await prisma.productCorrection.findUnique({
@@ -125,6 +128,7 @@ router.get('/:barcode', async (req, res) => {
     }
     res.json({
       found: true,
+      category: confirmed.category ?? null,
       nutriments: {
         'energy-kcal_100g': confirmed.calories ?? undefined,
         fat_100g: confirmed.fat ?? undefined,

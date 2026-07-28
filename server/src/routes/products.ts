@@ -5,7 +5,7 @@ import { requirePremium, requireGroceryAddon } from '../middleware/subscription'
 import { getProductByBarcode } from '../services/openfoodfacts';
 import { analyzeAdditives } from '../services/additives';
 import { getWaterInfo, getWaterInfoByName, isWaterProduct, getPhRating } from '../services/water';
-import { detectCategory } from '../services/categories';
+import { detectCategory, getCategoryById } from '../services/categories';
 import { addPoints, POINTS } from './coupons';
 
 const router = Router();
@@ -85,7 +85,7 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     }
 
     if (!isPremium) {
-      const category = detectCategory(product.name);
+      const category = (confirmedCorrection?.category ? getCategoryById(confirmedCorrection.category) : null) ?? detectCategory(product.name);
       res.json({
         barcode: product.barcode,
         name: product.name,
@@ -133,7 +133,7 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
       };
     }
 
-    const category = detectCategory(product.name);
+    const category = (confirmedCorrection?.category ? getCategoryById(confirmedCorrection.category) : null) ?? detectCategory(product.name);
     res.json({ ...product, additivesDetails, waterInfo, category, premium: true });
   } catch (error) {
     console.error('Scan error:', error);

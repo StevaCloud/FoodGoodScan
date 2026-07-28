@@ -32,8 +32,33 @@ export function ProductScreen() {
   const [showCorrectModal, setShowCorrectModal] = useState(false);
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
   const [correctionFields, setCorrectionFields] = useState({
-    calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '',
+    calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '', category: '',
   });
+
+  const CORRECTION_CATEGORIES = [
+    { id: 'water', name: 'Eaux' },
+    { id: 'soda', name: 'Boissons gazeuses' },
+    { id: 'juice', name: 'Jus & Smoothies' },
+    { id: 'energy', name: 'Boissons énergisantes' },
+    { id: 'coffee_tea', name: 'Café & Thé' },
+    { id: 'milk', name: 'Laits & Végétales' },
+    { id: 'dairy', name: 'Produits laitiers' },
+    { id: 'bread', name: 'Pains & Boulangerie' },
+    { id: 'cereal', name: 'Céréales & Granola' },
+    { id: 'pasta', name: 'Pâtes & Riz' },
+    { id: 'chips', name: 'Chips & Snacks' },
+    { id: 'chocolate', name: 'Chocolat & Confiserie' },
+    { id: 'cookies', name: 'Biscuits & Gâteaux' },
+    { id: 'icecream', name: 'Crèmes glacées' },
+    { id: 'meat', name: 'Viandes & Charcuteries' },
+    { id: 'fish', name: 'Poissons & Fruits de mer' },
+    { id: 'frozen', name: 'Surgelés & Plats préparés' },
+    { id: 'sauce', name: 'Sauces & Condiments' },
+    { id: 'canned', name: 'Conserves' },
+    { id: 'baby', name: 'Bébé & Enfants' },
+    { id: 'organic', name: 'Bio & Santé' },
+    { id: 'other', name: 'Autre' },
+  ];
   const addGroceryItem = useStore((s) => s.addGroceryItem);
   const isPremium = user?.plan === 'PREMIUM';
   const hasScanPlus = isPremium && (user?.groceryAddon === true);
@@ -114,9 +139,10 @@ export function ProductScreen() {
       fiber: parse(correctionFields.fiber),
       proteins: parse(correctionFields.proteins),
       salt: parse(correctionFields.salt),
+      category: correctionFields.category || undefined,
     };
     if (Object.values(values).every(v => v === undefined)) {
-      showToast('Entre au moins une valeur');
+      showToast('Entre au moins une valeur ou une catégorie');
       return;
     }
     setSubmittingCorrection(true);
@@ -367,6 +393,7 @@ export function ProductScreen() {
             fiber: String(n.fiber_100g ?? ''),
             proteins: String(n.proteins_100g ?? ''),
             salt: String(n.salt_100g ?? ''),
+            category: product.category?.id || '',
           });
           setShowCorrectModal(true);
         }}>
@@ -381,6 +408,21 @@ export function ProductScreen() {
             <Text style={styles.modalTitle}>✏️ Corriger les valeurs</Text>
             <Text style={styles.modalSub}>Valeurs pour 100g — laisse vide si inconnue</Text>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              <Text style={styles.modalLabel}>Catégorie</Text>
+              <View style={styles.categoryGrid}>
+                {CORRECTION_CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.categoryPill, correctionFields.category === cat.id && styles.categoryPillSelected]}
+                    onPress={() => setCorrectionFields(prev => ({ ...prev, category: prev.category === cat.id ? '' : cat.id }))}
+                  >
+                    <Text style={[styles.categoryPillText, correctionFields.category === cat.id && styles.categoryPillTextSelected]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ height: 12 }} />
               {([
                 { key: 'calories', label: 'Calories (kcal)' },
                 { key: 'fat', label: 'Gras total (g)' },
@@ -618,6 +660,11 @@ const styles = StyleSheet.create({
   modalCancelTxt: { color: '#ccc', fontWeight: '600' },
   modalSubmit: { flex: 1, backgroundColor: '#22c55e', borderRadius: 10, padding: 14, alignItems: 'center' },
   modalSubmitTxt: { color: '#000', fontWeight: 'bold' },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  categoryPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: '#2a2a2a', borderWidth: 1, borderColor: '#444' },
+  categoryPillSelected: { backgroundColor: '#22c55e20', borderColor: '#22c55e' },
+  categoryPillText: { color: '#aaa', fontSize: 12 },
+  categoryPillTextSelected: { color: '#22c55e', fontWeight: '600' },
   actionButtons: { marginTop: 16, gap: 8 },
   saveButton: { backgroundColor: '#22c55e', borderRadius: 12, padding: 14, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },

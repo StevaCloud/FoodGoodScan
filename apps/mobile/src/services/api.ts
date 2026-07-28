@@ -186,6 +186,7 @@ export async function uploadProductImage(barcode: string, imageUri: string): Pro
 export async function submitCorrection(barcode: string, productName: string, values: {
   calories?: number; fat?: number; saturatedFat?: number;
   carbs?: number; sugars?: number; fiber?: number; proteins?: number; salt?: number;
+  category?: string;
 }) {
   const { data } = await api.post(`/corrections/${barcode}`, { productName, ...values });
   return data;

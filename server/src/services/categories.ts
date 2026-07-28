@@ -29,6 +29,10 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'organic', name: 'Bio & Santé', icon: 'O', keywords: ['bio', 'organic', 'vegan', 'végétal', 'plant-based', 'sans gluten', 'gluten free', 'protéine', 'protein bar'] },
 ];
 
+export function getCategoryById(id: string): CategoryInfo | undefined {
+  return CATEGORIES.find(c => c.id === id);
+}
+
 export function detectCategory(productName: string, categories?: string): CategoryInfo {
   const text = `${productName} ${categories || ''}`.toLowerCase();
 
