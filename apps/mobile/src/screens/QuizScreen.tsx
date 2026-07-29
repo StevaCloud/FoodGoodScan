@@ -774,7 +774,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const QUIZ_COOLDOWN_MS = 4 * 60 * 60 * 1000;
-const QUESTION_TIME = 15;
+const QUESTION_TIME = 30;
 
 function useCooldown(lastQuizAt: number | null, isPremium: boolean) {
   const [remaining, setRemaining] = useState(0);
@@ -1123,7 +1123,7 @@ export function QuizScreen() {
   // ── Quiz en cours ──────────────────────────────────────────────────────
   const q   = questions[index];
   const col = category?.color || '#22c55e';
-  const timerColor = timeLeft > 10 ? '#22c55e' : timeLeft > 5 ? '#f59e0b' : '#ef4444';
+  const timerColor = timeLeft > 20 ? '#22c55e' : timeLeft > 10 ? '#f59e0b' : '#ef4444';
   return (
     <WeatherScreen>
       <ScrollView style={s.root} contentContainerStyle={s.content}>
