@@ -54,7 +54,7 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama3-70b-8192',
         messages,
         max_tokens: 512,
         temperature: 0.7,
