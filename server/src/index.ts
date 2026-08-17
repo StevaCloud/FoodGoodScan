@@ -27,6 +27,15 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Rate limiting pour l'admin : 5 req/15min (anti brute force)
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Trop de tentatives.',
+});
+
 app.get('/admin', adminLimiter, async (req, res) => {
   // Basic Auth
   const adminPass = process.env.ADMIN_PASSWORD || 'fgs-admin-2026';
@@ -264,15 +273,6 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de tentatives, réessaie dans 15 minutes.' },
-});
-
-// Rate limiting pour l'admin : 5 req/15min (anti brute force)
-const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Trop de tentatives.',
 });
 
 app.use(globalLimiter);
