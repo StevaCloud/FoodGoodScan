@@ -248,8 +248,12 @@ export function GroceryListScreen() {
                   <Text style={[styles.itemName, item.checked && styles.itemNameChecked]} numberOfLines={2}>
                     {item.name}
                   </Text>
-                  {item.calories > 0 && (
+                  {item.calories > 0 ? (
                     <Text style={styles.itemNutri}>{item.calories} kcal | G:{item.fat.toFixed(0)}g S:{item.sugars.toFixed(0)}g P:{item.proteins.toFixed(0)}g</Text>
+                  ) : (
+                    <TouchableOpacity onPress={() => navigation.navigate('Scanner')}>
+                      <Text style={styles.scanHint}>📷 Scanner pour ajouter les calories</Text>
+                    </TouchableOpacity>
                   )}
                   <Text style={styles.proofHint}>Voir la circulaire →</Text>
                 </TouchableOpacity>
@@ -341,5 +345,6 @@ const styles = StyleSheet.create({
   itemPrice: { color: '#22c55e', fontSize: 16, fontWeight: 'bold' },
   itemPriceChecked: { color: '#bbb' },
   proofHint: { color: '#60a5fa', fontSize: 11, fontWeight: '700', marginTop: 4 },
+  scanHint: { color: '#f59e0b', fontSize: 11, fontWeight: '600', marginTop: 2 },
   hint: { color: '#aaa', fontSize: 11, textAlign: 'center', marginTop: 12 },
 });
