@@ -129,7 +129,7 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
           contents,
-          generationConfig: { temperature: 0.7 },
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
         }),
       }
     );
