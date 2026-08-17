@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { rateLimit } from 'express-rate-limit';
+import { prisma } from '../lib/prisma';
+import { searchFlippDeals } from '../services/flipp';
 
 const router = Router();
 
@@ -10,6 +12,42 @@ const chatLimiter = rateLimit({
   message: { error: 'Trop de messages, attends une minute.' },
 });
 
+// Code régional canadien → code postal représentatif
+const AREA_CODE_TO_POSTAL: Record<string, string> = {
+  '514': 'H2X1Y6', '438': 'H2X1Y6', '450': 'J4H1R5', '579': 'J4H1R5',
+  '418': 'G1R1R5', '581': 'G1R1R5', '819': 'J8X2J2', '873': 'J8X2J2',
+  '416': 'M5V2T6', '647': 'M5V2T6', '437': 'M5V2T6', '905': 'L4Z1S2',
+  '289': 'L4Z1S2', '365': 'L4Z1S2', '613': 'K1P5G3', '343': 'K1P5G3',
+  '519': 'N2G1A1', '226': 'N2G1A1', '705': 'P3A3V8', '249': 'P3A3V8',
+  '604': 'V6B1A1', '778': 'V6B1A1', '250': 'V8W1N3', '236': 'V6B1A1',
+  '403': 'T2P1J9', '587': 'T2P1J9', '780': 'T5J1R8', '825': 'T5J1R8',
+  '204': 'R3C0V8', '431': 'R3C0V8', '306': 'S4P3Y2', '639': 'S4P3Y2',
+  '902': 'B3J1S9', '782': 'B3J1S9',
+};
+
+function getPostalFromPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const local = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+  return AREA_CODE_TO_POSTAL[local.slice(0, 3)] || 'H2X1Y6';
+}
+
+function extractKeywords(message: string): string[] {
+  const stops = new Set([
+    'avec', 'pour', 'dans', 'une', 'les', 'que', 'qui', 'est', 'sont',
+    'comme', 'quand', 'comment', 'donc', 'mais', 'avoir', 'faire', 'aller',
+    'veux', 'peux', 'dois', 'repas', 'manger', 'nourriture', 'aliment',
+    'recette', 'sain', 'saine', 'santé', 'bon', 'bonne', 'jour', 'soir',
+    'midi', 'semaine', 'dîner', 'lunch', 'souper', 'suggère', 'propose',
+    'idée', 'aussi', 'très', 'plus', 'moins', 'cette', 'votre', 'notre',
+    'leur', 'cette', 'quel', 'quoi', 'tout', 'bien', 'beaucoup', 'puis',
+  ]);
+  return message.toLowerCase()
+    .replace(/[^\wàâäéèêëîïôùûüç\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length >= 4 && !stops.has(w))
+    .slice(0, 3);
+}
+
 const SYSTEM_PROMPT = `Tu es un assistant nutritionnel expert intégré à l'application FoodGoodScan. Tu aides les utilisateurs avec des questions sur la nourriture, la nutrition, les régimes alimentaires, les calories, les macronutriments, et la santé alimentaire.
 
 Règles importantes :
@@ -18,7 +56,8 @@ Règles importantes :
 - Réponds toujours en français
 - Sois précis, pratique et encourageant
 - Donne des chiffres concrets quand possible (calories, grammes, etc.)
-- Garde tes réponses concises (3-5 phrases max sauf si l'utilisateur demande des détails)`;
+- Garde tes réponses concises (3-5 phrases max sauf si l'utilisateur demande des détails)
+- Si des promotions de circulaires sont disponibles dans le contexte, mentionne-les naturellement dans ta réponse en indiquant le magasin et le prix`;
 
 router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: Response) => {
   try {
@@ -38,12 +77,48 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
       return;
     }
 
+    // Récupérer le téléphone pour déterminer la région
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { phone: true },
+    });
+
+    // Chercher les promotions Flipp selon la région
+    let dealsContext = '';
+    if (user?.phone) {
+      try {
+        const postalCode = getPostalFromPhone(user.phone);
+        const keywords = extractKeywords(message);
+        if (keywords.length > 0) {
+          const dealsResults = await Promise.all(
+            keywords.map(kw => searchFlippDeals(kw, postalCode))
+          );
+          const allDeals = dealsResults.flat()
+            .filter(d => d.name && d.price && d.merchant)
+            .slice(0, 6);
+
+          if (allDeals.length > 0) {
+            dealsContext = '\n\n[PROMOTIONS EN COURS DANS TA RÉGION CETTE SEMAINE]\n' +
+              allDeals.map(d =>
+                `- ${d.name} chez ${d.merchant} : ${d.priceText ? d.priceText + ' ' : ''}$${d.price}`
+              ).join('\n');
+          }
+        }
+      } catch {
+        // Flipp non critique, on continue sans
+      }
+    }
+
+    const userMessage = dealsContext
+      ? `${message.trim()}${dealsContext}`
+      : message.trim();
+
     const contents = [
       ...history.slice(-6).map((h: any) => ({
         role: h.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: h.content }],
       })),
-      { role: 'user', parts: [{ text: message.trim() }] },
+      { role: 'user', parts: [{ text: userMessage }] },
     ];
 
     const response = await fetch(
@@ -73,7 +148,7 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
       return;
     }
 
-    res.json({ reply: text });
+    res.json({ reply: text, hasDeals: dealsContext.length > 0 });
   } catch (err) {
     console.error('chat error:', err);
     res.status(500).json({ error: 'Erreur serveur' });
