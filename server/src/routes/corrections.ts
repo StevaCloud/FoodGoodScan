@@ -7,7 +7,7 @@ const router = Router();
 
 const POINTS_CORRECTION = 10;
 const TOLERANCE = 0.12; // 12% de tolérance
-const TRUSTED_EMAILS = ['stevuloin39@gmail.com'];
+const TRUSTED_EMAILS = (process.env.TRUSTED_EMAILS || 'stevuloin39@gmail.com').split(',').map(e => e.trim());
 
 function isClose(a: number | null | undefined, b: number | null | undefined): boolean {
   if (a == null && b == null) return true;

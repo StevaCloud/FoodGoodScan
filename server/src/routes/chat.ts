@@ -33,6 +33,10 @@ router.post('/', authenticateToken, chatLimiter, async (req: AuthRequest, res: R
       res.status(400).json({ error: 'Message requis' });
       return;
     }
+    if (message.length > 1000) {
+      res.status(400).json({ error: 'Message trop long (maximum 1000 caractères)' });
+      return;
+    }
 
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },

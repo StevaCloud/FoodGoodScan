@@ -114,10 +114,6 @@ router.post('/earn', authenticateToken, async (req: AuthRequest, res: Response) 
       count: entry?.date === today ? entry.count + 1 : 1,
     });
     pts = Math.min(amount, 30);
-  } else if (action === 'scan') {
-    pts = POINTS.scan;
-  } else if (action === 'dailyLogin') {
-    pts = POINTS.dailyLogin;
   } else {
     res.status(400).json({ error: 'Action invalide' });
     return;

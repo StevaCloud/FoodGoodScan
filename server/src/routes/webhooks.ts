@@ -11,16 +11,17 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
   let event: Stripe.Event;
 
-  if (process.env.STRIPE_WEBHOOK_SECRET) {
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err: any) {
-      console.error('Webhook signature verification failed:', err.message);
-      res.status(400).send('Webhook Error');
-      return;
-    }
-  } else {
-    event = JSON.parse(req.body.toString());
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET manquant — webhook rejeté');
+    res.status(400).send('Webhook Error');
+    return;
+  }
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    res.status(400).send('Webhook Error');
+    return;
   }
 
   try {

@@ -27,7 +27,7 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.get('/admin', async (req, res) => {
+app.get('/admin', adminLimiter, async (req, res) => {
   // Basic Auth
   const adminPass = process.env.ADMIN_PASSWORD || 'fgs-admin-2026';
   const auth = req.headers.authorization;
@@ -227,6 +227,9 @@ app.get('/delete-account', (_req, res) => {
 
 app.use(helmet());
 
+// Requis pour que express-rate-limit fonctionne correctement derrière un proxy (DigitalOcean)
+app.set('trust proxy', 1);
+
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean)
   : ['http://localhost:8081', 'http://localhost:8082', 'http://localhost:3000', 'http://localhost:19006'];
@@ -261,6 +264,15 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de tentatives, réessaie dans 15 minutes.' },
+});
+
+// Rate limiting pour l'admin : 5 req/15min (anti brute force)
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Trop de tentatives.',
 });
 
 app.use(globalLimiter);

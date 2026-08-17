@@ -7,6 +7,8 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+const BARCODE_REGEX = /^\d{8,14}$/;
+
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'products');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -32,6 +34,11 @@ router.post('/:barcode', authenticateToken, upload.single('image'), async (req: 
   try {
     const barcode = String(req.params.barcode);
     const userId = req.userId!;
+
+    if (!BARCODE_REGEX.test(barcode)) {
+      res.status(400).json({ error: 'Code-barres invalide (8 à 14 chiffres requis)' });
+      return;
+    }
 
     if (!req.file) {
       res.status(400).json({ error: 'Image requise' });
