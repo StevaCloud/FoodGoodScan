@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { requirePremium, requireGroceryAddon } from '../middleware/subscription';
@@ -9,6 +10,18 @@ import { detectCategory, getCategoryById } from '../services/categories';
 import { addPoints, POINTS } from './coupons';
 
 const router = Router();
+
+const ocrLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: 'Trop de scans OCR, attends une minute.' },
+});
+
+const saveNutritionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de sauvegardes, attends une minute.' },
+});
 
 const BARCODE_REGEX = /^\d{8,14}$/;
 
@@ -249,6 +262,120 @@ router.get('/favorites', authenticateToken, requirePremium, async (req: AuthRequ
     orderBy: { addedAt: 'desc' },
   });
   res.json(favorites);
+});
+
+// POST /save-nutrition — sauvegarde directe des valeurs OCR, confirmées immédiatement
+router.post('/save-nutrition', authenticateToken, saveNutritionLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const { barcode, productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt } = req.body;
+
+    if (!barcode || !productName) {
+      res.status(400).json({ error: 'barcode et productName requis' });
+      return;
+    }
+    if (!BARCODE_REGEX.test(String(barcode))) {
+      res.status(400).json({ error: 'Code-barres invalide' });
+      return;
+    }
+
+    const userId = req.userId!;
+    const data = {
+      barcode: String(barcode),
+      productName: String(productName),
+      userId,
+      status: 'CONFIRMED' as const,
+      calories:     calories     ?? null,
+      fat:          fat          ?? null,
+      saturatedFat: saturatedFat ?? null,
+      carbs:        carbs        ?? null,
+      sugars:       sugars       ?? null,
+      fiber:        fiber        ?? null,
+      proteins:     proteins     ?? null,
+      salt:         salt         ?? null,
+      category:     null,
+    };
+
+    await prisma.productCorrection.upsert({
+      where: { barcode_userId: { barcode: String(barcode), userId } },
+      create: data,
+      update: { ...data },
+    });
+
+    res.json({ saved: true });
+  } catch (err) {
+    console.error('save-nutrition error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+router.post('/ocr', authenticateToken, ocrLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const { image } = req.body;
+    if (!image || typeof image !== 'string') {
+      res.status(400).json({ error: 'Image requise' });
+      return;
+    }
+
+    const base64Match = image.match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/s);
+    if (!base64Match) {
+      res.status(400).json({ error: 'Format image invalide' });
+      return;
+    }
+
+    const mimeType = base64Match[1] === 'jpg' ? 'image/jpeg' : `image/${base64Match[1]}`;
+    const base64Data = base64Match[2];
+
+    if (base64Data.length > 4_000_000) {
+      res.status(413).json({ error: 'Image trop volumineuse (max 3 MB)' });
+      return;
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: 'Service OCR non configuré' });
+      return;
+    }
+
+    const prompt = `Analyse cette étiquette nutritionnelle et extrais les valeurs pour 100g ou 100ml. Si les valeurs sont par portion, convertis-les. Retourne UNIQUEMENT ce JSON (valeurs numériques, null si absent) :
+{"calories":null,"fat":null,"saturatedFat":null,"carbs":null,"sugars":null,"fiber":null,"proteins":null,"salt":null}
+Pour "salt" : utilise le sel en g directement, ou sodium en mg × 0.00254. Aucun texte avant ou après le JSON.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: base64Data } },
+          ] }],
+          generationConfig: { maxOutputTokens: 256, temperature: 0.1 },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Gemini OCR error:', await response.text());
+      res.status(502).json({ error: 'Erreur du service OCR' });
+      return;
+    }
+
+    const data = await response.json() as any;
+    const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) {
+      res.status(422).json({ error: 'Aucune valeur nutritionnelle détectée dans l\'image' });
+      return;
+    }
+
+    const values = JSON.parse(jsonMatch[0]);
+    res.json(values);
+  } catch (err) {
+    console.error('OCR error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 });
 
 export { router as productRouter };

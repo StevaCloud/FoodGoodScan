@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { Alert } from 'react-native';
+import { useStore } from '../store/useStore';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -6,6 +8,29 @@ const api = axios.create({
   baseURL: API_URL,
   timeout: 10000,
 });
+
+let sessionExpiredAlertShown = false;
+
+// Déconnexion automatique si le token est expiré — l'utilisateur est redirigé vers le login sans rien faire
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const store = useStore.getState();
+      if (store.isLoggedIn && !sessionExpiredAlertShown) {
+        sessionExpiredAlertShown = true;
+        store.logout();
+        setAuthToken(null);
+        Alert.alert(
+          'Session expirée',
+          'Ta session a expiré. Reconnecte-toi pour continuer.',
+          [{ text: 'OK', onPress: () => { sessionExpiredAlertShown = false; } }]
+        );
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 let authToken: string | null = null;
 
@@ -42,6 +67,16 @@ export async function getMe() {
 
 export async function scanProduct(barcode: string) {
   const { data } = await api.get(`/products/scan/${barcode}`);
+  return data;
+}
+
+export async function ocrProductLabel(imageBase64: string) {
+  const { data } = await api.post('/products/ocr', { image: imageBase64 }, { timeout: 30000 });
+  return data;
+}
+
+export async function saveNutritionDirect(barcode: string, productName: string, values: Record<string, number | null | undefined>) {
+  const { data } = await api.post('/products/save-nutrition', { barcode, productName, ...values });
   return data;
 }
 

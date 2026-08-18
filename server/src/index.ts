@@ -255,6 +255,10 @@ app.use(cors({
 // Webhook Stripe AVANT express.json (besoin du raw body)
 app.use('/api/stripe', webhookRouter);
 
+// Limite élargie pour l'OCR (images base64) — doit être avant le json global
+app.use('/api/products/ocr', express.json({ limit: '5mb' }));
+app.use('/api/products/save-nutrition', express.json({ limit: '20kb' }));
+
 app.use(express.json({ limit: '10kb' }));
 
 // Rate limiting global

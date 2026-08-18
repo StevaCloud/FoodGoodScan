@@ -52,11 +52,17 @@ export interface Pet {
   stage: 'baby' | 'child' | 'teen' | 'adult';
 }
 
+interface OcrValues {
+  calories: string; fat: string; saturatedFat: string;
+  carbs: string; sugars: string; fiber: string; proteins: string; salt: string;
+}
+
 interface AppState {
   user: User | null;
   token: string | null;
   isLoggedIn: boolean;
   lastScannedProduct: any | null;
+  lastScanOcrValues: OcrValues | null;
   groceryList: GroceryItem[];
   language: Language;
   onboarded: boolean;
@@ -68,6 +74,7 @@ interface AppState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLastScannedProduct: (product: any) => void;
+  setLastScanOcrValues: (v: OcrValues | null) => void;
   logout: () => void;
   setWeatherData: (data: WeatherData | null) => void;
   addGroceryItem: (name: string, store: string, price: number | null, nutrition?: { calories: number; fat: number; sugars: number; proteins: number; salt: number; healthScore: number }, imageUrl?: string) => string;
@@ -146,6 +153,7 @@ export const useStore = create<AppState>()(
       token: null,
       isLoggedIn: false,
       lastScannedProduct: null,
+      lastScanOcrValues: null,
       groceryList: [],
       language: 'fr' as Language,
       onboarded: false,
@@ -163,6 +171,7 @@ export const useStore = create<AppState>()(
       setUser: (user) => set({ user, isLoggedIn: !!user }),
       setToken: (token) => set({ token }),
       setLastScannedProduct: (product) => set({ lastScannedProduct: product }),
+      setLastScanOcrValues: (v) => set({ lastScanOcrValues: v }),
       logout: () => set({ user: null, token: null, isLoggedIn: false, onboarded: false, healthProfile: null, foodPreferences: [] }),
       setWeatherData: (weatherData) => set({ weatherData }),
 

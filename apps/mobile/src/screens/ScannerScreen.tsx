@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform, Modal, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { scanProduct } from '../services/api';
+import { scanProduct, ocrProductLabel, saveNutritionDirect } from '../services/api';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
@@ -18,19 +18,34 @@ export function ScannerScreen() {
   const [nativeScanActive, setNativeScanActive] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [scanStatus, setScanStatus] = useState('');
+  const [scanMode, setScanMode] = useState<'barcode' | 'nutrition'>('barcode');
+  const [pendingProduct, setPendingProduct] = useState<any>(null);
+  const [nutritionCapturing, setNutritionCapturing] = useState(false);
+  const [ocrError, setOcrError] = useState('');
   const navigation = useNavigation<any>();
   const setLastScannedProduct = useStore((s) => s.setLastScannedProduct);
+  const setLastScanOcrValues = useStore((s) => s.setLastScanOcrValues);
   const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scanIntervalRef = useRef<any>(null);
+  const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
     return () => { stopWebcam(); };
   }, []);
 
-  const handleScan = async (barcode: string) => {
+  const goToProduct = (product: any) => {
+    setLastScannedProduct(product);
+    stopWebcam();
+    setNativeScanActive(false);
+    triggerInterstitial();
+    navigation.navigate('Product');
+  };
+
+  // Scan caméra native : code-barres d'abord
+  const handleBarcodeDetected = async (barcode: string) => {
     if (loading || !barcode) return;
     if (!/^\d{8,14}$/.test(barcode)) {
       Alert.alert('Code invalide', 'Le code-barres doit contenir entre 8 et 14 chiffres.');
@@ -38,17 +53,120 @@ export function ScannerScreen() {
       return;
     }
     setLoading(true);
-    setScanStatus('');
-
+    setScanStatus('Recherche du produit...');
     try {
       const product = await scanProduct(barcode);
-      setLastScannedProduct(product);
-      stopWebcam();
-      setNativeScanActive(false);
-      triggerInterstitial();
-      navigation.navigate('Product');
+      const n = product.nutriments as any;
+      const hasNutrition = n && (
+        (n['energy-kcal_100g'] || 0) > 0 ||
+        (n.proteins_100g || 0) > 0 ||
+        (n.fat_100g || 0) > 0
+      );
+      if (hasNutrition) {
+        // Valeurs déjà dans la BD → pas de scan tableau
+        setLastScanOcrValues(null);
+        goToProduct(product);
+      } else {
+        // Pas de valeurs → afficher l'étape scan tableau
+        setPendingProduct(product);
+        setScanMode('nutrition');
+        setLoading(false);
+        setScanStatus('');
+        setScanned(false);
+      }
     } catch (error: any) {
-      setScanned(false);
+      setTimeout(() => setScanned(false), 2000);
+      if (error.response?.data?.upgrade) {
+        Alert.alert('Limite atteinte', 'Tu as atteint la limite de 3 scans gratuits par jour. Passe au Premium!', [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Premium $3.99/mois', onPress: () => navigation.navigate('Profile') },
+        ]);
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        // intercepteur axios gère la déconnexion
+      } else if (error.response?.status === 404) {
+        Alert.alert('Produit non trouvé', 'Ce code-barres n\'est pas dans notre base de données.');
+      } else {
+        Alert.alert('Erreur', 'Impossible de scanner le produit. Vérifie ta connexion internet.');
+      }
+      setLoading(false);
+      setScanStatus('');
+    }
+  };
+
+  // Capture le tableau nutritif → OCR → sauvegarde directe confirmée sur le serveur
+  const captureAndSaveNutrition = async () => {
+    if (!cameraRef.current || !pendingProduct) return;
+    setNutritionCapturing(true);
+    setOcrError('');
+    setScanStatus('Lecture des valeurs...');
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.5, exif: false });
+      if (!photo?.base64) {
+        setOcrError('Impossible de prendre la photo. Réessaie.');
+        setNutritionCapturing(false);
+        setScanStatus('');
+        return;
+      }
+
+      const ocr = await ocrProductLabel(`data:image/jpeg;base64,${photo.base64}`);
+      const hasOcr = Object.values(ocr).some(v => v != null && (v as number) > 0);
+
+      if (!hasOcr) {
+        // OCR n'a rien trouvé → rester sur l'écran, laisser réessayer
+        setOcrError('Tableau non détecté. Rapproche la caméra et réessaie.');
+        setNutritionCapturing(false);
+        setScanStatus('');
+        return;
+      }
+
+      // Sauvegarde directe CONFIRMÉE sur le serveur
+      const values = {
+        calories:     ocr.calories     ?? null,
+        fat:          ocr.fat          ?? null,
+        saturatedFat: ocr.saturatedFat ?? null,
+        carbs:        ocr.carbs        ?? null,
+        sugars:       ocr.sugars       ?? null,
+        fiber:        ocr.fiber        ?? null,
+        proteins:     ocr.proteins     ?? null,
+        salt:         ocr.salt         ?? null,
+      };
+      try { await saveNutritionDirect(pendingProduct.barcode, pendingProduct.name, values); } catch {}
+
+      // Passer les valeurs à ProductScreen pour affichage
+      setLastScanOcrValues({
+        calories:     ocr.calories     != null ? String(ocr.calories)     : '',
+        fat:          ocr.fat          != null ? String(ocr.fat)          : '',
+        saturatedFat: ocr.saturatedFat != null ? String(ocr.saturatedFat) : '',
+        carbs:        ocr.carbs        != null ? String(ocr.carbs)        : '',
+        sugars:       ocr.sugars       != null ? String(ocr.sugars)       : '',
+        fiber:        ocr.fiber        != null ? String(ocr.fiber)        : '',
+        proteins:     ocr.proteins     != null ? String(ocr.proteins)     : '',
+        salt:         ocr.salt         != null ? String(ocr.salt)         : '',
+      });
+
+      setNutritionCapturing(false);
+      setScanStatus('');
+      goToProduct(pendingProduct);
+    } catch {
+      setOcrError('Erreur lors de la lecture. Réessaie.');
+      setNutritionCapturing(false);
+      setScanStatus('');
+    }
+  };
+
+  // Scan manuel (texte) : pas de caméra disponible → navigue directement
+  const handleManualScan = async (barcode: string) => {
+    if (loading || !barcode) return;
+    if (!/^\d{8,14}$/.test(barcode)) {
+      Alert.alert('Code invalide', 'Le code-barres doit contenir entre 8 et 14 chiffres.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const product = await scanProduct(barcode);
+      setLastScanOcrValues(null);
+      goToProduct(product);
+    } catch (error: any) {
       if (error.response?.data?.upgrade) {
         Alert.alert('Limite atteinte', 'Tu as atteint la limite de 3 scans gratuits par jour. Passe au Premium!', [
           { text: 'Plus tard', style: 'cancel' },
@@ -57,7 +175,7 @@ export function ScannerScreen() {
       } else if (error.response?.status === 404) {
         Alert.alert('Produit non trouvé', 'Ce code-barres n\'est pas dans notre base de données.');
       } else {
-        Alert.alert('Erreur', 'Impossible de scanner le produit.');
+        Alert.alert('Erreur', 'Impossible de scanner le produit. Vérifie ta connexion internet.');
       }
     } finally {
       setLoading(false);
@@ -124,7 +242,7 @@ export function ScannerScreen() {
           const code = barcodes[0].rawValue;
           setScanStatus(`Code détecté: ${code}`);
           clearInterval(scanIntervalRef.current);
-          handleScan(code);
+          handleManualScan(code);
         }
       } catch {}
     }, 300);
@@ -139,7 +257,18 @@ export function ScannerScreen() {
       }
     }
     setScanned(false);
+    setScanMode('barcode');
+    setPendingProduct(null);
+    setNutritionCapturing(false);
     setNativeScanActive(true);
+  };
+
+  const closeNativeCamera = () => {
+    setNativeScanActive(false);
+    setScanMode('barcode');
+    setPendingProduct(null);
+    setNutritionCapturing(false);
+    setOcrError('');
   };
 
   // ─── Web ────────────────────────────────────────────────────────────────────
@@ -195,7 +324,7 @@ export function ScannerScreen() {
             />
             <TouchableOpacity
               style={[styles.scanButton, loading && styles.disabled]}
-              onPress={() => handleScan(manualBarcode)}
+              onPress={() => handleManualScan(manualBarcode)}
               disabled={loading}
             >
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{t('scanner.analyze')}</Text>}
@@ -207,81 +336,124 @@ export function ScannerScreen() {
   }
 
   // ─── Native (Android / iOS) ─────────────────────────────────────────────────
-  if (nativeScanActive) {
-    return (
-      <View style={styles.cameraFullScreen}>
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] }}
-          onBarcodeScanned={scanned ? undefined : (result) => {
-            setScanned(true);
-            handleScan(result.data);
-          }}
-        />
-        {/* Viewfinder overlay */}
-        <View style={styles.cameraOverlay} pointerEvents="none">
-          <View style={styles.cameraOverlayTop} />
-          <View style={styles.cameraOverlayMiddle}>
-            <View style={styles.cameraOverlaySide} />
-            <View style={styles.viewfinder}>
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
-            </View>
-            <View style={styles.cameraOverlaySide} />
-          </View>
-          <View style={styles.cameraOverlayBottom}>
-            <Text style={styles.viewfinderHint}>Cadre le code-barres dans le rectangle</Text>
-          </View>
-        </View>
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#22c55e" />
-            <Text style={styles.loadingText}>Recherche du produit...</Text>
-          </View>
-        )}
-        <TouchableOpacity style={styles.closeCameraBtn} onPress={() => setNativeScanActive(false)}>
-          <Text style={styles.closeCameraBtnText}>✕ Fermer</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <WeatherScreen><View style={styles.container}>
-      <View style={styles.topBar}><View /><LanguageSelector /></View>
-      <Text style={styles.title}>{t('scanner.title')}</Text>
-      <Text style={styles.subtitle}>{t('scanner.subtitle')}</Text>
-
-      <TouchableOpacity style={styles.cameraButton} onPress={openNativeCamera}>
-        <Text style={styles.cameraIcon}>[ ]</Text>
-        <Text style={styles.cameraText}>{t('scanner.open.camera')}</Text>
-      </TouchableOpacity>
-
-      <View style={styles.manualSection}>
-        <Text style={styles.sectionTitle}>{t('scanner.manual')}</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: 3017620422003"
-            placeholderTextColor="#666"
-            value={manualBarcode}
-            onChangeText={setManualBarcode}
-            keyboardType="number-pad"
-            editable={!loading}
+    <>
+      <Modal visible={nativeScanActive} animationType="slide" statusBarTranslucent onRequestClose={closeNativeCamera}>
+        <StatusBar hidden />
+        <View style={styles.cameraFullScreen}>
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            autofocus="on"
+            barcodeScannerSettings={scanMode === 'barcode' ? { barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'] } : undefined}
+            onBarcodeScanned={scanMode === 'barcode' && !scanned ? (result) => { setScanned(true); handleBarcodeDetected(result.data); } : undefined}
           />
-          <TouchableOpacity
-            style={[styles.scanButton, loading && styles.disabled]}
-            onPress={() => handleScan(manualBarcode)}
-            disabled={loading}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{t('scanner.analyze')}</Text>}
+
+          {/* ── Mode code-barres (défaut) ── */}
+          {scanMode === 'barcode' && (
+            <View style={styles.cameraOverlay} pointerEvents="none">
+              <View style={styles.cameraOverlayTop} />
+              <View style={styles.cameraOverlayMiddle}>
+                <View style={styles.cameraOverlaySide} />
+                <View style={styles.barcodeFrame}>
+                  <View style={[styles.corner, styles.topLeft]} />
+                  <View style={[styles.corner, styles.topRight]} />
+                  <View style={[styles.corner, styles.bottomLeft]} />
+                  <View style={[styles.corner, styles.bottomRight]} />
+                </View>
+                <View style={styles.cameraOverlaySide} />
+              </View>
+              <View style={styles.cameraOverlayBottom}>
+                <Text style={styles.viewfinderHint}>Cadre le code-barres dans le rectangle</Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── Mode tableau nutritif (seulement si valeurs manquantes) ── */}
+          {scanMode === 'nutrition' && (
+            <>
+              <View style={styles.cameraOverlay} pointerEvents="none">
+                <View style={styles.cameraOverlayTop} />
+                <View style={styles.cameraOverlayMiddle}>
+                  <View style={styles.cameraOverlaySide} />
+                  <View style={styles.nutritionFrame}>
+                    <View style={[styles.corner, styles.topLeft]} />
+                    <View style={[styles.corner, styles.topRight]} />
+                    <View style={[styles.corner, styles.bottomLeft]} />
+                    <View style={[styles.corner, styles.bottomRight]} />
+                  </View>
+                  <View style={styles.cameraOverlaySide} />
+                </View>
+                <View style={styles.cameraOverlayBottom} />
+              </View>
+              <View style={styles.nutritionPromptHeader} pointerEvents="none">
+                <Text style={styles.nutritionPromptTitle}>📊 Valeurs nutritives manquantes</Text>
+                <Text style={styles.nutritionPromptSub}>Aide la communauté en scannant le tableau nutritif</Text>
+              </View>
+              <View style={styles.nutritionPromptFooter}>
+                {nutritionCapturing ? (
+                  <View style={styles.capturingRow}>
+                    <ActivityIndicator color="#22c55e" size="small" />
+                    <Text style={styles.capturingText}>Lecture des valeurs...</Text>
+                  </View>
+                ) : (
+                  <>
+                    {ocrError ? <Text style={styles.ocrErrorText}>{ocrError}</Text> : null}
+                    <TouchableOpacity style={styles.captureBtn} onPress={captureAndSaveNutrition}>
+                      <Text style={styles.captureBtnText}>{ocrError ? '🔄  Réessayer' : '📷  Scanner le tableau nutritif'}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </>
+          )}
+
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#22c55e" />
+              <Text style={styles.loadingText}>{scanStatus || 'Recherche du produit...'}</Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.closeCameraBtn} onPress={closeNativeCamera}>
+            <Text style={styles.closeCameraBtnText}>✕ Fermer</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </View></WeatherScreen>
+      </Modal>
+
+      <WeatherScreen><View style={styles.container}>
+        <View style={styles.topBar}><View /><LanguageSelector /></View>
+        <Text style={styles.title}>{t('scanner.title')}</Text>
+        <Text style={styles.subtitle}>{t('scanner.subtitle')}</Text>
+
+        <TouchableOpacity style={styles.cameraButton} onPress={openNativeCamera}>
+          <Text style={styles.cameraIcon}>[ ]</Text>
+          <Text style={styles.cameraText}>{t('scanner.open.camera')}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.manualSection}>
+          <Text style={styles.sectionTitle}>{t('scanner.manual')}</Text>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex: 3017620422003"
+              placeholderTextColor="#666"
+              value={manualBarcode}
+              onChangeText={setManualBarcode}
+              keyboardType="number-pad"
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={[styles.scanButton, loading && styles.disabled]}
+              onPress={() => handleManualScan(manualBarcode)}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.scanButtonText}>{t('scanner.analyze')}</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View></WeatherScreen>
+    </>
   );
 }
 
@@ -340,14 +512,26 @@ const styles = StyleSheet.create({
   // Native camera full-screen
   cameraFullScreen: { flex: 1, backgroundColor: '#000' },
   cameraOverlay: { ...StyleSheet.absoluteFillObject },
-  cameraOverlayTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
-  cameraOverlayMiddle: { flexDirection: 'row', height: 200 },
-  cameraOverlaySide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
-  viewfinder: { width: 280, height: 200, position: 'relative' },
-  cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 20 },
-  viewfinderHint: { color: '#fff', fontSize: 14, opacity: 0.85 },
-  loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.65)' },
-  loadingText: { color: '#fff', marginTop: 12, fontSize: 15 },
+  cameraOverlayTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  cameraOverlayMiddle: { flexDirection: 'row', height: 220 },
+  cameraOverlaySide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  nutritionFrame: { width: 290, height: 220, position: 'relative' },
+  barcodeFrame: { width: 290, height: 220, position: 'relative' },
+  cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 14 },
+  viewfinderHint: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  // Nutrition prompt (affiché seulement si valeurs manquantes)
+  nutritionPromptHeader: { position: 'absolute', top: 60, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 20 },
+  nutritionPromptTitle: { color: '#fff', fontSize: 19, fontWeight: 'bold', textAlign: 'center', marginBottom: 6 },
+  nutritionPromptSub: { color: 'rgba(255,255,255,0.7)', fontSize: 13, textAlign: 'center' },
+  nutritionPromptFooter: { position: 'absolute', bottom: 80, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 30 },
+  capturingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  capturingText: { color: '#22c55e', fontSize: 15, fontWeight: '600' },
+  ocrErrorText: { color: '#f87171', fontSize: 13, textAlign: 'center', marginBottom: 12, paddingHorizontal: 10 },
+  captureBtn: { backgroundColor: '#22c55e', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
+  captureBtnText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
+  // Shared
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)' },
+  loadingText: { color: '#fff', marginTop: 12, fontSize: 15, textAlign: 'center', paddingHorizontal: 30 },
   closeCameraBtn: { position: 'absolute', top: 50, right: 20, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   closeCameraBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

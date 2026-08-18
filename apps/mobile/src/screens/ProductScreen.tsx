@@ -6,7 +6,7 @@ import { HealthScoreBadge } from '../components/HealthScoreBadge';
 import { showToast } from '../components/Toast';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { NutriScoreBar } from '../components/NutriScoreBar';
-import { addFavorite, getProductPrices, submitCorrection, uploadProductImage } from '../services/api';
+import { addFavorite, getProductPrices, submitCorrection, uploadProductImage, ocrProductLabel } from '../services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { usePostalCode } from '../hooks/usePostalCode';
 
@@ -24,6 +24,8 @@ export function ProductScreen() {
   const weatherBg = useWeatherBg();
   const product = useStore((s) => s.lastScannedProduct);
   const user = useStore((s) => s.user);
+  const lastScanOcrValues = useStore((s) => s.lastScanOcrValues);
+  const setLastScanOcrValues = useStore((s) => s.setLastScanOcrValues);
   const navigation = useNavigation<any>();
   const postalCode = usePostalCode();
   const [prices, setPrices] = useState<PriceDeal[]>([]);
@@ -31,34 +33,12 @@ export function ProductScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showCorrectModal, setShowCorrectModal] = useState(false);
   const [submittingCorrection, setSubmittingCorrection] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrAutoFilled, setOcrAutoFilled] = useState(false);
   const [correctionFields, setCorrectionFields] = useState({
-    calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '', category: '',
+    calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '',
   });
 
-  const CORRECTION_CATEGORIES = [
-    { id: 'water', name: 'Eaux' },
-    { id: 'soda', name: 'Boissons gazeuses' },
-    { id: 'juice', name: 'Jus & Smoothies' },
-    { id: 'energy', name: 'Boissons énergisantes' },
-    { id: 'coffee_tea', name: 'Café & Thé' },
-    { id: 'milk', name: 'Laits & Végétales' },
-    { id: 'dairy', name: 'Produits laitiers' },
-    { id: 'bread', name: 'Pains & Boulangerie' },
-    { id: 'cereal', name: 'Céréales & Granola' },
-    { id: 'pasta', name: 'Pâtes & Riz' },
-    { id: 'chips', name: 'Chips & Snacks' },
-    { id: 'chocolate', name: 'Chocolat & Confiserie' },
-    { id: 'cookies', name: 'Biscuits & Gâteaux' },
-    { id: 'icecream', name: 'Crèmes glacées' },
-    { id: 'meat', name: 'Viandes & Charcuteries' },
-    { id: 'fish', name: 'Poissons & Fruits de mer' },
-    { id: 'frozen', name: 'Surgelés & Plats préparés' },
-    { id: 'sauce', name: 'Sauces & Condiments' },
-    { id: 'canned', name: 'Conserves' },
-    { id: 'baby', name: 'Bébé & Enfants' },
-    { id: 'organic', name: 'Bio & Santé' },
-    { id: 'other', name: 'Autre' },
-  ];
   const addGroceryItem = useStore((s) => s.addGroceryItem);
   const isPremium = user?.plan === 'PREMIUM';
   const hasScanPlus = isPremium && (user?.groceryAddon === true);
@@ -86,6 +66,17 @@ export function ProductScreen() {
         .finally(() => setLoadingPrices(false));
     }
   }, [product]);
+
+  // Auto-ouvrir le modal de correction si l'OCR a détecté des valeurs au scan
+  useEffect(() => {
+    if (lastScanOcrValues && product) {
+      setCorrectionFields(lastScanOcrValues);
+      setOcrAutoFilled(true);
+      setLastScanOcrValues(null);
+      // Petit délai pour laisser l'écran se rendre
+      setTimeout(() => setShowCorrectModal(true), 600);
+    }
+  }, []);
 
   if (!product) {
     return (
@@ -128,6 +119,42 @@ export function ProductScreen() {
     }
   };
 
+  const captureForOcr = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      showToast('Permission caméra refusée');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: 'images',
+      quality: 0.5,
+      base64: true,
+      allowsEditing: false,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    setOcrLoading(true);
+    try {
+      const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      const values = await ocrProductLabel(base64);
+      setCorrectionFields(prev => ({
+        calories: values.calories != null ? String(values.calories) : prev.calories,
+        fat: values.fat != null ? String(values.fat) : prev.fat,
+        saturatedFat: values.saturatedFat != null ? String(values.saturatedFat) : prev.saturatedFat,
+        carbs: values.carbs != null ? String(values.carbs) : prev.carbs,
+        sugars: values.sugars != null ? String(values.sugars) : prev.sugars,
+        fiber: values.fiber != null ? String(values.fiber) : prev.fiber,
+        proteins: values.proteins != null ? String(values.proteins) : prev.proteins,
+        salt: values.salt != null ? String(values.salt) : prev.salt,
+      }));
+      showToast('Valeurs détectées — vérifie avant de soumettre');
+    } catch (e: any) {
+      showToast(e?.response?.data?.error || 'Impossible de lire l\'étiquette');
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
   const handleSubmitCorrection = async () => {
     const parse = (v: string) => v.trim() === '' ? undefined : parseFloat(v.replace(',', '.'));
     const values = {
@@ -139,10 +166,9 @@ export function ProductScreen() {
       fiber: parse(correctionFields.fiber),
       proteins: parse(correctionFields.proteins),
       salt: parse(correctionFields.salt),
-      category: correctionFields.category || undefined,
     };
     if (Object.values(values).every(v => v === undefined)) {
-      showToast('Entre au moins une valeur ou une catégorie');
+      showToast('Entre au moins une valeur');
       return;
     }
     setSubmittingCorrection(true);
@@ -393,7 +419,6 @@ export function ProductScreen() {
             fiber: String(n.fiber_100g ?? ''),
             proteins: String(n.proteins_100g ?? ''),
             salt: String(n.salt_100g ?? ''),
-            category: product.category?.id || '',
           });
           setShowCorrectModal(true);
         }}>
@@ -402,27 +427,19 @@ export function ProductScreen() {
         </TouchableOpacity>
       )}
 
-      <Modal visible={showCorrectModal} animationType="slide" transparent onRequestClose={() => setShowCorrectModal(false)}>
+      <Modal visible={showCorrectModal} animationType="slide" transparent onRequestClose={() => { setShowCorrectModal(false); setOcrAutoFilled(false); }}>
         <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>✏️ Corriger les valeurs</Text>
-            <Text style={styles.modalSub}>Valeurs pour 100g — laisse vide si inconnue</Text>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-              <Text style={styles.modalLabel}>Catégorie</Text>
-              <View style={styles.categoryGrid}>
-                {CORRECTION_CATEGORIES.map(cat => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[styles.categoryPill, correctionFields.category === cat.id && styles.categoryPillSelected]}
-                    onPress={() => setCorrectionFields(prev => ({ ...prev, category: prev.category === cat.id ? '' : cat.id }))}
-                  >
-                    <Text style={[styles.categoryPillText, correctionFields.category === cat.id && styles.categoryPillTextSelected]}>
-                      {cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={{ height: 12 }} />
+            {ocrAutoFilled
+              ? <Text style={styles.ocrAutoHint}>📷 Valeurs lues automatiquement — vérifie avant de soumettre</Text>
+              : <Text style={styles.modalSub}>Valeurs pour 100g — laisse vide si inconnue</Text>}
+            <TouchableOpacity style={styles.ocrButton} onPress={captureForOcr} disabled={ocrLoading}>
+              {ocrLoading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={styles.ocrButtonText}>📷 Capturer l'étiquette nutritionnelle</Text>}
+            </TouchableOpacity>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
               {([
                 { key: 'calories', label: 'Calories (kcal)' },
                 { key: 'fat', label: 'Gras total (g)' },
@@ -447,7 +464,7 @@ export function ProductScreen() {
               ))}
             </ScrollView>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowCorrectModal(false)}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => { setShowCorrectModal(false); setOcrAutoFilled(false); }}>
                 <Text style={styles.modalCancelTxt}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSubmit} onPress={handleSubmitCorrection} disabled={submittingCorrection}>
@@ -651,7 +668,10 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'flex-end' },
   modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-  modalSub: { color: '#888', fontSize: 12, marginBottom: 16 },
+  modalSub: { color: '#888', fontSize: 12, marginBottom: 10 },
+  ocrAutoHint: { color: '#22c55e', fontSize: 12, fontWeight: '600', marginBottom: 10 },
+  ocrButton: { backgroundColor: '#3b82f6', borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 12, minHeight: 42, justifyContent: 'center' },
+  ocrButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   modalField: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   modalLabel: { color: '#ccc', fontSize: 13, flex: 1 },
   modalInput: { backgroundColor: '#2a2a2a', color: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, width: 90, textAlign: 'right', fontSize: 14 },
