@@ -471,6 +471,25 @@ export function ScannerScreen() {
           {/* ── Mode tableau nutritif ── */}
           {scanMode === 'nutrition' && (
             <>
+              {/* Cadre portrait qui guide l'alignement du tableau nutritif */}
+              {!ocrPreview && !nutritionCapturing && (
+                <View style={styles.nutritionFrameOverlay} pointerEvents="none">
+                  <View style={styles.nutritionFrameTop} />
+                  <View style={styles.nutritionFrameMiddle}>
+                    <View style={styles.nutritionFrameSide} />
+                    <View style={styles.nutritionFrameBox}>
+                      <View style={[styles.nfCorner, styles.nfTopLeft]} />
+                      <View style={[styles.nfCorner, styles.nfTopRight]} />
+                      <View style={[styles.nfCorner, styles.nfBottomLeft]} />
+                      <View style={[styles.nfCorner, styles.nfBottomRight]} />
+                    </View>
+                    <View style={styles.nutritionFrameSide} />
+                  </View>
+                  <View style={styles.nutritionFrameBottom}>
+                    <Text style={styles.nutritionFrameHint}>Aligne le tableau nutritif dans le cadre</Text>
+                  </View>
+                </View>
+              )}
               <View style={styles.nutritionPromptFooter}>
                 {nutritionCapturing ? (
                   <View style={styles.capturingRow}>
@@ -480,32 +499,80 @@ export function ScannerScreen() {
                 ) : ocrPreview ? (
                   <>
                     <View style={styles.ocrResultBox}>
-                      {[
-                        { label: 'Calories', key: 'calories', unit: 'kcal' },
-                        { label: 'Lipides', key: 'fat', unit: 'g' },
-                        { label: 'Saturés', key: 'saturatedFat', unit: 'g' },
-                        { label: 'Gras trans', key: 'transFat', unit: 'g' },
-                        { label: 'Glucides', key: 'carbs', unit: 'g' },
-                        { label: 'Sucres', key: 'sugars', unit: 'g' },
-                        { label: 'Fibres', key: 'fiber', unit: 'g' },
-                        { label: 'Protéines', key: 'proteins', unit: 'g' },
-                        { label: 'Sel', key: 'salt', unit: 'g' },
-                        { label: 'Cholestérol', key: 'cholesterol', unit: 'mg' },
-                        { label: 'Fer', key: 'iron', unit: 'mg' },
-                        { label: 'Calcium', key: 'calcium', unit: 'mg' },
-                        { label: 'Potassium', key: 'potassium', unit: 'mg' },
-                      ].filter(r => ocrPreview[r.key] != null).map(r => (
-                        <Text key={r.key} style={styles.ocrResultRow}>
-                          <Text style={styles.ocrResultLabel}>{r.label}: </Text>
-                          <Text style={styles.ocrResultValue}>{ocrPreview[r.key]} {r.unit}</Text>
-                        </Text>
-                      ))}
-                      {ocrPreview.extra && Object.entries(ocrPreview.extra).map(([k, v]) => (
-                        <Text key={k} style={styles.ocrResultRow}>
-                          <Text style={styles.ocrResultLabel}>{k}: </Text>
-                          <Text style={styles.ocrResultValue}>{String(v)}</Text>
-                        </Text>
-                      ))}
+                      {(() => {
+                        const LABELS: Record<string, { label: string; unit: string }> = {
+                          calories: { label: 'Calories', unit: 'kcal' },
+                          fat: { label: 'Lipides', unit: 'g' },
+                          saturatedFat: { label: 'Gras saturés', unit: 'g' },
+                          carbs: { label: 'Glucides', unit: 'g' },
+                          sugars: { label: 'Sucres', unit: 'g' },
+                          fiber: { label: 'Fibres', unit: 'g' },
+                          proteins: { label: 'Protéines', unit: 'g' },
+                          salt: { label: 'Sel', unit: 'g' },
+                          cholesterol: { label: 'Cholestérol', unit: 'mg' },
+                          iron: { label: 'Fer', unit: 'mg' },
+                          calcium: { label: 'Calcium', unit: 'mg' },
+                          potassium: { label: 'Potassium', unit: 'mg' },
+                          transFat: { label: 'Gras trans', unit: 'g' },
+                          polyunsaturatedFat: { label: 'Gras polyinsaturés', unit: 'g' },
+                          monounsaturatedFat: { label: 'Gras monoinsaturés', unit: 'g' },
+                          omega3: { label: 'Oméga-3', unit: 'g' },
+                          omega6: { label: 'Oméga-6', unit: 'g' },
+                          addedSugars: { label: 'Sucres ajoutés', unit: 'g' },
+                          starch: { label: 'Amidon', unit: 'g' },
+                          polyols: { label: 'Polyols', unit: 'g' },
+                          vitaminA: { label: 'Vitamine A', unit: 'µg' },
+                          vitaminB1: { label: 'Vitamine B1', unit: 'mg' },
+                          vitaminB2: { label: 'Vitamine B2', unit: 'mg' },
+                          vitaminB3: { label: 'Vitamine B3', unit: 'mg' },
+                          vitaminB5: { label: 'Vitamine B5', unit: 'mg' },
+                          vitaminB6: { label: 'Vitamine B6', unit: 'mg' },
+                          vitaminB7: { label: 'Vitamine B7', unit: 'µg' },
+                          vitaminB9: { label: 'Vitamine B9', unit: 'µg' },
+                          vitaminB12: { label: 'Vitamine B12', unit: 'µg' },
+                          vitaminC: { label: 'Vitamine C', unit: 'mg' },
+                          vitaminD: { label: 'Vitamine D', unit: 'µg' },
+                          vitaminE: { label: 'Vitamine E', unit: 'mg' },
+                          vitaminK: { label: 'Vitamine K', unit: 'µg' },
+                          magnesium: { label: 'Magnésium', unit: 'mg' },
+                          phosphorus: { label: 'Phosphore', unit: 'mg' },
+                          zinc: { label: 'Zinc', unit: 'mg' },
+                          selenium: { label: 'Sélénium', unit: 'µg' },
+                          copper: { label: 'Cuivre', unit: 'mg' },
+                          manganese: { label: 'Manganèse', unit: 'mg' },
+                          iodine: { label: 'Iode', unit: 'µg' },
+                          chromium: { label: 'Chrome', unit: 'µg' },
+                          molybdenum: { label: 'Molybdène', unit: 'µg' },
+                          fluoride: { label: 'Fluorure', unit: 'mg' },
+                          chloride: { label: 'Chlorure', unit: 'mg' },
+                          caffeine: { label: 'Caféine', unit: 'mg' },
+                          alcohol: { label: 'Alcool', unit: 'g' },
+                          taurine: { label: 'Taurine', unit: 'mg' },
+                          creatine: { label: 'Créatine', unit: 'g' },
+                        };
+                        const allValues: { key: string; label: string; unit: string; value: number }[] = [];
+                        // Standard
+                        const stdKeys = ['calories','fat','saturatedFat','carbs','sugars','fiber','proteins','salt','cholesterol','iron','calcium','potassium'];
+                        for (const k of stdKeys) {
+                          if (ocrPreview[k] != null) {
+                            const meta = LABELS[k] || { label: k, unit: '' };
+                            allValues.push({ key: k, label: meta.label, unit: meta.unit, value: ocrPreview[k] });
+                          }
+                        }
+                        // Extra
+                        if (ocrPreview.extra) {
+                          for (const [k, v] of Object.entries(ocrPreview.extra)) {
+                            const meta = LABELS[k] || { label: k, unit: '' };
+                            allValues.push({ key: k, label: meta.label, unit: meta.unit, value: v as number });
+                          }
+                        }
+                        return allValues.map(r => (
+                          <Text key={r.key} style={styles.ocrResultRow}>
+                            <Text style={styles.ocrResultLabel}>{r.label}: </Text>
+                            <Text style={styles.ocrResultValue}>{r.value} {r.unit}</Text>
+                          </Text>
+                        ));
+                      })()}
                     </View>
                     <TouchableOpacity style={styles.captureBtn} onPress={() => { setCapturedOcrValues(ocrPreview); setOcrPreview(null); setScanned(false); setScanMode('barcode'); }}>
                       <Text style={styles.captureBtnText}>✅  Confirmer — Scanner le code-barres</Text>
@@ -653,6 +720,19 @@ const styles = StyleSheet.create({
   barcodeFrame: { width: 290, height: 220, position: 'relative' },
   cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 14 },
   viewfinderHint: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  // Cadre nutrition portrait
+  nutritionFrameOverlay: { ...StyleSheet.absoluteFillObject },
+  nutritionFrameTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  nutritionFrameMiddle: { flexDirection: 'row', height: 380 },
+  nutritionFrameSide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  nutritionFrameBox: { width: 260, height: 380, position: 'relative' },
+  nutritionFrameBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 16 },
+  nutritionFrameHint: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  nfCorner: { position: 'absolute', width: 28, height: 28, borderColor: '#22c55e' },
+  nfTopLeft: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 },
+  nfTopRight: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 },
+  nfBottomLeft: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4 },
+  nfBottomRight: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4 },
   // Nutrition prompt (affiché seulement si valeurs manquantes)
   nutritionPromptHeader: { position: 'absolute', top: 60, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 20 },
   nutritionPromptTitle: { color: '#fff', fontSize: 19, fontWeight: 'bold', textAlign: 'center', marginBottom: 6 },
