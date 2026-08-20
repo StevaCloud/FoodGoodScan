@@ -19,44 +19,51 @@ function parseNutritionFromOCR(rawText: string) {
     return m ? parseFloat(m[1].replace(',', '.')) : null;
   };
 
-  const search = (keywords: string[], exclude: string[] = []): number | null => {
+  // rawLabels captures original OCR line text for each detected key
+  const rawLabels: Record<string, string> = {};
+
+  const search = (key: string, keywords: string[], exclude: string[] = []): number | null => {
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i].toLowerCase();
       if (keywords.some(k => l.includes(k)) && !exclude.some(k => l.includes(k))) {
         const n = getNum(lines[i]);
-        if (n !== null) return n;
+        if (n !== null) { rawLabels[key] = lines[i].trim(); return n; }
         if (i + 1 < lines.length) {
           const n2 = getNum(lines[i + 1]);
-          if (n2 !== null) return n2;
+          if (n2 !== null) { rawLabels[key] = lines[i].trim(); return n2; }
         }
       }
     }
     return null;
   };
 
-  const sodium = search(['sodium']);
-  const saltDirect = search(['sel /', ' sel ', 'salt /', ' salt '], ['sodium']);
+  const sodium = search('_sodium', ['sodium']);
+  const saltDirect = search('_salt', ['sel /', ' sel ', 'salt /', ' salt '], ['sodium']);
 
   // Valeurs standard (colonnes BD)
   const standard = {
-    calories:     search(['calorie', 'calories', 'énergie', 'energie', 'energy']),
-    fat:          search(['lipide', 'lipides', 'fat', 'matière grasse', 'total fat'], ['saturé', 'saturated', 'trans', 'insatur', 'mono', 'poly']),
-    saturatedFat: search(['saturé', 'saturated', 'acides gras sat', 'sat. fat', 'gras saturé']),
-    carbs:        search(['glucide', 'glucides', 'carbohydrate', 'carbohydrates', 'hydrate de carbone', 'total carb'], ['sucre', 'sugar', 'fibre', 'fiber', 'amidon', 'starch']),
-    sugars:       search(['sucre', 'sucres', 'sugar', 'sugars', 'dont sucres', 'of which sugars']),
-    fiber:        search(['fibre', 'fibres', 'fiber', 'dietary fiber', 'fibres alimentaires', 'fibre alimentaire']),
-    proteins:     search(['protéine', 'protéines', 'protein', 'proteins', 'proteine']),
+    calories:     search('calories',     ['calorie', 'calories', 'énergie', 'energie', 'energy']),
+    fat:          search('fat',          ['lipide', 'lipides', 'fat', 'matière grasse', 'total fat'], ['saturé', 'saturated', 'trans', 'insatur', 'mono', 'poly']),
+    saturatedFat: search('saturatedFat', ['saturé', 'saturated', 'acides gras sat', 'sat. fat', 'gras saturé']),
+    carbs:        search('carbs',        ['glucide', 'glucides', 'carbohydrate', 'carbohydrates', 'hydrate de carbone', 'total carb'], ['sucre', 'sugar', 'fibre', 'fiber', 'amidon', 'starch']),
+    sugars:       search('sugars',       ['sucre', 'sucres', 'sugar', 'sugars', 'dont sucres', 'of which sugars']),
+    fiber:        search('fiber',        ['fibre', 'fibres', 'fiber', 'dietary fiber', 'fibres alimentaires', 'fibre alimentaire']),
+    proteins:     search('proteins',     ['protéine', 'protéines', 'protein', 'proteins', 'proteine']),
     salt:         saltDirect ?? (sodium !== null ? Math.round(sodium * 0.00254 * 100) / 100 : null),
-    cholesterol:  search(['cholestérol', 'cholesterol']),
-    iron:         search([' fer ', 'iron', 'fer\t', '\tfer']),
-    calcium:      search(['calcium']),
-    potassium:    search(['potassium']),
+    cholesterol:  search('cholesterol',  ['cholestérol', 'cholesterol']),
+    iron:         search('iron',         [' fer ', 'iron', 'fer\t', '\tfer']),
+    calcium:      search('calcium',      ['calcium']),
+    potassium:    search('potassium',    ['potassium']),
   };
+  // Fix salt rawLabel
+  if (saltDirect !== null && rawLabels['_salt']) rawLabels['salt'] = rawLabels['_salt'];
+  else if (sodium !== null && rawLabels['_sodium']) rawLabels['salt'] = rawLabels['_sodium'];
+  delete rawLabels['_sodium']; delete rawLabels['_salt'];
 
   // Valeurs extra (JSON)
   const extra: Record<string, number> = {};
   const tryAdd = (key: string, keywords: string[], exclude: string[] = []) => {
-    const v = search(keywords, exclude);
+    const v = search(key, keywords, exclude);
     if (v !== null) extra[key] = v;
   };
 
@@ -104,7 +111,7 @@ function parseNutritionFromOCR(rawText: string) {
   tryAdd('taurine',     ['taurine']);
   tryAdd('creatine',    ['créatine', 'creatine']);
 
-  return { standard, extra };
+  return { standard, extra, rawLabels };
 }
 
 export function ScannerScreen() {
@@ -170,7 +177,9 @@ export function ScannerScreen() {
           iron:         capturedOcrValues.iron         ?? null,
           calcium:      capturedOcrValues.calcium      ?? null,
           potassium:    capturedOcrValues.potassium    ?? null,
-          extraNutrients: capturedOcrValues.extra && Object.keys(capturedOcrValues.extra).length > 0 ? capturedOcrValues.extra : undefined,
+          extraNutrients: (capturedOcrValues.extra && Object.keys(capturedOcrValues.extra).length > 0) || capturedOcrValues.rawLabels
+            ? { ...capturedOcrValues.extra, _labels: capturedOcrValues.rawLabels || {} }
+            : undefined,
         };
         try { await saveNutritionDirect(product.barcode, product.name, values); } catch {}
         if (capturedPhotoUri) {
@@ -226,7 +235,7 @@ export function ScannerScreen() {
       }
 
       const result = await TextRecognition.recognize(photo.uri);
-      const { standard, extra } = parseNutritionFromOCR(result.text);
+      const { standard, extra, rawLabels } = parseNutritionFromOCR(result.text);
       const hasValues = Object.values(standard).some(v => v !== null) || Object.keys(extra).length > 0;
 
       if (!hasValues) {
@@ -237,7 +246,7 @@ export function ScannerScreen() {
       }
 
       setCapturedPhotoUri(photo.uri);
-      setOcrPreview({ ...standard, extra });
+      setOcrPreview({ ...standard, extra, rawLabels });
       setNutritionCapturing(false);
       setScanStatus('');
     } catch {
@@ -550,20 +559,26 @@ export function ScannerScreen() {
                           taurine: { label: 'Taurine', unit: 'mg' },
                           creatine: { label: 'Créatine', unit: 'g' },
                         };
+                        const rawLabels: Record<string, string> = ocrPreview.rawLabels || {};
                         const allValues: { key: string; label: string; unit: string; value: number }[] = [];
                         // Standard
                         const stdKeys = ['calories','fat','saturatedFat','carbs','sugars','fiber','proteins','salt','cholesterol','iron','calcium','potassium'];
                         for (const k of stdKeys) {
                           if (ocrPreview[k] != null) {
+                            // Use original OCR label if available, fallback to French
+                            const rawLabel = rawLabels[k] || '';
                             const meta = LABELS[k] || { label: k, unit: '' };
-                            allValues.push({ key: k, label: meta.label, unit: meta.unit, value: ocrPreview[k] });
+                            const displayLabel = rawLabel || meta.label;
+                            allValues.push({ key: k, label: displayLabel, unit: meta.unit, value: ocrPreview[k] });
                           }
                         }
                         // Extra
                         if (ocrPreview.extra) {
                           for (const [k, v] of Object.entries(ocrPreview.extra)) {
+                            const rawLabel = rawLabels[k] || '';
                             const meta = LABELS[k] || { label: k, unit: '' };
-                            allValues.push({ key: k, label: meta.label, unit: meta.unit, value: v as number });
+                            const displayLabel = rawLabel || meta.label;
+                            allValues.push({ key: k, label: displayLabel, unit: meta.unit, value: v as number });
                           }
                         }
                         return allValues.map(r => (

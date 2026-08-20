@@ -421,7 +421,8 @@ export function ProductScreen() {
               </Text>
             </View>
           )}
-          {product.extraNutrients && Object.keys(product.extraNutrients).length > 0 && (() => {
+          {product.extraNutrients && Object.keys(product.extraNutrients).filter(k => k !== '_labels').length > 0 && (() => {
+            const savedRawLabels: Record<string, string> = (product.extraNutrients as any)._labels || {};
             const EXTRA_LABELS: Record<string, { label: string; unit: string }> = {
               transFat: { label: 'Gras trans', unit: 'g' },
               polyunsaturatedFat: { label: 'Gras polyinsaturés', unit: 'g' },
@@ -460,15 +461,19 @@ export function ProductScreen() {
               taurine: { label: 'Taurine', unit: 'mg' },
               creatine: { label: 'Créatine', unit: 'g' },
             };
-            return Object.entries(product.extraNutrients as Record<string, number>).map(([k, v]) => {
-              const meta = EXTRA_LABELS[k] || { label: k, unit: '' };
-              return (
-                <View key={k} style={styles.nutriRow}>
-                  <Text style={styles.nutriLabelIndent}>{meta.label}</Text>
-                  <Text style={styles.nutriValue}>{v} {meta.unit}</Text>
-                </View>
-              );
-            });
+            return Object.entries(product.extraNutrients as Record<string, any>)
+              .filter(([k]) => k !== '_labels')
+              .map(([k, v]) => {
+                const rawLabel = savedRawLabels[k] || '';
+                const meta = EXTRA_LABELS[k] || { label: k, unit: '' };
+                const displayLabel = rawLabel || meta.label;
+                return (
+                  <View key={k} style={styles.nutriRow}>
+                    <Text style={styles.nutriLabelIndent}>{displayLabel}</Text>
+                    <Text style={styles.nutriValue}>{v} {meta.unit}</Text>
+                  </View>
+                );
+              });
           })()}
         </View>
       )}
