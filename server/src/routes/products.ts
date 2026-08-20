@@ -108,7 +108,11 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
         nutriScore: product.nutriScore,
         nutriments: product.nutriments,
         pros: product.pros,
+        cons: product.cons,
+        novaGroup: product.novaGroup,
+        additives: product.additives,
         category,
+        nutritionLabelUrl: confirmedCorrection?.nutritionLabelUrl ?? null,
         premium: false,
       });
       return;
@@ -147,7 +151,7 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     }
 
     const category = (confirmedCorrection?.category ? getCategoryById(confirmedCorrection.category) : null) ?? detectCategory(product.name);
-    res.json({ ...product, additivesDetails, waterInfo, category, premium: true });
+    res.json({ ...product, additivesDetails, waterInfo, category, nutritionLabelUrl: confirmedCorrection?.nutritionLabelUrl ?? null, premium: true });
   } catch (error) {
     console.error('Scan error:', error);
     res.status(500).json({ error: 'Erreur lors du scan' });
@@ -267,7 +271,7 @@ router.get('/favorites', authenticateToken, requirePremium, async (req: AuthRequ
 // POST /save-nutrition — sauvegarde directe des valeurs OCR, confirmées immédiatement
 router.post('/save-nutrition', authenticateToken, saveNutritionLimiter, async (req: AuthRequest, res: Response) => {
   try {
-    const { barcode, productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt } = req.body;
+    const { barcode, productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt, cholesterol, iron, calcium, potassium } = req.body;
 
     if (!barcode || !productName) {
       res.status(400).json({ error: 'barcode et productName requis' });
@@ -292,6 +296,10 @@ router.post('/save-nutrition', authenticateToken, saveNutritionLimiter, async (r
       fiber:        fiber        ?? null,
       proteins:     proteins     ?? null,
       salt:         salt         ?? null,
+      cholesterol:  cholesterol  ?? null,
+      iron:         iron         ?? null,
+      calcium:      calcium      ?? null,
+      potassium:    potassium    ?? null,
       category:     null,
     };
 

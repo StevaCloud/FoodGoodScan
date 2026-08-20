@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform, Modal, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { scanProduct, ocrProductLabel, saveNutritionDirect } from '../services/api';
+import { scanProduct, saveNutritionDirect, uploadNutritionLabel } from '../services/api';
+import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { useStore } from '../store/useStore';
 import { useWeatherBg } from '../hooks/useWeatherBg';
 import { WeatherScreen } from '../components/WeatherBackground';
@@ -9,6 +10,50 @@ import { triggerInterstitial } from '../components/Interstitial';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+
+function parseNutritionFromOCR(rawText: string) {
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const getNum = (s: string): number | null => {
+    const m = s.match(/(\d+[.,]\d+|\d+)\s*(?:g|mg|kcal|kj|cal)?/i);
+    return m ? parseFloat(m[1].replace(',', '.')) : null;
+  };
+
+  const search = (keywords: string[], exclude: string[] = []): number | null => {
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i].toLowerCase();
+      const matches = keywords.some(k => l.includes(k));
+      const excluded = exclude.some(k => l.includes(k));
+      if (matches && !excluded) {
+        const n = getNum(lines[i]);
+        if (n !== null) return n;
+        if (i + 1 < lines.length) {
+          const n2 = getNum(lines[i + 1]);
+          if (n2 !== null) return n2;
+        }
+      }
+    }
+    return null;
+  };
+
+  const sodium = search(['sodium']);
+  const saltDirect = search(['sel /', 'sel\t', '\tsel', ' sel ', 'salt /', '\tsalt', ' salt ']);
+
+  return {
+    calories:     search(['calorie', 'énergie', 'energie', 'energy']),
+    fat:          search(['lipide', 'lipides', 'fat', 'matière grasse'], ['saturé', 'saturated', 'trans', 'insatur']),
+    saturatedFat: search(['saturé', 'saturated', 'acides gras sat']),
+    carbs:        search(['glucide', 'glucides', 'carbohydrate', 'hydrate de carbone'], ['sucre', 'sugar', 'fibre', 'fiber']),
+    sugars:       search(['sucre', 'sucres', 'sugar', 'sugars']),
+    fiber:        search(['fibre', 'fibres', 'fiber', 'dietary fiber', 'fibres alimentaires']),
+    proteins:     search(['protéine', 'protéines', 'protein', 'proteins', 'proteine']),
+    salt:         saltDirect ?? (sodium !== null ? Math.round(sodium * 0.00254 * 100) / 100 : null),
+    cholesterol:  search(['cholestérol', 'cholesterol']),
+    iron:         search(['fer', 'iron']),
+    calcium:      search(['calcium']),
+    potassium:    search(['potassium']),
+  };
+}
 
 export function ScannerScreen() {
   const weatherBg = useWeatherBg();
@@ -18,8 +63,10 @@ export function ScannerScreen() {
   const [nativeScanActive, setNativeScanActive] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [scanStatus, setScanStatus] = useState('');
-  const [scanMode, setScanMode] = useState<'barcode' | 'nutrition'>('barcode');
-  const [pendingProduct, setPendingProduct] = useState<any>(null);
+  const [scanMode, setScanMode] = useState<'barcode' | 'nutrition'>('nutrition');
+  const [capturedOcrValues, setCapturedOcrValues] = useState<any>(null);
+  const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
+  const [ocrPreview, setOcrPreview] = useState<any>(null);
   const [nutritionCapturing, setNutritionCapturing] = useState(false);
   const [ocrError, setOcrError] = useState('');
   const navigation = useNavigation<any>();
@@ -44,7 +91,7 @@ export function ScannerScreen() {
     navigation.navigate('Product');
   };
 
-  // Scan caméra native : code-barres d'abord
+  // Scan caméra native : code-barres (après capture du tableau nutritif)
   const handleBarcodeDetected = async (barcode: string) => {
     if (loading || !barcode) return;
     if (!/^\d{8,14}$/.test(barcode)) {
@@ -56,24 +103,41 @@ export function ScannerScreen() {
     setScanStatus('Recherche du produit...');
     try {
       const product = await scanProduct(barcode);
-      const n = product.nutriments as any;
-      const hasNutrition = n && (
-        (n['energy-kcal_100g'] || 0) > 0 ||
-        (n.proteins_100g || 0) > 0 ||
-        (n.fat_100g || 0) > 0
-      );
-      if (hasNutrition) {
-        // Valeurs déjà dans la BD → pas de scan tableau
-        setLastScanOcrValues(null);
-        goToProduct(product);
+
+      if (capturedOcrValues) {
+        const values = {
+          calories:     capturedOcrValues.calories     ?? null,
+          fat:          capturedOcrValues.fat          ?? null,
+          saturatedFat: capturedOcrValues.saturatedFat ?? null,
+          carbs:        capturedOcrValues.carbs        ?? null,
+          sugars:       capturedOcrValues.sugars       ?? null,
+          fiber:        capturedOcrValues.fiber        ?? null,
+          proteins:     capturedOcrValues.proteins     ?? null,
+          salt:         capturedOcrValues.salt         ?? null,
+          cholesterol:  capturedOcrValues.cholesterol  ?? null,
+          iron:         capturedOcrValues.iron         ?? null,
+          calcium:      capturedOcrValues.calcium      ?? null,
+          potassium:    capturedOcrValues.potassium    ?? null,
+        };
+        try { await saveNutritionDirect(product.barcode, product.name, values); } catch {}
+        if (capturedPhotoUri) {
+          try { await uploadNutritionLabel(product.barcode, capturedPhotoUri); } catch {}
+        }
+        setLastScanOcrValues({
+          calories:     capturedOcrValues.calories     != null ? String(capturedOcrValues.calories)     : '',
+          fat:          capturedOcrValues.fat          != null ? String(capturedOcrValues.fat)          : '',
+          saturatedFat: capturedOcrValues.saturatedFat != null ? String(capturedOcrValues.saturatedFat) : '',
+          carbs:        capturedOcrValues.carbs        != null ? String(capturedOcrValues.carbs)        : '',
+          sugars:       capturedOcrValues.sugars       != null ? String(capturedOcrValues.sugars)       : '',
+          fiber:        capturedOcrValues.fiber        != null ? String(capturedOcrValues.fiber)        : '',
+          proteins:     capturedOcrValues.proteins     != null ? String(capturedOcrValues.proteins)     : '',
+          salt:         capturedOcrValues.salt         != null ? String(capturedOcrValues.salt)         : '',
+        });
       } else {
-        // Pas de valeurs → afficher l'étape scan tableau
-        setPendingProduct(product);
-        setScanMode('nutrition');
-        setLoading(false);
-        setScanStatus('');
-        setScanned(false);
+        setLastScanOcrValues(null);
       }
+
+      goToProduct(product);
     } catch (error: any) {
       setTimeout(() => setScanned(false), 2000);
       if (error.response?.data?.upgrade) {
@@ -93,60 +157,36 @@ export function ScannerScreen() {
     }
   };
 
-  // Capture le tableau nutritif → OCR → sauvegarde directe confirmée sur le serveur
-  const captureAndSaveNutrition = async () => {
-    if (!cameraRef.current || !pendingProduct) return;
+  // Étape 1 : capture le tableau nutritif → ML Kit on-device → passe au scan code-barres
+  const captureNutrition = async () => {
+    if (!cameraRef.current) return;
     setNutritionCapturing(true);
     setOcrError('');
     setScanStatus('Lecture des valeurs...');
     try {
-      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.5, exif: false });
-      if (!photo?.base64) {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, exif: false });
+      if (!photo?.uri) {
         setOcrError('Impossible de prendre la photo. Réessaie.');
         setNutritionCapturing(false);
         setScanStatus('');
         return;
       }
 
-      const ocr = await ocrProductLabel(`data:image/jpeg;base64,${photo.base64}`);
-      const hasOcr = Object.values(ocr).some(v => v != null && (v as number) > 0);
+      const result = await TextRecognition.recognize(photo.uri);
+      const values = parseNutritionFromOCR(result.text);
+      const hasValues = Object.values(values).some(v => v !== null && (v as number) > 0);
 
-      if (!hasOcr) {
-        // OCR n'a rien trouvé → rester sur l'écran, laisser réessayer
+      if (!hasValues) {
         setOcrError('Tableau non détecté. Rapproche la caméra et réessaie.');
         setNutritionCapturing(false);
         setScanStatus('');
         return;
       }
 
-      // Sauvegarde directe CONFIRMÉE sur le serveur
-      const values = {
-        calories:     ocr.calories     ?? null,
-        fat:          ocr.fat          ?? null,
-        saturatedFat: ocr.saturatedFat ?? null,
-        carbs:        ocr.carbs        ?? null,
-        sugars:       ocr.sugars       ?? null,
-        fiber:        ocr.fiber        ?? null,
-        proteins:     ocr.proteins     ?? null,
-        salt:         ocr.salt         ?? null,
-      };
-      try { await saveNutritionDirect(pendingProduct.barcode, pendingProduct.name, values); } catch {}
-
-      // Passer les valeurs à ProductScreen pour affichage
-      setLastScanOcrValues({
-        calories:     ocr.calories     != null ? String(ocr.calories)     : '',
-        fat:          ocr.fat          != null ? String(ocr.fat)          : '',
-        saturatedFat: ocr.saturatedFat != null ? String(ocr.saturatedFat) : '',
-        carbs:        ocr.carbs        != null ? String(ocr.carbs)        : '',
-        sugars:       ocr.sugars       != null ? String(ocr.sugars)       : '',
-        fiber:        ocr.fiber        != null ? String(ocr.fiber)        : '',
-        proteins:     ocr.proteins     != null ? String(ocr.proteins)     : '',
-        salt:         ocr.salt         != null ? String(ocr.salt)         : '',
-      });
-
+      setCapturedPhotoUri(photo.uri);
+      setOcrPreview(values);
       setNutritionCapturing(false);
       setScanStatus('');
-      goToProduct(pendingProduct);
     } catch {
       setOcrError('Erreur lors de la lecture. Réessaie.');
       setNutritionCapturing(false);
@@ -257,16 +297,21 @@ export function ScannerScreen() {
       }
     }
     setScanned(false);
-    setScanMode('barcode');
-    setPendingProduct(null);
+    setScanMode('nutrition');
+    setCapturedOcrValues(null);
+    setCapturedPhotoUri(null);
+    setOcrPreview(null);
     setNutritionCapturing(false);
+    setOcrError('');
     setNativeScanActive(true);
   };
 
   const closeNativeCamera = () => {
     setNativeScanActive(false);
-    setScanMode('barcode');
-    setPendingProduct(null);
+    setScanMode('nutrition');
+    setCapturedOcrValues(null);
+    setCapturedPhotoUri(null);
+    setOcrPreview(null);
     setNutritionCapturing(false);
     setOcrError('');
   };
@@ -365,43 +410,37 @@ export function ScannerScreen() {
                 <View style={styles.cameraOverlaySide} />
               </View>
               <View style={styles.cameraOverlayBottom}>
-                <Text style={styles.viewfinderHint}>Cadre le code-barres dans le rectangle</Text>
+                <Text style={styles.viewfinderHint}>Étape 2 — Cadre le code-barres dans le rectangle</Text>
               </View>
             </View>
           )}
 
-          {/* ── Mode tableau nutritif (seulement si valeurs manquantes) ── */}
+          {/* ── Mode tableau nutritif ── */}
           {scanMode === 'nutrition' && (
             <>
-              <View style={styles.cameraOverlay} pointerEvents="none">
-                <View style={styles.cameraOverlayTop} />
-                <View style={styles.cameraOverlayMiddle}>
-                  <View style={styles.cameraOverlaySide} />
-                  <View style={styles.nutritionFrame}>
-                    <View style={[styles.corner, styles.topLeft]} />
-                    <View style={[styles.corner, styles.topRight]} />
-                    <View style={[styles.corner, styles.bottomLeft]} />
-                    <View style={[styles.corner, styles.bottomRight]} />
-                  </View>
-                  <View style={styles.cameraOverlaySide} />
-                </View>
-                <View style={styles.cameraOverlayBottom} />
-              </View>
-              <View style={styles.nutritionPromptHeader} pointerEvents="none">
-                <Text style={styles.nutritionPromptTitle}>📊 Valeurs nutritives manquantes</Text>
-                <Text style={styles.nutritionPromptSub}>Aide la communauté en scannant le tableau nutritif</Text>
-              </View>
               <View style={styles.nutritionPromptFooter}>
                 {nutritionCapturing ? (
                   <View style={styles.capturingRow}>
                     <ActivityIndicator color="#22c55e" size="small" />
                     <Text style={styles.capturingText}>Lecture des valeurs...</Text>
                   </View>
+                ) : ocrPreview ? (
+                  <>
+                    <TouchableOpacity style={styles.captureBtn} onPress={() => { setCapturedOcrValues(ocrPreview); setOcrPreview(null); setScanned(false); setScanMode('barcode'); }}>
+                      <Text style={styles.captureBtnText}>✅  Confirmer — Scanner le code-barres</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.skipBtn} onPress={() => { setOcrPreview(null); setOcrError(''); }}>
+                      <Text style={styles.skipBtnText}>🔄  Réessayer</Text>
+                    </TouchableOpacity>
+                  </>
                 ) : (
                   <>
                     {ocrError ? <Text style={styles.ocrErrorText}>{ocrError}</Text> : null}
-                    <TouchableOpacity style={styles.captureBtn} onPress={captureAndSaveNutrition}>
+                    <TouchableOpacity style={styles.captureBtn} onPress={captureNutrition}>
                       <Text style={styles.captureBtnText}>{ocrError ? '🔄  Réessayer' : '📷  Scanner le tableau nutritif'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.skipBtn} onPress={() => { setCapturedOcrValues(null); setOcrError(''); setScanMode('barcode'); setScanned(false); }}>
+                      <Text style={styles.skipBtnText}>Passer →</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -513,9 +552,19 @@ const styles = StyleSheet.create({
   cameraFullScreen: { flex: 1, backgroundColor: '#000' },
   cameraOverlay: { ...StyleSheet.absoluteFillObject },
   cameraOverlayTop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
-  cameraOverlayMiddle: { flexDirection: 'row', height: 220 },
+  cameraOverlayMiddle: { flexDirection: 'row', minHeight: 220 },
   cameraOverlaySide: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
-  nutritionFrame: { width: 290, height: 220, position: 'relative' },
+  nutritionFrame: { width: 270, backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 6, overflow: 'hidden', borderWidth: 2, borderColor: '#000' },
+  nfHeader: { backgroundColor: '#fff', paddingHorizontal: 10, paddingTop: 8, paddingBottom: 4 },
+  nfHeaderTextBig: { color: '#000', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
+  nfHeaderTextSm: { color: '#000', fontSize: 12, fontWeight: '700' },
+  nfDividerThick: { height: 8, backgroundColor: '#000' },
+  nfDivider: { height: 1, backgroundColor: '#ccc', marginHorizontal: 10 },
+  nfRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 4 },
+  nfLabel: { color: '#000', fontSize: 12, fontWeight: '600' },
+  nfValue: { color: '#1a7a1a', fontSize: 12, fontWeight: '700' },
+  nfPlaceholder: { paddingHorizontal: 10, paddingVertical: 16, alignItems: 'center' },
+  nfPlaceholderText: { color: '#888', fontSize: 12, textAlign: 'center' },
   barcodeFrame: { width: 290, height: 220, position: 'relative' },
   cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 14 },
   viewfinderHint: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', textAlign: 'center' },
@@ -529,6 +578,8 @@ const styles = StyleSheet.create({
   ocrErrorText: { color: '#f87171', fontSize: 13, textAlign: 'center', marginBottom: 12, paddingHorizontal: 10 },
   captureBtn: { backgroundColor: '#22c55e', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
   captureBtnText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
+  skipBtn: { marginTop: 12, paddingVertical: 10, alignItems: 'center' },
+  skipBtnText: { color: 'rgba(255,255,255,0.55)', fontSize: 14 },
   // Shared
   loadingOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)' },
   loadingText: { color: '#fff', marginTop: 12, fontSize: 15, textAlign: 'center', paddingHorizontal: 30 },

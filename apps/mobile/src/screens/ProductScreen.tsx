@@ -277,7 +277,7 @@ export function ProductScreen() {
         </View>
       )}
 
-      {isPremium && product.cons && product.cons.length > 0 && (
+      {product.cons && product.cons.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Points négatifs</Text>
           {product.cons.map((con: string, i: number) => (
@@ -286,6 +286,23 @@ export function ProductScreen() {
               <Text style={styles.conText}>{con}</Text>
             </View>
           ))}
+        </View>
+      )}
+
+      {product.novaGroup === 4 && (
+        <View style={styles.novaExplainBox}>
+          <Text style={styles.novaExplainTitle}>⚠️ Pourquoi ultra-transformé ?</Text>
+          <Text style={styles.novaExplainText}>
+            Ce produit est classé NOVA 4 car il contient des ingrédients et additifs industriels absents d'une cuisine ordinaire : émulsifiants, conservateurs, arômes artificiels, colorants, agents de texture, etc.
+          </Text>
+          {(product.additives?.length > 0) && (
+            <Text style={styles.novaExplainSub}>
+              {product.additives.length} additif{product.additives.length > 1 ? 's' : ''} détecté{product.additives.length > 1 ? 's' : ''} : {product.additives.slice(0, 5).map((a: string) => a.replace('en:', '').toUpperCase()).join(', ')}{product.additives.length > 5 ? '...' : ''}
+            </Text>
+          )}
+          <Text style={styles.novaExplainTip}>
+            💡 Consommé régulièrement, ce type de produit est associé à un risque accru de maladies cardiovasculaires et de diabète de type 2.
+          </Text>
         </View>
       )}
 
@@ -564,12 +581,27 @@ export function ProductScreen() {
         </TouchableOpacity>
       </View>
 
+      {product.nutritionLabelUrl ? (
+        <View style={styles.nutritionLabelSection}>
+          <Text style={styles.nutritionLabelTitle}>📷 Photo du tableau nutritif</Text>
+          <Image source={{ uri: product.nutritionLabelUrl }} style={styles.nutritionLabelImage} resizeMode="contain" />
+        </View>
+      ) : null}
+
       <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  nutritionLabelSection: { marginTop: 24, marginHorizontal: 4 },
+  nutritionLabelTitle: { color: '#aaa', fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  nutritionLabelImage: { width: '100%', height: 260, borderRadius: 12, backgroundColor: '#111' },
+  novaExplainBox: { backgroundColor: '#1c1008', borderLeftWidth: 3, borderLeftColor: '#f97316', borderRadius: 10, padding: 14, marginBottom: 16 },
+  novaExplainTitle: { color: '#f97316', fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  novaExplainText: { color: '#e2c9a0', fontSize: 13, lineHeight: 20, marginBottom: 8 },
+  novaExplainSub: { color: '#f97316', fontSize: 12, fontWeight: '600', marginBottom: 8 },
+  novaExplainTip: { color: '#aaa', fontSize: 12, lineHeight: 18, fontStyle: 'italic' },
   container: { flex: 1, padding: 16 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#bbb', fontSize: 16 },

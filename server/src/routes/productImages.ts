@@ -61,6 +61,32 @@ router.post('/:barcode', authenticateToken, upload.single('image'), async (req: 
   }
 });
 
+// POST /api/product-images/:barcode/nutrition — photo du tableau nutritif
+router.post('/:barcode/nutrition', authenticateToken, upload.single('image'), async (req: AuthRequest, res: Response) => {
+  try {
+    const barcode = String(req.params.barcode);
+    if (!BARCODE_REGEX.test(barcode)) {
+      res.status(400).json({ error: 'Code-barres invalide' });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: 'Image requise' });
+      return;
+    }
+    const host = process.env.SERVER_URL || `http://165.22.8.129:3001`;
+    const nutritionLabelUrl = `${host}/uploads/products/${req.file.filename}`;
+    const userId = req.userId!;
+    await prisma.productCorrection.updateMany({
+      where: { barcode, userId },
+      data: { nutritionLabelUrl },
+    });
+    res.json({ nutritionLabelUrl });
+  } catch (err) {
+    console.error('nutrition label upload error:', err);
+    res.status(500).json({ error: 'Erreur lors de l\'upload' });
+  }
+});
+
 // GET /api/product-images/:barcode
 router.get('/:barcode', async (req: Request, res: Response) => {
   try {

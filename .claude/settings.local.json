@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location \"C:\\\\Users\\\\StV\\\\Documents\\\\FoodCheck\\\\server\"; \"SELECT email, isPremium, createdAt FROM User;\" | npx prisma db execute --stdin --schema prisma/schema.prisma 2>&1)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location \"C:\\\\Users\\\\StV\\\\Documents\\\\FoodCheck\\\\server\"; \"SELECT email, createdAt FROM User;\" | npx prisma db execute --stdin --schema prisma/schema.prisma 2>&1)",
+      "PowerShell($url = \"http://localhost:8081/apps/mobile/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&unstable_transformProfile=hermes-stable\"; try { $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 30 2>&1; Write-Host \"Status: $\\($r.StatusCode\\)\"; $r.Content | Select-Object -First 200 } catch { $_.Exception.Message })",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8081/apps/mobile/index.ts.bundle?platform=web&dev=true&hot=false&lazy=true\" -UseBasicParsing -TimeoutSec 30; $r.Content | Select-Object -First 500 } catch { $_.Exception.Response | ConvertTo-Json; $stream = $_.Exception.Response.GetResponseStream\\(\\); $reader = New-Object System.IO.StreamReader\\($stream\\); $reader.ReadToEnd\\(\\) | Select-Object -First 2000 })"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+npx tsx -e "import {prisma} from './src/lib/prisma'; prisma.user.findMany({select:{email:true,createdAt:true}}).then(u=>u.forEach(x=>console.log(x.email, x.createdAt))).finally(()=>prisma.\$disconnect())"

@@ -43,5 +43,5 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
 }
 
 export function generateToken(userId: string, tokenVersion: number): string {
-  return jwt.sign({ userId, ver: tokenVersion }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId, ver: tokenVersion }, JWT_SECRET, { expiresIn: '30d' });
 }

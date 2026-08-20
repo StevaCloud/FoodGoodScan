@@ -209,6 +209,15 @@ export async function sendChatMessage(message: string, history: { role: string; 
   return data.reply as string;
 }
 
+export async function uploadNutritionLabel(barcode: string, imageUri: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('image', { uri: imageUri, name: 'nutrition.jpg', type: 'image/jpeg' } as any);
+  const { data } = await api.post(`/product-images/${barcode}/nutrition`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data.nutritionLabelUrl;
+}
+
 export async function uploadProductImage(barcode: string, imageUri: string): Promise<string> {
   const formData = new FormData();
   formData.append('image', { uri: imageUri, name: 'product.jpg', type: 'image/jpeg' } as any);
