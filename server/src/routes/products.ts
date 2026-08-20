@@ -113,6 +113,7 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
         additives: product.additives,
         category,
         nutritionLabelUrl: confirmedCorrection?.nutritionLabelUrl ?? null,
+        extraNutrients: confirmedCorrection?.extraNutrients ?? null,
         premium: false,
       });
       return;
@@ -151,7 +152,7 @@ router.get('/scan/:barcode', authenticateToken, async (req: AuthRequest, res: Re
     }
 
     const category = (confirmedCorrection?.category ? getCategoryById(confirmedCorrection.category) : null) ?? detectCategory(product.name);
-    res.json({ ...product, additivesDetails, waterInfo, category, nutritionLabelUrl: confirmedCorrection?.nutritionLabelUrl ?? null, premium: true });
+    res.json({ ...product, additivesDetails, waterInfo, category, nutritionLabelUrl: confirmedCorrection?.nutritionLabelUrl ?? null, extraNutrients: confirmedCorrection?.extraNutrients ?? null, premium: true });
   } catch (error) {
     console.error('Scan error:', error);
     res.status(500).json({ error: 'Erreur lors du scan' });

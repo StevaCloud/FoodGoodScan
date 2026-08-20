@@ -421,6 +421,55 @@ export function ProductScreen() {
               </Text>
             </View>
           )}
+          {product.extraNutrients && Object.keys(product.extraNutrients).length > 0 && (() => {
+            const EXTRA_LABELS: Record<string, { label: string; unit: string }> = {
+              transFat: { label: 'Gras trans', unit: 'g' },
+              polyunsaturatedFat: { label: 'Gras polyinsaturés', unit: 'g' },
+              monounsaturatedFat: { label: 'Gras monoinsaturés', unit: 'g' },
+              omega3: { label: 'Oméga-3', unit: 'g' },
+              omega6: { label: 'Oméga-6', unit: 'g' },
+              addedSugars: { label: 'Sucres ajoutés', unit: 'g' },
+              starch: { label: 'Amidon', unit: 'g' },
+              polyols: { label: 'Polyols', unit: 'g' },
+              vitaminA: { label: 'Vitamine A', unit: 'µg' },
+              vitaminB1: { label: 'Vitamine B1', unit: 'mg' },
+              vitaminB2: { label: 'Vitamine B2', unit: 'mg' },
+              vitaminB3: { label: 'Vitamine B3', unit: 'mg' },
+              vitaminB5: { label: 'Vitamine B5', unit: 'mg' },
+              vitaminB6: { label: 'Vitamine B6', unit: 'mg' },
+              vitaminB7: { label: 'Vitamine B7', unit: 'µg' },
+              vitaminB9: { label: 'Vitamine B9', unit: 'µg' },
+              vitaminB12: { label: 'Vitamine B12', unit: 'µg' },
+              vitaminC: { label: 'Vitamine C', unit: 'mg' },
+              vitaminD: { label: 'Vitamine D', unit: 'µg' },
+              vitaminE: { label: 'Vitamine E', unit: 'mg' },
+              vitaminK: { label: 'Vitamine K', unit: 'µg' },
+              magnesium: { label: 'Magnésium', unit: 'mg' },
+              phosphorus: { label: 'Phosphore', unit: 'mg' },
+              zinc: { label: 'Zinc', unit: 'mg' },
+              selenium: { label: 'Sélénium', unit: 'µg' },
+              copper: { label: 'Cuivre', unit: 'mg' },
+              manganese: { label: 'Manganèse', unit: 'mg' },
+              iodine: { label: 'Iode', unit: 'µg' },
+              chromium: { label: 'Chrome', unit: 'µg' },
+              molybdenum: { label: 'Molybdène', unit: 'µg' },
+              fluoride: { label: 'Fluorure', unit: 'mg' },
+              chloride: { label: 'Chlorure', unit: 'mg' },
+              caffeine: { label: 'Caféine', unit: 'mg' },
+              alcohol: { label: 'Alcool', unit: 'g' },
+              taurine: { label: 'Taurine', unit: 'mg' },
+              creatine: { label: 'Créatine', unit: 'g' },
+            };
+            return Object.entries(product.extraNutrients as Record<string, number>).map(([k, v]) => {
+              const meta = EXTRA_LABELS[k] || { label: k, unit: '' };
+              return (
+                <View key={k} style={styles.nutriRow}>
+                  <Text style={styles.nutriLabelIndent}>{meta.label}</Text>
+                  <Text style={styles.nutriValue}>{v} {meta.unit}</Text>
+                </View>
+              );
+            });
+          })()}
         </View>
       )}
 
