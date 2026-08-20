@@ -15,16 +15,14 @@ function parseNutritionFromOCR(rawText: string) {
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
 
   const getNum = (s: string): number | null => {
-    const m = s.match(/(\d+[.,]\d+|\d+)\s*(?:g|mg|kcal|kj|cal)?/i);
+    const m = s.match(/(\d+[.,]\d+|\d+)\s*(?:g|mg|mcg|µg|kcal|kj|cal|ui|iu)?/i);
     return m ? parseFloat(m[1].replace(',', '.')) : null;
   };
 
   const search = (keywords: string[], exclude: string[] = []): number | null => {
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i].toLowerCase();
-      const matches = keywords.some(k => l.includes(k));
-      const excluded = exclude.some(k => l.includes(k));
-      if (matches && !excluded) {
+      if (keywords.some(k => l.includes(k)) && !exclude.some(k => l.includes(k))) {
         const n = getNum(lines[i]);
         if (n !== null) return n;
         if (i + 1 < lines.length) {
@@ -37,22 +35,76 @@ function parseNutritionFromOCR(rawText: string) {
   };
 
   const sodium = search(['sodium']);
-  const saltDirect = search(['sel /', 'sel\t', '\tsel', ' sel ', 'salt /', '\tsalt', ' salt ']);
+  const saltDirect = search(['sel /', ' sel ', 'salt /', ' salt '], ['sodium']);
 
-  return {
-    calories:     search(['calorie', 'énergie', 'energie', 'energy']),
-    fat:          search(['lipide', 'lipides', 'fat', 'matière grasse'], ['saturé', 'saturated', 'trans', 'insatur']),
-    saturatedFat: search(['saturé', 'saturated', 'acides gras sat']),
-    carbs:        search(['glucide', 'glucides', 'carbohydrate', 'hydrate de carbone'], ['sucre', 'sugar', 'fibre', 'fiber']),
-    sugars:       search(['sucre', 'sucres', 'sugar', 'sugars']),
-    fiber:        search(['fibre', 'fibres', 'fiber', 'dietary fiber', 'fibres alimentaires']),
+  // Valeurs standard (colonnes BD)
+  const standard = {
+    calories:     search(['calorie', 'calories', 'énergie', 'energie', 'energy']),
+    fat:          search(['lipide', 'lipides', 'fat', 'matière grasse', 'total fat'], ['saturé', 'saturated', 'trans', 'insatur', 'mono', 'poly']),
+    saturatedFat: search(['saturé', 'saturated', 'acides gras sat', 'sat. fat', 'gras saturé']),
+    carbs:        search(['glucide', 'glucides', 'carbohydrate', 'carbohydrates', 'hydrate de carbone', 'total carb'], ['sucre', 'sugar', 'fibre', 'fiber', 'amidon', 'starch']),
+    sugars:       search(['sucre', 'sucres', 'sugar', 'sugars', 'dont sucres', 'of which sugars']),
+    fiber:        search(['fibre', 'fibres', 'fiber', 'dietary fiber', 'fibres alimentaires', 'fibre alimentaire']),
     proteins:     search(['protéine', 'protéines', 'protein', 'proteins', 'proteine']),
     salt:         saltDirect ?? (sodium !== null ? Math.round(sodium * 0.00254 * 100) / 100 : null),
     cholesterol:  search(['cholestérol', 'cholesterol']),
-    iron:         search(['fer', 'iron']),
+    iron:         search([' fer ', 'iron', 'fer\t', '\tfer']),
     calcium:      search(['calcium']),
     potassium:    search(['potassium']),
   };
+
+  // Valeurs extra (JSON)
+  const extra: Record<string, number> = {};
+  const tryAdd = (key: string, keywords: string[], exclude: string[] = []) => {
+    const v = search(keywords, exclude);
+    if (v !== null) extra[key] = v;
+  };
+
+  // Acides gras
+  tryAdd('transFat',            ['trans fat', 'acides gras trans', 'gras trans']);
+  tryAdd('polyunsaturatedFat',  ['polyunsaturated', 'polyinsaturé', 'acides gras polyinsaturés']);
+  tryAdd('monounsaturatedFat',  ['monounsaturated', 'monoinsaturé', 'acides gras monoinsaturés']);
+  tryAdd('omega3',              ['oméga-3', 'omega-3', 'omega 3']);
+  tryAdd('omega6',              ['oméga-6', 'omega-6', 'omega 6']);
+  tryAdd('addedSugars',         ['sucres ajoutés', 'added sugars', 'sucre ajouté']);
+  tryAdd('starch',              ['amidon', 'starch']);
+  tryAdd('polyols',             ['polyol', 'alcool de sucre', 'sugar alcohol', 'érythritol', 'sorbitol', 'xylitol', 'maltitol']);
+
+  // Vitamines
+  tryAdd('vitaminA',   ['vitamine a', 'vitamin a', 'vit. a', 'rétinol', 'retinol']);
+  tryAdd('vitaminB1',  ['vitamine b1', 'vitamin b1', 'thiamine', 'thiamin']);
+  tryAdd('vitaminB2',  ['vitamine b2', 'vitamin b2', 'riboflavine', 'riboflavin']);
+  tryAdd('vitaminB3',  ['vitamine b3', 'vitamin b3', 'niacine', 'niacin']);
+  tryAdd('vitaminB5',  ['vitamine b5', 'vitamin b5', 'acide pantothénique', 'pantothenic']);
+  tryAdd('vitaminB6',  ['vitamine b6', 'vitamin b6', 'pyridoxine']);
+  tryAdd('vitaminB7',  ['vitamine b7', 'vitamin b7', 'biotine', 'biotin']);
+  tryAdd('vitaminB9',  ['vitamine b9', 'vitamin b9', 'folate', 'acide folique', 'folic acid']);
+  tryAdd('vitaminB12', ['vitamine b12', 'vitamin b12', 'cobalamine', 'cobalamin']);
+  tryAdd('vitaminC',   ['vitamine c', 'vitamin c', 'acide ascorbique', 'ascorbic acid']);
+  tryAdd('vitaminD',   ['vitamine d', 'vitamin d', 'calciférol', 'calciferol']);
+  tryAdd('vitaminE',   ['vitamine e', 'vitamin e', 'tocophérol', 'tocopherol']);
+  tryAdd('vitaminK',   ['vitamine k', 'vitamin k', 'phylloquinone']);
+
+  // Minéraux
+  tryAdd('magnesium',   ['magnésium', 'magnesium']);
+  tryAdd('phosphorus',  ['phosphore', 'phosphorus']);
+  tryAdd('zinc',        ['zinc']);
+  tryAdd('selenium',    ['sélénium', 'selenium']);
+  tryAdd('copper',      ['cuivre', 'copper']);
+  tryAdd('manganese',   ['manganèse', 'manganese']);
+  tryAdd('iodine',      ['iode', 'iodine', 'iodure']);
+  tryAdd('chromium',    ['chrome', 'chromium']);
+  tryAdd('molybdenum',  ['molybdène', 'molybdenum']);
+  tryAdd('fluoride',    ['fluorure', 'fluoride', 'fluor']);
+  tryAdd('chloride',    ['chlorure', 'chloride']);
+
+  // Autres
+  tryAdd('caffeine',    ['caféine', 'caffeine']);
+  tryAdd('alcohol',     ['alcool', 'alcohol']);
+  tryAdd('taurine',     ['taurine']);
+  tryAdd('creatine',    ['créatine', 'creatine']);
+
+  return { standard, extra };
 }
 
 export function ScannerScreen() {
@@ -118,10 +170,11 @@ export function ScannerScreen() {
           iron:         capturedOcrValues.iron         ?? null,
           calcium:      capturedOcrValues.calcium      ?? null,
           potassium:    capturedOcrValues.potassium    ?? null,
+          extraNutrients: capturedOcrValues.extra && Object.keys(capturedOcrValues.extra).length > 0 ? capturedOcrValues.extra : undefined,
         };
         try { await saveNutritionDirect(product.barcode, product.name, values); } catch {}
         if (capturedPhotoUri) {
-          try { await uploadNutritionLabel(product.barcode, capturedPhotoUri); } catch {}
+          uploadNutritionLabel(product.barcode, capturedPhotoUri).catch(() => {});
         }
         setLastScanOcrValues({
           calories:     capturedOcrValues.calories     != null ? String(capturedOcrValues.calories)     : '',
@@ -173,8 +226,8 @@ export function ScannerScreen() {
       }
 
       const result = await TextRecognition.recognize(photo.uri);
-      const values = parseNutritionFromOCR(result.text);
-      const hasValues = Object.values(values).some(v => v !== null && (v as number) > 0);
+      const { standard, extra } = parseNutritionFromOCR(result.text);
+      const hasValues = Object.values(standard).some(v => v !== null) || Object.keys(extra).length > 0;
 
       if (!hasValues) {
         setOcrError('Tableau non détecté. Rapproche la caméra et réessaie.');
@@ -184,7 +237,7 @@ export function ScannerScreen() {
       }
 
       setCapturedPhotoUri(photo.uri);
-      setOcrPreview(values);
+      setOcrPreview({ ...standard, extra });
       setNutritionCapturing(false);
       setScanStatus('');
     } catch {
@@ -426,6 +479,34 @@ export function ScannerScreen() {
                   </View>
                 ) : ocrPreview ? (
                   <>
+                    <View style={styles.ocrResultBox}>
+                      {[
+                        { label: 'Calories', key: 'calories', unit: 'kcal' },
+                        { label: 'Lipides', key: 'fat', unit: 'g' },
+                        { label: 'Saturés', key: 'saturatedFat', unit: 'g' },
+                        { label: 'Gras trans', key: 'transFat', unit: 'g' },
+                        { label: 'Glucides', key: 'carbs', unit: 'g' },
+                        { label: 'Sucres', key: 'sugars', unit: 'g' },
+                        { label: 'Fibres', key: 'fiber', unit: 'g' },
+                        { label: 'Protéines', key: 'proteins', unit: 'g' },
+                        { label: 'Sel', key: 'salt', unit: 'g' },
+                        { label: 'Cholestérol', key: 'cholesterol', unit: 'mg' },
+                        { label: 'Fer', key: 'iron', unit: 'mg' },
+                        { label: 'Calcium', key: 'calcium', unit: 'mg' },
+                        { label: 'Potassium', key: 'potassium', unit: 'mg' },
+                      ].filter(r => ocrPreview[r.key] != null).map(r => (
+                        <Text key={r.key} style={styles.ocrResultRow}>
+                          <Text style={styles.ocrResultLabel}>{r.label}: </Text>
+                          <Text style={styles.ocrResultValue}>{ocrPreview[r.key]} {r.unit}</Text>
+                        </Text>
+                      ))}
+                      {ocrPreview.extra && Object.entries(ocrPreview.extra).map(([k, v]) => (
+                        <Text key={k} style={styles.ocrResultRow}>
+                          <Text style={styles.ocrResultLabel}>{k}: </Text>
+                          <Text style={styles.ocrResultValue}>{String(v)}</Text>
+                        </Text>
+                      ))}
+                    </View>
                     <TouchableOpacity style={styles.captureBtn} onPress={() => { setCapturedOcrValues(ocrPreview); setOcrPreview(null); setScanned(false); setScanMode('barcode'); }}>
                       <Text style={styles.captureBtnText}>✅  Confirmer — Scanner le code-barres</Text>
                     </TouchableOpacity>
@@ -565,6 +646,10 @@ const styles = StyleSheet.create({
   nfValue: { color: '#1a7a1a', fontSize: 12, fontWeight: '700' },
   nfPlaceholder: { paddingHorizontal: 10, paddingVertical: 16, alignItems: 'center' },
   nfPlaceholderText: { color: '#888', fontSize: 12, textAlign: 'center' },
+  ocrResultBox: { backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 12, padding: 12, marginBottom: 12, width: '100%', maxHeight: 200 },
+  ocrResultRow: { fontSize: 13, marginBottom: 2 },
+  ocrResultLabel: { color: '#ccc' },
+  ocrResultValue: { color: '#22c55e', fontWeight: '700' },
   barcodeFrame: { width: 290, height: 220, position: 'relative' },
   cameraOverlayBottom: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'flex-start', paddingTop: 14 },
   viewfinderHint: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', textAlign: 'center' },

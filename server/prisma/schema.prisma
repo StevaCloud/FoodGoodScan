@@ -125,6 +125,7 @@ model ProductCorrection {
   calcium          Float?
   potassium        Float?
   nutritionLabelUrl String?
+  extraNutrients   Json?
   category         String?
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())

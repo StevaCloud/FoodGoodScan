@@ -271,7 +271,7 @@ router.get('/favorites', authenticateToken, requirePremium, async (req: AuthRequ
 // POST /save-nutrition — sauvegarde directe des valeurs OCR, confirmées immédiatement
 router.post('/save-nutrition', authenticateToken, saveNutritionLimiter, async (req: AuthRequest, res: Response) => {
   try {
-    const { barcode, productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt, cholesterol, iron, calcium, potassium } = req.body;
+    const { barcode, productName, calories, fat, saturatedFat, carbs, sugars, fiber, proteins, salt, cholesterol, iron, calcium, potassium, extraNutrients } = req.body;
 
     if (!barcode || !productName) {
       res.status(400).json({ error: 'barcode et productName requis' });
@@ -300,6 +300,7 @@ router.post('/save-nutrition', authenticateToken, saveNutritionLimiter, async (r
       iron:         iron         ?? null,
       calcium:      calcium      ?? null,
       potassium:    potassium    ?? null,
+      extraNutrients: extraNutrients ?? null,
       category:     null,
     };
 
