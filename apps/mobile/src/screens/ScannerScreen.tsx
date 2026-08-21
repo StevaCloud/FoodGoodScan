@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform, Modal, StatusBar } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { scanProduct, saveNutritionDirect, uploadNutritionLabel } from '../services/api';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { useStore } from '../store/useStore';
@@ -142,7 +142,26 @@ export function ScannerScreen() {
     return () => { stopWebcam(); };
   }, []);
 
+  const nativeScanActiveRef = useRef(false);
+  useEffect(() => { nativeScanActiveRef.current = nativeScanActive; }, [nativeScanActive]);
+  const suppressNextAutoOpen = useRef(false);
+  const scanCancelledRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web' && !nativeScanActiveRef.current) {
+        if (suppressNextAutoOpen.current) {
+          suppressNextAutoOpen.current = false;
+          return;
+        }
+        openNativeCamera();
+      }
+    }, [])
+  );
+
   const goToProduct = (product: any) => {
+    if (scanCancelledRef.current) return;
+    suppressNextAutoOpen.current = true;
     setLastScannedProduct(product);
     stopWebcam();
     setNativeScanActive(false);
@@ -163,6 +182,7 @@ export function ScannerScreen() {
     try {
       const product = await scanProduct(barcode);
 
+      let productToShow = product;
       if (capturedOcrValues) {
         const values = {
           calories:     capturedOcrValues.calories     ?? null,
@@ -185,21 +205,27 @@ export function ScannerScreen() {
         if (capturedPhotoUri) {
           uploadNutritionLabel(product.barcode, capturedPhotoUri).catch(() => {});
         }
-        setLastScanOcrValues({
-          calories:     capturedOcrValues.calories     != null ? String(capturedOcrValues.calories)     : '',
-          fat:          capturedOcrValues.fat          != null ? String(capturedOcrValues.fat)          : '',
-          saturatedFat: capturedOcrValues.saturatedFat != null ? String(capturedOcrValues.saturatedFat) : '',
-          carbs:        capturedOcrValues.carbs        != null ? String(capturedOcrValues.carbs)        : '',
-          sugars:       capturedOcrValues.sugars       != null ? String(capturedOcrValues.sugars)       : '',
-          fiber:        capturedOcrValues.fiber        != null ? String(capturedOcrValues.fiber)        : '',
-          proteins:     capturedOcrValues.proteins     != null ? String(capturedOcrValues.proteins)     : '',
-          salt:         capturedOcrValues.salt         != null ? String(capturedOcrValues.salt)         : '',
-        });
+        // Overlay OCR values directly on the product so they appear immediately on the product page
+        productToShow = {
+          ...product,
+          nutriments: {
+            ...(product.nutriments || {}),
+            ...(values.calories !== null && { 'energy-kcal_100g': values.calories, energy_100g: Math.round(values.calories * 4.184) }),
+            ...(values.fat !== null && { fat_100g: values.fat }),
+            ...(values.saturatedFat !== null && { 'saturated-fat_100g': values.saturatedFat }),
+            ...(values.carbs !== null && { carbohydrates_100g: values.carbs }),
+            ...(values.sugars !== null && { sugars_100g: values.sugars }),
+            ...(values.fiber !== null && { fiber_100g: values.fiber }),
+            ...(values.proteins !== null && { proteins_100g: values.proteins }),
+            ...(values.salt !== null && { salt_100g: values.salt }),
+          },
+          extraNutrients: values.extraNutrients ?? product.extraNutrients,
+        };
       } else {
         setLastScanOcrValues(null);
       }
 
-      goToProduct(product);
+      goToProduct(productToShow);
     } catch (error: any) {
       setTimeout(() => setScanned(false), 2000);
       if (error.response?.data?.upgrade) {
@@ -359,6 +385,7 @@ export function ScannerScreen() {
       }
     }
     setScanned(false);
+    scanCancelledRef.current = false;
     setScanMode('nutrition');
     setCapturedOcrValues(null);
     setCapturedPhotoUri(null);
@@ -369,13 +396,17 @@ export function ScannerScreen() {
   };
 
   const closeNativeCamera = () => {
+    scanCancelledRef.current = true;
     setNativeScanActive(false);
+    setLoading(false);
+    setScanStatus('');
     setScanMode('nutrition');
     setCapturedOcrValues(null);
     setCapturedPhotoUri(null);
     setOcrPreview(null);
     setNutritionCapturing(false);
     setOcrError('');
+    setScanned(false);
   };
 
   // ─── Web ────────────────────────────────────────────────────────────────────

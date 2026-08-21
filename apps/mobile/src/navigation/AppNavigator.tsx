@@ -4,7 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 
 const navigationRef = createNavigationContainerRef();
-import { Text, View, Animated, Easing } from 'react-native';
+import { Text, View, Animated, Easing, ScrollView, useWindowDimensions, StyleSheet, Image } from 'react-native';
+import { HealthGoodScanScreen } from '../screens/HealthGoodScanScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { InterstitialProvider, triggerInterstitial } from '../components/Interstitial';
@@ -392,6 +393,88 @@ function MainTabs() {
   );
 }
 
+function PharmacistHint() {
+  const wave   = useRef(new Animated.Value(0)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(2000),
+        Animated.timing(wave, { toValue: 1,  duration: 140, easing: Easing.out(Easing.quad),    useNativeDriver: true }),
+        Animated.timing(wave, { toValue: -1, duration: 140, easing: Easing.inOut(Easing.quad),  useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 1,  duration: 140, easing: Easing.inOut(Easing.quad),  useNativeDriver: true }),
+        Animated.timing(wave, { toValue: -1, duration: 140, easing: Easing.inOut(Easing.quad),  useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 1,  duration: 140, easing: Easing.inOut(Easing.quad),  useNativeDriver: true }),
+        Animated.timing(wave, { toValue: 0,  duration: 140, easing: Easing.in(Easing.quad),     useNativeDriver: true }),
+        Animated.delay(2500),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounce, { toValue: -4, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(bounce, { toValue: 0,  duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const rotate = wave.interpolate({ inputRange: [-1, 1], outputRange: ['-22deg', '22deg'] });
+
+  return (
+    <View style={navStyles.pharmacistWrap}>
+      <Animated.View style={{ transform: [{ translateY: bounce }], alignItems: 'center' }}>
+        <Animated.Image
+          source={require('../../assets/pharmacien3d.webp')}
+          style={[navStyles.pharmacistImg, { transform: [{ rotate }] }]}
+          resizeMode="contain"
+        />
+        <Text style={navStyles.pharmacistArrow}>›</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+function MainWithSwipe() {
+  const { width, height } = useWindowDimensions();
+  return (
+    <ScrollView
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      bounces={false}
+      style={{ flex: 1 }}
+    >
+      {/* Page 0 — FoodGoodScan (par défaut) */}
+      <View style={{ width, height }}>
+        <MainTabs />
+        <PharmacistHint />
+      </View>
+
+      {/* Page 1 — HealthGoodScan (glisse vers la gauche) */}
+      <View style={{ width, height }}>
+        <HealthGoodScanScreen />
+      </View>
+    </ScrollView>
+  );
+}
+
+const navStyles = StyleSheet.create({
+  pharmacistWrap: {
+    position: 'absolute',
+    right: 0,
+    top: '38%',
+    alignItems: 'center',
+    backgroundColor: '#1a0d2ecc',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    width: 56,
+  },
+  pharmacistImg: { width: 48, height: 48 },
+  pharmacistArrow: { color: '#a855f7', fontSize: 13, fontWeight: '900', marginTop: 2 },
+});
+
 export function AppNavigator() {
   const isLoggedIn = useStore((s) => s.isLoggedIn);
   const onboarded = useStore((s) => s.onboarded);
@@ -425,7 +508,7 @@ export function AppNavigator() {
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         ) : (
           <>
-            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="Main" component={MainWithSwipe} />
             <Stack.Screen
               name="Water"
               component={WaterScreen}

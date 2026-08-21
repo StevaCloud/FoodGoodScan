@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, Modal, Pressable, Dimensions, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
 import { useStore } from '../store/useStore';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useTranslation } from '../i18n/useTranslation';
@@ -620,25 +620,69 @@ export function DietScreen() {
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
-  const waveAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
   const bubbleAnim = useRef(new Animated.Value(1)).current;
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+  const idleRef = useRef<any>(null);
+
+  function startIdle() {
+    const tilt = Animated.loop(Animated.sequence([
+      Animated.timing(rotateAnim, { toValue: -1, duration: 500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue:  1, duration: 500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue:  0, duration: 300, easing: Easing.out(Easing.quad),   useNativeDriver: true }),
+      Animated.delay(600),
+    ]));
+    const typing = Animated.loop(Animated.sequence([
+      Animated.timing(dot1, { toValue: -5, duration: 180, useNativeDriver: true }),
+      Animated.timing(dot1, { toValue:  0, duration: 180, useNativeDriver: true }),
+      Animated.timing(dot2, { toValue: -5, duration: 180, useNativeDriver: true }),
+      Animated.timing(dot2, { toValue:  0, duration: 180, useNativeDriver: true }),
+      Animated.timing(dot3, { toValue: -5, duration: 180, useNativeDriver: true }),
+      Animated.timing(dot3, { toValue:  0, duration: 180, useNativeDriver: true }),
+      Animated.delay(350),
+    ]));
+    tilt.start();
+    typing.start();
+    idleRef.current = { tilt, typing };
+  }
+
+  function stopIdle() {
+    idleRef.current?.tilt?.stop();
+    idleRef.current?.typing?.stop();
+    dot1.setValue(0);
+    dot2.setValue(0);
+    dot3.setValue(0);
+    idleRef.current = null;
+  }
+
+  function handleRobotPress() {
+    stopIdle();
+    Animated.sequence([
+      Animated.timing(rotateAnim, { toValue:  2, duration: 100, useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue: -2, duration: 100, useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue:  2, duration: 100, useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue: -2, duration: 100, useNativeDriver: true }),
+      Animated.timing(rotateAnim, { toValue:  0, duration: 100, useNativeDriver: true }),
+    ]).start(() => setShowChat(true));
+  }
+
+  function handleChatClose() {
+    setShowChat(false);
+    rotateAnim.setValue(0);
+    startIdle();
+  }
 
   useEffect(() => {
-    // Animation de salut en boucle
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(waveAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(waveAnim, { toValue: -1, duration: 300, useNativeDriver: true }),
-        Animated.timing(waveAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(waveAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-        Animated.delay(2500),
-      ])
-    ).start();
-    // Bulle disparaît après 4 secondes
+    startIdle();
     const t = setTimeout(() => {
       Animated.timing(bubbleAnim, { toValue: 0, duration: 500, useNativeDriver: true }).start();
     }, 4000);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      stopIdle();
+    };
   }, []);
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<ScrollView>(null);
@@ -1191,15 +1235,28 @@ export function DietScreen() {
     {/* ── Robot flottant ── */}
     <View style={styles.fabWrap}>
       <Animated.View style={[styles.fabBubble, { opacity: bubbleAnim, transform: [{ scale: bubbleAnim }] }]}>
-        <Text style={styles.fabBubbleText}>Salut ! 👋</Text>
+        <Text style={styles.fabBubbleText}>Écris-moi ! 💬</Text>
         <View style={styles.fabBubbleTail} />
       </Animated.View>
-      <TouchableOpacity style={styles.fab} onPress={() => setShowChat(true)} activeOpacity={0.85}>
-        <Animated.Text style={[styles.fabRobotArm, {
-          transform: [{ rotate: waveAnim.interpolate({ inputRange: [-1, 1], outputRange: ['-30deg', '30deg'] }) }],
-          position: 'absolute', top: -6, right: -8,
-        }]}>🤚</Animated.Text>
-        <Text style={styles.fabText}>🤖</Text>
+
+      {/* Bulle "en train d'écrire" */}
+      <View style={styles.typingBubble}>
+        <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot1 }] }]} />
+        <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot2 }] }]} />
+        <Animated.View style={[styles.typingDot, { transform: [{ translateY: dot3 }] }]} />
+        <View style={styles.typingBubbleTail} />
+      </View>
+
+      <TouchableOpacity onPress={handleRobotPress} activeOpacity={0.9}>
+        <Animated.Image
+          source={require('../../assets/robot3d.png')}
+          style={[styles.fabRobotImg, {
+            transform: [
+              { rotate: rotateAnim.interpolate({ inputRange: [-2, 2], outputRange: ['-25deg', '25deg'] }) },
+            ],
+          }]}
+          resizeMode="contain"
+        />
         {chatMessages.length > 0 && <View style={styles.fabBadge} />}
       </TouchableOpacity>
     </View>
@@ -1207,7 +1264,7 @@ export function DietScreen() {
     </WeatherScreen>
 
     {/* ── Modal chat ── */}
-    <Modal visible={showChat} animationType="slide" transparent onRequestClose={() => setShowChat(false)}>
+    <Modal visible={showChat} animationType="slide" transparent onRequestClose={handleChatClose}>
       <KeyboardAvoidingView behavior="padding" style={styles.chatModalOverlay}>
         <View style={styles.chatModalBox}>
           <View style={styles.chatModalHeader}>
@@ -1215,7 +1272,7 @@ export function DietScreen() {
               <Text style={styles.chatModalTitle}>🤖 Assistant nutritionnel</Text>
               <Text style={styles.chatSubtitle}>Questions sur la nourriture uniquement</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowChat(false)} style={styles.chatCloseBtn}>
+            <TouchableOpacity onPress={handleChatClose} style={styles.chatCloseBtn}>
               <Text style={styles.chatCloseBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -1318,14 +1375,15 @@ const styles = StyleSheet.create({
   mealItemIcon: { fontSize: 22 },
   mealItemText: { color: '#bbb', fontSize: 13, flex: 1, lineHeight: 18 },
   mealItemArrow: { color: '#22c55e', fontSize: 16, fontWeight: 'bold', marginLeft: 4 },
-  fabWrap: { position: 'absolute', bottom: 24, right: 16, alignItems: 'center' },
-  fabBubble: { backgroundColor: '#22c55e', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 6, alignSelf: 'center' },
+  fabWrap: { position: 'absolute', bottom: 20, right: 12, alignItems: 'center' },
+  fabBubble: { backgroundColor: '#22c55e', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 4, alignSelf: 'center' },
   fabBubbleText: { color: '#000', fontSize: 12, fontWeight: '700' },
   fabBubbleTail: { position: 'absolute', bottom: -6, left: '50%', marginLeft: -6, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#22c55e' },
-  fab: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#22c55e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
-  fabText: { fontSize: 30 },
-  fabRobotArm: { fontSize: 16 },
-  fabBadge: { position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#000' },
+  fabRobotImg: { width: 86, height: 86 },
+  fabBadge: { position: 'absolute', top: 8, right: 8, width: 12, height: 12, borderRadius: 6, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#111' },
+  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#1e1e1e', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 4, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#333' },
+  typingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#22c55e' },
+  typingBubbleTail: { position: 'absolute', bottom: -6, right: 14, width: 0, height: 0, borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#333' },
   chatModalOverlay: { flex: 1, justifyContent: 'flex-end' },
   chatModalBox: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34, height: '80%' },
   chatModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },

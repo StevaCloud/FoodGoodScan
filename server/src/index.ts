@@ -15,6 +15,7 @@ import { quizRouter, pickMonthlyWinner } from './routes/quiz';
 import { correctionsRouter } from './routes/corrections';
 import { productImagesRouter } from './routes/productImages';
 import { chatRouter } from './routes/chat';
+import { cosmeticsRouter } from './routes/cosmetics';
 import path from 'path';
 import fs from 'fs';
 import { prisma } from './lib/prisma';
@@ -292,6 +293,7 @@ app.use('/api/quiz', quizRouter);
 app.use('/api/corrections', correctionsRouter);
 app.use('/api/product-images', productImagesRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/cosmetics', cosmeticsRouter);
 
 // Servir les images uploadées
 const uploadsDir = path.join(process.cwd(), 'uploads');

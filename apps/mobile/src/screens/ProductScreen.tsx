@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, PanResponder, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStore } from '../store/useStore';
 import { HealthScoreBadge } from '../components/HealthScoreBadge';
@@ -9,6 +9,10 @@ import { NutriScoreBar } from '../components/NutriScoreBar';
 import { addFavorite, getProductPrices, submitCorrection, uploadProductImage, ocrProductLabel } from '../services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { usePostalCode } from '../hooks/usePostalCode';
+
+const LOUPE_SIZE = 190;
+const LOUPE_RADIUS = LOUPE_SIZE / 2;
+type SectionEntry = { key: string; y: number; height: number; getText: () => string };
 
 interface PriceDeal {
   merchant: string;
@@ -38,6 +42,40 @@ export function ProductScreen() {
   const [correctionFields, setCorrectionFields] = useState({
     calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', fiber: '', proteins: '', salt: '',
   });
+
+  const [loupeVisible, setLoupeVisible] = useState(false);
+  const [loupePosXY, setLoupePosXY] = useState(() => {
+    const { width } = Dimensions.get('window');
+    return { x: width / 2 - LOUPE_RADIUS, y: 280 };
+  });
+  const scrollOffsetY = useRef(0);
+  const sectionEntries = useRef<SectionEntry[]>([]);
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, g) => {
+        setLoupePosXY({ x: g.moveX - LOUPE_RADIUS, y: g.moveY - LOUPE_RADIUS });
+      },
+    })
+  ).current;
+  const registerSection = (key: string, y: number, height: number, getText: () => string) => {
+    sectionEntries.current = sectionEntries.current.filter(s => s.key !== key);
+    sectionEntries.current.push({ key, y, height, getText });
+    sectionEntries.current.sort((a, b) => a.y - b.y);
+  };
+  const getLoupeText = (): string => {
+    if (!product) return '';
+    const centerY = loupePosXY.y + LOUPE_RADIUS + scrollOffsetY.current;
+    let best: SectionEntry | null = null;
+    let bestDist = Infinity;
+    for (const s of sectionEntries.current) {
+      if (s.y <= centerY && s.y + s.height >= centerY) return s.getText();
+      const d = Math.abs(s.y + s.height / 2 - centerY);
+      if (d < bestDist) { bestDist = d; best = s; }
+    }
+    return best ? best.getText() : product.name;
+  };
 
   const addGroceryItem = useStore((s) => s.addGroceryItem);
   const isPremium = user?.plan === 'PREMIUM';
@@ -188,7 +226,8 @@ export function ProductScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]}>
+    <View style={{ flex: 1 }}>
+    <ScrollView style={[styles.container, { backgroundColor: weatherBg }]} onScroll={(e) => { scrollOffsetY.current = e.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}>
       {product.imageUrl ? (
         <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="contain" />
       ) : (
@@ -203,7 +242,7 @@ export function ProductScreen() {
         </TouchableOpacity>
       )}
 
-      <View style={styles.header}>
+      <View style={styles.header} onLayout={(e) => registerSection('header', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => `${product.name}${product.brand ? '\n' + product.brand : ''}${product.category ? '\n' + product.category.name : ''}`)}>
         <View style={styles.headerInfo}>
           <Text style={styles.name}>{product.name}</Text>
           {product.brand && <Text style={styles.brand}>{product.brand}</Text>}
@@ -266,7 +305,7 @@ export function ProductScreen() {
       )}
 
       {product.pros && product.pros.length > 0 && (
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => registerSection('pros', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => 'Points positifs\n' + (product.pros || []).join('\n'))}>
           <Text style={styles.sectionTitle}>Points positifs</Text>
           {product.pros.map((pro: string, i: number) => (
             <View key={i} style={styles.listItem}>
@@ -278,7 +317,7 @@ export function ProductScreen() {
       )}
 
       {product.cons && product.cons.length > 0 && (
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => registerSection('cons', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => 'Points négatifs\n' + (product.cons || []).join('\n'))}>
           <Text style={styles.sectionTitle}>Points négatifs</Text>
           {product.cons.map((con: string, i: number) => (
             <View key={i} style={styles.listItem}>
@@ -290,7 +329,7 @@ export function ProductScreen() {
       )}
 
       {product.novaGroup === 4 && (
-        <View style={styles.novaExplainBox}>
+        <View style={styles.novaExplainBox} onLayout={(e) => registerSection('nova', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => 'Pourquoi ultra-transformé ?\nContient des additifs industriels : émulsifiants, conservateurs, arômes artificiels, colorants.')}>
           <Text style={styles.novaExplainTitle}>⚠️ Pourquoi ultra-transformé ?</Text>
           <Text style={styles.novaExplainText}>
             Ce produit est classé NOVA 4 car il contient des ingrédients et additifs industriels absents d'une cuisine ordinaire : émulsifiants, conservateurs, arômes artificiels, colorants, agents de texture, etc.
@@ -307,7 +346,7 @@ export function ProductScreen() {
       )}
 
       {isPremium && product.allergens?.length > 0 && (
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => registerSection('allergens', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => 'Allergènes\n' + (product.allergens || []).join(', '))}>
           <Text style={styles.sectionTitle}>Allergènes</Text>
           <View style={styles.tags}>
             {product.allergens.map((a: string, i: number) => (
@@ -361,67 +400,66 @@ export function ProductScreen() {
       )}
 
       {product.nutriments && (
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => {
+          const n = product.nutriments as any;
+          const lines: string[] = ['Valeurs nutritives (100g)'];
+          if (n?.['energy-kcal_100g']) lines.push(`Calories: ${n['energy-kcal_100g']} kcal`);
+          if (n?.fat_100g != null) lines.push(`Gras: ${n.fat_100g}g`);
+          if (n?.proteins_100g != null) lines.push(`Protéines: ${n.proteins_100g}g`);
+          if (n?.carbohydrates_100g != null) lines.push(`Glucides: ${n.carbohydrates_100g}g`);
+          if (n?.sugars_100g != null) lines.push(`Sucres: ${n.sugars_100g}g`);
+          if (n?.fiber_100g != null) lines.push(`Fibres: ${n.fiber_100g}g`);
+          if (n?.salt_100g != null) lines.push(`Sel: ${n.salt_100g}g`);
+          registerSection('nutrition', e.nativeEvent.layout.y, e.nativeEvent.layout.height, () => lines.join('\n'));
+        }}>
           <Text style={styles.sectionTitle}>Valeurs nutritives (pour 100g)</Text>
-          {product.nutriments.energy_100g > 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Énergie</Text>
-              <Text style={styles.nutriValue}>{Math.round(product.nutriments['energy-kcal_100g'] || product.nutriments.energy_100g / 4.184)} kcal</Text>
-            </View>
-          )}
-          {product.nutriments.fat_100g >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Gras</Text>
-              <Text style={[styles.nutriValue, product.nutriments.fat_100g > 20 ? {color:'#ef4444'} : product.nutriments.fat_100g > 10 ? {color:'#f97316'} : {color:'#22c55e'}]}>
-                {product.nutriments.fat_100g}g
-              </Text>
-            </View>
-          )}
-          {product.nutriments['saturated-fat_100g'] >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabelIndent}>dont saturés</Text>
-              <Text style={[styles.nutriValue, product.nutriments['saturated-fat_100g'] > 5 ? {color:'#ef4444'} : {color:'#22c55e'}]}>
-                {product.nutriments['saturated-fat_100g']}g
-              </Text>
-            </View>
-          )}
-          {product.nutriments.carbohydrates_100g >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Glucides</Text>
-              <Text style={styles.nutriValue}>{product.nutriments.carbohydrates_100g}g</Text>
-            </View>
-          )}
-          {product.nutriments.sugars_100g >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabelIndent}>dont sucres</Text>
-              <Text style={[styles.nutriValue, product.nutriments.sugars_100g > 20 ? {color:'#ef4444'} : product.nutriments.sugars_100g > 10 ? {color:'#f97316'} : {color:'#22c55e'}]}>
-                {product.nutriments.sugars_100g}g
-              </Text>
-            </View>
-          )}
-          {product.nutriments.fiber_100g > 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Fibres</Text>
-              <Text style={[styles.nutriValue, { color: '#22c55e' }]}>{product.nutriments.fiber_100g}g</Text>
-            </View>
-          )}
-          {product.nutriments.proteins_100g >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Protéines</Text>
-              <Text style={[styles.nutriValue, product.nutriments.proteins_100g > 10 ? {color:'#22c55e'} : {}]}>
-                {product.nutriments.proteins_100g}g
-              </Text>
-            </View>
-          )}
-          {product.nutriments.salt_100g >= 0 && (
-            <View style={styles.nutriRow}>
-              <Text style={styles.nutriLabel}>Sel</Text>
-              <Text style={[styles.nutriValue, product.nutriments.salt_100g > 1.5 ? {color:'#ef4444'} : product.nutriments.salt_100g > 0.8 ? {color:'#f97316'} : {color:'#22c55e'}]}>
-                {product.nutriments.salt_100g}g
-              </Text>
-            </View>
-          )}
-          {product.extraNutrients && Object.keys(product.extraNutrients).filter(k => k !== '_labels').length > 0 && (() => {
+          {(() => {
+            const ocrLabels: Record<string, string> = (product.extraNutrients as any)?._labels || {};
+            const hasOcr = Object.keys(ocrLabels).length > 0;
+            const n = product.nutriments as any;
+
+            if (hasOcr) {
+              // Affiche exactement comme la capture OCR — même labels, même chiffres
+              const UNITS: Record<string, string> = { calories: 'kcal', fat: 'g', saturatedFat: 'g', carbs: 'g', sugars: 'g', fiber: 'g', proteins: 'g', salt: 'g', cholesterol: 'mg', iron: 'mg', calcium: 'mg', potassium: 'mg', transFat: 'g', polyunsaturatedFat: 'g', monounsaturatedFat: 'g', omega3: 'g', omega6: 'g', addedSugars: 'g', starch: 'g', polyols: 'g', vitaminA: 'µg', vitaminB1: 'mg', vitaminB2: 'mg', vitaminB3: 'mg', vitaminB5: 'mg', vitaminB6: 'mg', vitaminB7: 'µg', vitaminB9: 'µg', vitaminB12: 'µg', vitaminC: 'mg', vitaminD: 'µg', vitaminE: 'mg', vitaminK: 'µg', magnesium: 'mg', phosphorus: 'mg', zinc: 'mg', selenium: 'µg', copper: 'mg', manganese: 'mg', iodine: 'µg', chromium: 'µg', molybdenum: 'µg', fluoride: 'mg', chloride: 'mg', caffeine: 'mg', alcohol: 'g', taurine: 'mg', creatine: 'g' };
+              const stdMap: Record<string, number | null> = {
+                calories: n['energy-kcal_100g'] ?? (n.energy_100g ? Math.round(n.energy_100g / 4.184) : null),
+                fat: n.fat_100g ?? null, saturatedFat: n['saturated-fat_100g'] ?? null,
+                carbs: n.carbohydrates_100g ?? null, sugars: n.sugars_100g ?? null,
+                fiber: n.fiber_100g ?? null, proteins: n.proteins_100g ?? null,
+                salt: n.salt_100g ?? null, cholesterol: n.cholesterol_100g ?? null,
+                iron: n.iron_100g ?? null, calcium: n.calcium_100g ?? null, potassium: n.potassium_100g ?? null,
+              };
+              const rows: { key: string; label: string; unit: string; value: number }[] = [];
+              for (const [k, v] of Object.entries(stdMap)) {
+                if (ocrLabels[k] && v != null && v >= 0) rows.push({ key: k, label: ocrLabels[k], unit: UNITS[k] || '', value: v });
+              }
+              if (product.extraNutrients) {
+                for (const [k, v] of Object.entries(product.extraNutrients as Record<string, any>)) {
+                  if (k === '_labels') continue;
+                  rows.push({ key: k, label: ocrLabels[k] || k, unit: UNITS[k] || '', value: v });
+                }
+              }
+              return rows.map(r => (
+                <View key={r.key} style={styles.nutriRow}>
+                  <Text style={styles.nutriLabel}>{r.label}</Text>
+                  <Text style={styles.nutriValue}>{r.value} {r.unit}</Text>
+                </View>
+              ));
+            }
+
+            // Pas d'OCR — tableau standard
+            return (<>
+              {n.energy_100g > 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Énergie</Text><Text style={styles.nutriValue}>{Math.round(n['energy-kcal_100g'] || n.energy_100g / 4.184)} kcal</Text></View>)}
+              {n.fat_100g >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Gras</Text><Text style={[styles.nutriValue, n.fat_100g > 20 ? {color:'#ef4444'} : n.fat_100g > 10 ? {color:'#f97316'} : {color:'#22c55e'}]}>{n.fat_100g}g</Text></View>)}
+              {n['saturated-fat_100g'] >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabelIndent}>dont saturés</Text><Text style={[styles.nutriValue, n['saturated-fat_100g'] > 5 ? {color:'#ef4444'} : {color:'#22c55e'}]}>{n['saturated-fat_100g']}g</Text></View>)}
+              {n.carbohydrates_100g >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Glucides</Text><Text style={styles.nutriValue}>{n.carbohydrates_100g}g</Text></View>)}
+              {n.sugars_100g >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabelIndent}>dont sucres</Text><Text style={[styles.nutriValue, n.sugars_100g > 20 ? {color:'#ef4444'} : n.sugars_100g > 10 ? {color:'#f97316'} : {color:'#22c55e'}]}>{n.sugars_100g}g</Text></View>)}
+              {n.fiber_100g > 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Fibres</Text><Text style={[styles.nutriValue, {color:'#22c55e'}]}>{n.fiber_100g}g</Text></View>)}
+              {n.proteins_100g >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Protéines</Text><Text style={[styles.nutriValue, n.proteins_100g > 10 ? {color:'#22c55e'} : {}]}>{n.proteins_100g}g</Text></View>)}
+              {n.salt_100g >= 0 && (<View style={styles.nutriRow}><Text style={styles.nutriLabel}>Sel</Text><Text style={[styles.nutriValue, n.salt_100g > 1.5 ? {color:'#ef4444'} : n.salt_100g > 0.8 ? {color:'#f97316'} : {color:'#22c55e'}]}>{n.salt_100g}g</Text></View>)}
+            </>);
+          })()}
+          {product.extraNutrients && Object.keys(product.extraNutrients).filter(k => k !== '_labels').length > 0 && !((product.extraNutrients as any)?._labels && Object.keys((product.extraNutrients as any)._labels).length > 0) && (() => {
             const savedRawLabels: Record<string, string> = (product.extraNutrients as any)._labels || {};
             const EXTRA_LABELS: Record<string, { label: string; unit: string }> = {
               transFat: { label: 'Gras trans', unit: 'g' },
@@ -644,6 +682,18 @@ export function ProductScreen() {
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    <TouchableOpacity style={styles.loupeToggleBtn} onPress={() => setLoupeVisible(v => !v)} activeOpacity={0.8}>
+      <Text style={styles.loupeToggleIcon}>{loupeVisible ? '✕' : '🔍'}</Text>
+    </TouchableOpacity>
+
+    {loupeVisible && (
+      <View style={[styles.loupeCircle, { left: loupePosXY.x, top: loupePosXY.y }]} {...panResponder.panHandlers}>
+        <Text style={styles.loupeDragHint}>⠿ glisse</Text>
+        <Text style={styles.loupeContent} numberOfLines={7}>{getLoupeText()}</Text>
+      </View>
+    )}
+  </View>
   );
 }
 
@@ -776,4 +826,49 @@ const styles = StyleSheet.create({
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   skipButton: { backgroundColor: '#333', borderRadius: 12, padding: 14, alignItems: 'center' },
   skipButtonText: { color: '#ccc', fontSize: 14 },
+  loupeToggleBtn: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#22c55e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    zIndex: 100,
+  },
+  loupeToggleIcon: { fontSize: 24 },
+  loupeCircle: {
+    position: 'absolute',
+    width: LOUPE_SIZE,
+    height: LOUPE_SIZE,
+    borderRadius: LOUPE_RADIUS,
+    backgroundColor: '#111',
+    borderWidth: 3,
+    borderColor: '#22c55e',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 14,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    zIndex: 99,
+  },
+  loupeDragHint: { color: '#444', fontSize: 9, marginBottom: 6, letterSpacing: 1 },
+  loupeContent: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });

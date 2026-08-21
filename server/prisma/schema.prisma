@@ -133,6 +133,20 @@ model ProductCorrection {
   @@unique([barcode, userId])
 }
 
+model CosmeticProduct {
+  id             String   @id @default(cuid())
+  barcode        String   @unique
+  name           String
+  brand          String?
+  ingredients    String   // texte complet de la liste d'ingrédients
+  score          String   // A, B, C, D ou E
+  badIngredients Json     // tableau des ingrédients problématiques trouvés
+  imageUrl       String?
+  source         String   @default("user") // "obf" = Open Beauty Facts, "user" = OCR utilisateur
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model Deal {
   id          String   @id @default(cuid())
   store       String
